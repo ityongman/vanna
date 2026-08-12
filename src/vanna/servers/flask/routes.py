@@ -34,7 +34,10 @@ def register_chat_routes(
         api_base_url = config.get("api_base_url", "")
 
         return get_index_html(
-            dev_mode=dev_mode, cdn_url=cdn_url, api_base_url=api_base_url
+            dev_mode=dev_mode,
+            static_path=config.get("static_folder", "/static"),
+            cdn_url=cdn_url,
+            api_base_url=api_base_url,
         )
 
     @app.route("/api/vanna/v2/chat_sse", methods=["POST"])

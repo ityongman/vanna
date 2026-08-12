@@ -4,4 +4,72 @@ Agent implementations.
 This package contains agent implementations and utilities.
 """
 
-__all__: list[str] = []
+from typing import Optional
+
+from vanna.core import Agent, AgentConfig, ToolRegistry
+from vanna.core.llm.base import LlmService
+from vanna.core.user import User
+from vanna.core.user.request_context import RequestContext
+from vanna.core.user.resolver import UserResolver
+from vanna.integrations.local.agent_memory.in_memory import DemoAgentMemory
+
+
+class _DefaultUserResolver(UserResolver):
+    """Default user resolver that returns a hardcoded anonymous user.
+
+    Used when no authentication is needed (demo/development mode).
+    """
+
+    async def resolve_user(self, request_context: RequestContext) -> User:
+        return User(
+            id="default_user",
+            username="anonymous",
+            email="anonymous@example.com",
+            permissions=[],
+        )
+
+
+def create_basic_agent(
+    llm_service: LlmService,
+    config: Optional[AgentConfig] = None,
+    tool_registry: Optional[ToolRegistry] = None,
+    user_resolver: Optional[UserResolver] = None,
+    agent_memory: Optional[DemoAgentMemory] = None,
+) -> Agent:
+    """Create a basic agent with sensible defaults for development.
+
+    Args:
+        llm_service: LLM service implementation to use
+        config: Optional agent configuration (defaults to streaming + thinking indicators)
+        tool_registry: Optional tool registry (defaults to empty registry)
+        user_resolver: Optional user resolver (defaults to anonymous user)
+        agent_memory: Optional agent memory (defaults to in-memory demo)
+
+    Returns:
+        Configured Agent instance
+    """
+    if config is None:
+        config = AgentConfig(
+            stream_responses=True,
+            include_thinking_indicators=True,
+        )
+
+    if tool_registry is None:
+        tool_registry = ToolRegistry()
+
+    if user_resolver is None:
+        user_resolver = _DefaultUserResolver()
+
+    if agent_memory is None:
+        agent_memory = DemoAgentMemory()
+
+    return Agent(
+        llm_service=llm_service,
+        tool_registry=tool_registry,
+        user_resolver=user_resolver,
+        agent_memory=agent_memory,
+        config=config,
+    )
+
+
+__all__: list[str] = ["create_basic_agent"]

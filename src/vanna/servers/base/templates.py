@@ -21,9 +21,15 @@ def get_vanna_component_script(
         HTML script tag for loading components
     """
     if dev_mode:
-        return (
-            f'<script type="module" src="{static_path}/vanna-components.js"></script>'
-        )
+        if static_path.startswith("http"):
+            # Vite dev server mode: load source directly with HMR support
+            return (
+                f'<script type="module" src="{static_path}/src/index.ts"></script>'
+            )
+        else:
+            return (
+                f'<script type="module" src="{static_path}/vanna-components.js"></script>'
+            )
     else:
         return f'<script type="module" src="{cdn_url}"></script>'
 

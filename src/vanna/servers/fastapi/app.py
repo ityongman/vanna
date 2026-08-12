@@ -59,15 +59,21 @@ class VannaFastAPIServer:
         dev_mode = self.config.get("dev_mode", False)
         if dev_mode:
             static_folder = self.config.get("static_folder", "static")
-            try:
+            # Skip if it's a URL (Vite HMR mode)
+            if not static_folder.startswith("http"):
                 import os
 
+                static_folder = os.path.abspath(static_folder)
+                print(f"[DEBUG] Static folder: {static_folder}, exists: {os.path.exists(static_folder)}")
                 if os.path.exists(static_folder):
                     app.mount(
-                        "/static", StaticFiles(directory=static_folder), name="static"
+                        "/static",
+                        StaticFiles(directory=static_folder),
+                        name="static",
                     )
-            except Exception:
-                pass  # Static files not available
+                    print(f"[DEBUG] Static files mounted at /static -> {static_folder}")
+                else:
+                    print(f"[DEBUG] Static folder does NOT exist: {static_folder}")
 
         # Register routes
         register_chat_routes(app, self.chat_handler, self.config)
