@@ -1,5 +1,19 @@
-"""Microsoft SQL Server integration for Vanna."""
+"""
+Deprecated: use vanna.integrations.databases.relational.mssql instead.
 
-from .sql_runner import MSSQLRunner
+This module is a compatibility shim kept for 1-2 minor versions after the
+integrations directory was reorganized by capability (llm / vector /
+databases / visualization). It re-exports every public name of the new
+package so that ``isinstance`` checks keep working (same class objects).
+"""
+import warnings
 
-__all__ = ["MSSQLRunner"]
+from vanna.integrations.databases.relational.mssql import *  # noqa: F401,F403
+from vanna.integrations.databases.relational.mssql import __all__  # noqa: F401
+
+warnings.warn(
+    "vanna.integrations.mssql is deprecated; "
+    "import from vanna.integrations.databases.relational.mssql instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)

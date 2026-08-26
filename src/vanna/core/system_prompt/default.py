@@ -58,7 +58,7 @@ class DefaultSystemPromptBuilder(SystemPromptBuilder):
 
         # Base system prompt
         prompt_parts = [
-            f"You are Vanna, an AI data analyst assistant created to help users with data analysis tasks. Today's date is {today_date}.",
+            f"You are an AI data analyst assistant. Help users with data analysis tasks. Today's date is {today_date}.",
             "",
             "Response Guidelines:",
             "- Any summary of what you did or observations should be the final step.",
@@ -153,5 +153,26 @@ class DefaultSystemPromptBuilder(SystemPromptBuilder):
         if has_search or has_save or has_text_memory:
             # Remove empty strings from the list
             prompt_parts = [part for part in prompt_parts if part != ""]
+
+        # AutoLink schema exploration workflow (injection point 3 of the
+        # AutoLink integration plan): active only when the
+        # explore_schema_links tool is registered.
+        has_explore_schema = "explore_schema_links" in tool_names
+        if has_explore_schema:
+            prompt_parts.append("\n" + "=" * 60)
+            prompt_parts.append("AUTO-LINK SCHEMA EXPLORATION:")
+            prompt_parts.append("=" * 60)
+            prompt_parts.extend(
+                [
+                    "",
+                    "• BEFORE writing SQL, call explore_schema_links to look up the tables, columns, and join conditions relevant to the user's question.",
+                    "",
+                    "• Use the exact table names, column names, and join conditions returned by the tool; do not guess schema details.",
+                    "",
+                    '• Call it with table_name="..." to inspect a table, column_name="..." to look up a column, or search_query="..." for a semantic search over the schema.',
+                    "",
+                    "• If the tool returns no results, refine the search or ask the user for clarification instead of inventing schema elements.",
+                ]
+            )
 
         return "\n".join(prompt_parts)

@@ -1,5 +1,19 @@
-"""ClickHouse integration for Vanna."""
+"""
+Deprecated: use vanna.integrations.databases.warehouse.clickhouse instead.
 
-from .sql_runner import ClickHouseRunner
+This module is a compatibility shim kept for 1-2 minor versions after the
+integrations directory was reorganized by capability (llm / vector /
+databases / visualization). It re-exports every public name of the new
+package so that ``isinstance`` checks keep working (same class objects).
+"""
+import warnings
 
-__all__ = ["ClickHouseRunner"]
+from vanna.integrations.databases.warehouse.clickhouse import *  # noqa: F401,F403
+from vanna.integrations.databases.warehouse.clickhouse import __all__  # noqa: F401
+
+warnings.warn(
+    "vanna.integrations.clickhouse is deprecated; "
+    "import from vanna.integrations.databases.warehouse.clickhouse instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)

@@ -5,7 +5,7 @@ This example demonstrates how to use ChromaAgentMemory with intelligent
 device selection for GPU acceleration when available.
 """
 
-from vanna.integrations.chromadb import (
+from vanna.integrations.vector.chroma import (
     ChromaAgentMemory,
     get_device,
     create_sentence_transformer_embedding_function

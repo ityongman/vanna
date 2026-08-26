@@ -92,20 +92,20 @@ class TestPostgresRunner:
 
     def test_postgres_runner_import(self):
         """Test that PostgresRunner can be imported."""
-        from vanna.integrations.postgres import PostgresRunner
+        from vanna.integrations.databases.relational.postgres import PostgresRunner
 
         assert PostgresRunner is not None
 
     def test_postgres_runner_implements_sql_runner(self):
         """Test that PostgresRunner implements SqlRunner interface."""
-        from vanna.integrations.postgres import PostgresRunner
+        from vanna.integrations.databases.relational.postgres import PostgresRunner
         from vanna.capabilities.sql_runner import SqlRunner
 
         assert issubclass(PostgresRunner, SqlRunner)
 
     def test_postgres_runner_has_run_sql_method(self):
         """Test that PostgresRunner implements run_sql method."""
-        from vanna.integrations.postgres import PostgresRunner
+        from vanna.integrations.databases.relational.postgres import PostgresRunner
 
         assert hasattr(PostgresRunner, "run_sql")
         # Should not be abstract anymore
@@ -113,7 +113,7 @@ class TestPostgresRunner:
 
     def test_postgres_runner_instantiation_with_connection_string(self):
         """Test that PostgresRunner can be instantiated with connection string."""
-        from vanna.integrations.postgres import PostgresRunner
+        from vanna.integrations.databases.relational.postgres import PostgresRunner
 
         # This should not raise an error (no actual connection is made in __init__)
         runner = PostgresRunner(connection_string="postgresql://user:pass@localhost/db")
@@ -123,7 +123,7 @@ class TestPostgresRunner:
 
     def test_postgres_runner_instantiation_with_params(self):
         """Test that PostgresRunner can be instantiated with individual parameters."""
-        from vanna.integrations.postgres import PostgresRunner
+        from vanna.integrations.databases.relational.postgres import PostgresRunner
 
         runner = PostgresRunner(
             host="localhost",
@@ -140,14 +140,14 @@ class TestPostgresRunner:
 
     def test_postgres_runner_requires_valid_params(self):
         """Test that PostgresRunner raises error with invalid parameters."""
-        from vanna.integrations.postgres import PostgresRunner
+        from vanna.integrations.databases.relational.postgres import PostgresRunner
 
         with pytest.raises(ValueError, match="Either provide connection_string OR"):
             PostgresRunner()  # No parameters provided
 
     def test_postgres_runner_checks_psycopg2_import(self):
         """Test that PostgresRunner checks for psycopg2 package."""
-        from vanna.integrations.postgres import PostgresRunner
+        from vanna.integrations.databases.relational.postgres import PostgresRunner
 
         # If psycopg2 is not installed, this should raise ImportError
         # If it is installed, this should work fine
@@ -163,20 +163,20 @@ class TestSqliteRunner:
 
     def test_sqlite_runner_import(self):
         """Test that SqliteRunner can be imported."""
-        from vanna.integrations.sqlite import SqliteRunner
+        from vanna.integrations.databases.relational.sqlite import SqliteRunner
 
         assert SqliteRunner is not None
 
     def test_sqlite_runner_implements_sql_runner(self):
         """Test that SqliteRunner implements SqlRunner interface."""
-        from vanna.integrations.sqlite import SqliteRunner
+        from vanna.integrations.databases.relational.sqlite import SqliteRunner
         from vanna.capabilities.sql_runner import SqlRunner
 
         assert issubclass(SqliteRunner, SqlRunner)
 
     def test_sqlite_runner_has_run_sql_method(self):
         """Test that SqliteRunner implements run_sql method."""
-        from vanna.integrations.sqlite import SqliteRunner
+        from vanna.integrations.databases.relational.sqlite import SqliteRunner
 
         assert hasattr(SqliteRunner, "run_sql")
         # Should not be abstract anymore
@@ -184,7 +184,7 @@ class TestSqliteRunner:
 
     def test_sqlite_runner_instantiation(self):
         """Test that SqliteRunner can be instantiated with a database path."""
-        from vanna.integrations.sqlite import SqliteRunner
+        from vanna.integrations.databases.relational.sqlite import SqliteRunner
 
         runner = SqliteRunner(database_path="/tmp/test.db")
         assert runner is not None
@@ -193,7 +193,7 @@ class TestSqliteRunner:
     def test_sqlite_uses_builtin_sqlite3(self):
         """Test that SqliteRunner uses Python's built-in sqlite3 module."""
         import sqlite3
-        from vanna.integrations.sqlite import SqliteRunner
+        from vanna.integrations.databases.relational.sqlite import SqliteRunner
 
         # sqlite3 should be importable (it's part of Python standard library)
         assert sqlite3 is not None
@@ -242,30 +242,30 @@ class TestDatabaseIntegrationModules:
     def test_postgres_module_import(self):
         """Test that the postgres integration module can be imported."""
         try:
-            import vanna.integrations.postgres
+            import vanna.integrations.databases.relational.postgres
 
-            assert vanna.integrations.postgres is not None
+            assert vanna.integrations.databases.relational.postgres is not None
         except ImportError as e:
             pytest.fail(f"Failed to import postgres module: {e}")
 
     def test_sqlite_module_import(self):
         """Test that the sqlite integration module can be imported."""
         try:
-            import vanna.integrations.sqlite
+            import vanna.integrations.databases.relational.sqlite
 
-            assert vanna.integrations.sqlite is not None
+            assert vanna.integrations.databases.relational.sqlite is not None
         except ImportError as e:
             pytest.fail(f"Failed to import sqlite module: {e}")
 
     def test_postgres_module_exports_runner(self):
         """Test that postgres module exports PostgresRunner."""
-        from vanna.integrations.postgres import PostgresRunner
+        from vanna.integrations.databases.relational.postgres import PostgresRunner
 
         assert PostgresRunner is not None
 
     def test_sqlite_module_exports_runner(self):
         """Test that sqlite module exports SqliteRunner."""
-        from vanna.integrations.sqlite import SqliteRunner
+        from vanna.integrations.databases.relational.sqlite import SqliteRunner
 
         assert SqliteRunner is not None
 
@@ -329,27 +329,27 @@ class TestSnowflakeRunner:
 
     def test_snowflake_runner_import(self):
         """Test that SnowflakeRunner can be imported."""
-        from vanna.integrations.snowflake import SnowflakeRunner
+        from vanna.integrations.databases.warehouse.snowflake import SnowflakeRunner
 
         assert SnowflakeRunner is not None
 
     def test_snowflake_runner_implements_sql_runner(self):
         """Test that SnowflakeRunner implements SqlRunner interface."""
-        from vanna.integrations.snowflake import SnowflakeRunner
+        from vanna.integrations.databases.warehouse.snowflake import SnowflakeRunner
         from vanna.capabilities.sql_runner import SqlRunner
 
         assert issubclass(SnowflakeRunner, SqlRunner)
 
     def test_snowflake_runner_has_run_sql_method(self):
         """Test that SnowflakeRunner implements run_sql method."""
-        from vanna.integrations.snowflake import SnowflakeRunner
+        from vanna.integrations.databases.warehouse.snowflake import SnowflakeRunner
 
         assert hasattr(SnowflakeRunner, "run_sql")
         assert not getattr(SnowflakeRunner.run_sql, "__isabstractmethod__", False)
 
     def test_snowflake_runner_instantiation(self):
         """Test that SnowflakeRunner can be instantiated with required parameters."""
-        from vanna.integrations.snowflake import SnowflakeRunner
+        from vanna.integrations.databases.warehouse.snowflake import SnowflakeRunner
 
         runner = SnowflakeRunner(
             account="test-account",
@@ -362,7 +362,7 @@ class TestSnowflakeRunner:
 
     def test_snowflake_runner_key_pair_auth_with_path(self, tmp_path):
         """Test that SnowflakeRunner can be instantiated with RSA key-pair authentication using path."""
-        from vanna.integrations.snowflake import SnowflakeRunner
+        from vanna.integrations.databases.warehouse.snowflake import SnowflakeRunner
 
         # Create a temporary private key file
         private_key_file = tmp_path / "test_private_key.p8"
@@ -386,7 +386,7 @@ class TestSnowflakeRunner:
 
     def test_snowflake_runner_key_pair_auth_with_content(self):
         """Test that SnowflakeRunner can be instantiated with RSA key-pair authentication using content."""
-        from vanna.integrations.snowflake import SnowflakeRunner
+        from vanna.integrations.databases.warehouse.snowflake import SnowflakeRunner
 
         private_key_content = (
             b"-----BEGIN PRIVATE KEY-----\ntest_key_content\n-----END PRIVATE KEY-----"
@@ -406,7 +406,7 @@ class TestSnowflakeRunner:
 
     def test_snowflake_runner_key_pair_auth_without_passphrase(self, tmp_path):
         """Test that SnowflakeRunner works with unencrypted private key (no passphrase)."""
-        from vanna.integrations.snowflake import SnowflakeRunner
+        from vanna.integrations.databases.warehouse.snowflake import SnowflakeRunner
 
         # Create a temporary private key file
         private_key_file = tmp_path / "test_private_key_unencrypted.p8"
@@ -425,7 +425,7 @@ class TestSnowflakeRunner:
 
     def test_snowflake_runner_missing_auth_raises_error(self):
         """Test that SnowflakeRunner raises error when no authentication method is provided."""
-        from vanna.integrations.snowflake import SnowflakeRunner
+        from vanna.integrations.databases.warehouse.snowflake import SnowflakeRunner
         import pytest
 
         with pytest.raises(
@@ -438,7 +438,7 @@ class TestSnowflakeRunner:
 
     def test_snowflake_runner_invalid_key_path_raises_error(self):
         """Test that SnowflakeRunner raises error when private key file doesn't exist."""
-        from vanna.integrations.snowflake import SnowflakeRunner
+        from vanna.integrations.databases.warehouse.snowflake import SnowflakeRunner
         import pytest
 
         with pytest.raises(FileNotFoundError, match="Private key file not found"):
@@ -451,7 +451,7 @@ class TestSnowflakeRunner:
 
     def test_snowflake_runner_password_auth_backwards_compatible(self):
         """Test that SnowflakeRunner maintains backward compatibility with password auth."""
-        from vanna.integrations.snowflake import SnowflakeRunner
+        from vanna.integrations.databases.warehouse.snowflake import SnowflakeRunner
 
         runner = SnowflakeRunner(
             account="test-account",
@@ -472,27 +472,27 @@ class TestMySQLRunner:
 
     def test_mysql_runner_import(self):
         """Test that MySQLRunner can be imported."""
-        from vanna.integrations.mysql import MySQLRunner
+        from vanna.integrations.databases.relational.mysql import MySQLRunner
 
         assert MySQLRunner is not None
 
     def test_mysql_runner_implements_sql_runner(self):
         """Test that MySQLRunner implements SqlRunner interface."""
-        from vanna.integrations.mysql import MySQLRunner
+        from vanna.integrations.databases.relational.mysql import MySQLRunner
         from vanna.capabilities.sql_runner import SqlRunner
 
         assert issubclass(MySQLRunner, SqlRunner)
 
     def test_mysql_runner_has_run_sql_method(self):
         """Test that MySQLRunner implements run_sql method."""
-        from vanna.integrations.mysql import MySQLRunner
+        from vanna.integrations.databases.relational.mysql import MySQLRunner
 
         assert hasattr(MySQLRunner, "run_sql")
         assert not getattr(MySQLRunner.run_sql, "__isabstractmethod__", False)
 
     def test_mysql_runner_instantiation(self):
         """Test that MySQLRunner can be instantiated with required parameters."""
-        from vanna.integrations.mysql import MySQLRunner
+        from vanna.integrations.databases.relational.mysql import MySQLRunner
 
         runner = MySQLRunner(
             host="localhost", database="test-db", user="test-user", password="test-pass"
@@ -506,27 +506,27 @@ class TestClickHouseRunner:
 
     def test_clickhouse_runner_import(self):
         """Test that ClickHouseRunner can be imported."""
-        from vanna.integrations.clickhouse import ClickHouseRunner
+        from vanna.integrations.databases.warehouse.clickhouse import ClickHouseRunner
 
         assert ClickHouseRunner is not None
 
     def test_clickhouse_runner_implements_sql_runner(self):
         """Test that ClickHouseRunner implements SqlRunner interface."""
-        from vanna.integrations.clickhouse import ClickHouseRunner
+        from vanna.integrations.databases.warehouse.clickhouse import ClickHouseRunner
         from vanna.capabilities.sql_runner import SqlRunner
 
         assert issubclass(ClickHouseRunner, SqlRunner)
 
     def test_clickhouse_runner_has_run_sql_method(self):
         """Test that ClickHouseRunner implements run_sql method."""
-        from vanna.integrations.clickhouse import ClickHouseRunner
+        from vanna.integrations.databases.warehouse.clickhouse import ClickHouseRunner
 
         assert hasattr(ClickHouseRunner, "run_sql")
         assert not getattr(ClickHouseRunner.run_sql, "__isabstractmethod__", False)
 
     def test_clickhouse_runner_instantiation(self):
         """Test that ClickHouseRunner can be instantiated with required parameters."""
-        from vanna.integrations.clickhouse import ClickHouseRunner
+        from vanna.integrations.databases.warehouse.clickhouse import ClickHouseRunner
 
         runner = ClickHouseRunner(
             host="localhost", database="test-db", user="test-user", password="test-pass"
@@ -540,27 +540,27 @@ class TestOracleRunner:
 
     def test_oracle_runner_import(self):
         """Test that OracleRunner can be imported."""
-        from vanna.integrations.oracle import OracleRunner
+        from vanna.integrations.databases.relational.oracle import OracleRunner
 
         assert OracleRunner is not None
 
     def test_oracle_runner_implements_sql_runner(self):
         """Test that OracleRunner implements SqlRunner interface."""
-        from vanna.integrations.oracle import OracleRunner
+        from vanna.integrations.databases.relational.oracle import OracleRunner
         from vanna.capabilities.sql_runner import SqlRunner
 
         assert issubclass(OracleRunner, SqlRunner)
 
     def test_oracle_runner_has_run_sql_method(self):
         """Test that OracleRunner implements run_sql method."""
-        from vanna.integrations.oracle import OracleRunner
+        from vanna.integrations.databases.relational.oracle import OracleRunner
 
         assert hasattr(OracleRunner, "run_sql")
         assert not getattr(OracleRunner.run_sql, "__isabstractmethod__", False)
 
     def test_oracle_runner_instantiation(self):
         """Test that OracleRunner can be instantiated with required parameters."""
-        from vanna.integrations.oracle import OracleRunner
+        from vanna.integrations.databases.relational.oracle import OracleRunner
 
         runner = OracleRunner(
             user="test-user", password="test-pass", dsn="localhost:1521/ORCL"
@@ -574,27 +574,27 @@ class TestBigQueryRunner:
 
     def test_bigquery_runner_import(self):
         """Test that BigQueryRunner can be imported."""
-        from vanna.integrations.bigquery import BigQueryRunner
+        from vanna.integrations.databases.warehouse.bigquery import BigQueryRunner
 
         assert BigQueryRunner is not None
 
     def test_bigquery_runner_implements_sql_runner(self):
         """Test that BigQueryRunner implements SqlRunner interface."""
-        from vanna.integrations.bigquery import BigQueryRunner
+        from vanna.integrations.databases.warehouse.bigquery import BigQueryRunner
         from vanna.capabilities.sql_runner import SqlRunner
 
         assert issubclass(BigQueryRunner, SqlRunner)
 
     def test_bigquery_runner_has_run_sql_method(self):
         """Test that BigQueryRunner implements run_sql method."""
-        from vanna.integrations.bigquery import BigQueryRunner
+        from vanna.integrations.databases.warehouse.bigquery import BigQueryRunner
 
         assert hasattr(BigQueryRunner, "run_sql")
         assert not getattr(BigQueryRunner.run_sql, "__isabstractmethod__", False)
 
     def test_bigquery_runner_instantiation(self):
         """Test that BigQueryRunner can be instantiated with required parameters."""
-        from vanna.integrations.bigquery import BigQueryRunner
+        from vanna.integrations.databases.warehouse.bigquery import BigQueryRunner
 
         runner = BigQueryRunner(project_id="test-project")
         assert runner is not None
@@ -606,27 +606,27 @@ class TestDuckDBRunner:
 
     def test_duckdb_runner_import(self):
         """Test that DuckDBRunner can be imported."""
-        from vanna.integrations.duckdb import DuckDBRunner
+        from vanna.integrations.databases.relational.duckdb import DuckDBRunner
 
         assert DuckDBRunner is not None
 
     def test_duckdb_runner_implements_sql_runner(self):
         """Test that DuckDBRunner implements SqlRunner interface."""
-        from vanna.integrations.duckdb import DuckDBRunner
+        from vanna.integrations.databases.relational.duckdb import DuckDBRunner
         from vanna.capabilities.sql_runner import SqlRunner
 
         assert issubclass(DuckDBRunner, SqlRunner)
 
     def test_duckdb_runner_has_run_sql_method(self):
         """Test that DuckDBRunner implements run_sql method."""
-        from vanna.integrations.duckdb import DuckDBRunner
+        from vanna.integrations.databases.relational.duckdb import DuckDBRunner
 
         assert hasattr(DuckDBRunner, "run_sql")
         assert not getattr(DuckDBRunner.run_sql, "__isabstractmethod__", False)
 
     def test_duckdb_runner_instantiation_memory(self):
         """Test that DuckDBRunner can be instantiated for in-memory database."""
-        from vanna.integrations.duckdb import DuckDBRunner
+        from vanna.integrations.databases.relational.duckdb import DuckDBRunner
 
         runner = DuckDBRunner(database_path=":memory:")
         assert runner is not None
@@ -634,7 +634,7 @@ class TestDuckDBRunner:
 
     def test_duckdb_runner_instantiation_file(self):
         """Test that DuckDBRunner can be instantiated with file path."""
-        from vanna.integrations.duckdb import DuckDBRunner
+        from vanna.integrations.databases.relational.duckdb import DuckDBRunner
 
         runner = DuckDBRunner(database_path="/tmp/test.duckdb")
         assert runner is not None
@@ -646,27 +646,27 @@ class TestMSSQLRunner:
 
     def test_mssql_runner_import(self):
         """Test that MSSQLRunner can be imported."""
-        from vanna.integrations.mssql import MSSQLRunner
+        from vanna.integrations.databases.relational.mssql import MSSQLRunner
 
         assert MSSQLRunner is not None
 
     def test_mssql_runner_implements_sql_runner(self):
         """Test that MSSQLRunner implements SqlRunner interface."""
-        from vanna.integrations.mssql import MSSQLRunner
+        from vanna.integrations.databases.relational.mssql import MSSQLRunner
         from vanna.capabilities.sql_runner import SqlRunner
 
         assert issubclass(MSSQLRunner, SqlRunner)
 
     def test_mssql_runner_has_run_sql_method(self):
         """Test that MSSQLRunner implements run_sql method."""
-        from vanna.integrations.mssql import MSSQLRunner
+        from vanna.integrations.databases.relational.mssql import MSSQLRunner
 
         assert hasattr(MSSQLRunner, "run_sql")
         assert not getattr(MSSQLRunner.run_sql, "__isabstractmethod__", False)
 
     def test_mssql_runner_instantiation(self):
         """Test that MSSQLRunner can be instantiated with ODBC connection string."""
-        from vanna.integrations.mssql import MSSQLRunner
+        from vanna.integrations.databases.relational.mssql import MSSQLRunner
 
         runner = MSSQLRunner(
             odbc_conn_str="Driver={SQL Server};Server=localhost;Database=test;Trusted_Connection=yes;"
@@ -679,27 +679,27 @@ class TestPrestoRunner:
 
     def test_presto_runner_import(self):
         """Test that PrestoRunner can be imported."""
-        from vanna.integrations.presto import PrestoRunner
+        from vanna.integrations.databases.warehouse.presto import PrestoRunner
 
         assert PrestoRunner is not None
 
     def test_presto_runner_implements_sql_runner(self):
         """Test that PrestoRunner implements SqlRunner interface."""
-        from vanna.integrations.presto import PrestoRunner
+        from vanna.integrations.databases.warehouse.presto import PrestoRunner
         from vanna.capabilities.sql_runner import SqlRunner
 
         assert issubclass(PrestoRunner, SqlRunner)
 
     def test_presto_runner_has_run_sql_method(self):
         """Test that PrestoRunner implements run_sql method."""
-        from vanna.integrations.presto import PrestoRunner
+        from vanna.integrations.databases.warehouse.presto import PrestoRunner
 
         assert hasattr(PrestoRunner, "run_sql")
         assert not getattr(PrestoRunner.run_sql, "__isabstractmethod__", False)
 
     def test_presto_runner_instantiation(self):
         """Test that PrestoRunner can be instantiated with required parameters."""
-        from vanna.integrations.presto import PrestoRunner
+        from vanna.integrations.databases.warehouse.presto import PrestoRunner
 
         runner = PrestoRunner(host="localhost", user="test-user", password="test-pass")
         assert runner is not None
@@ -711,27 +711,27 @@ class TestHiveRunner:
 
     def test_hive_runner_import(self):
         """Test that HiveRunner can be imported."""
-        from vanna.integrations.hive import HiveRunner
+        from vanna.integrations.databases.warehouse.hive import HiveRunner
 
         assert HiveRunner is not None
 
     def test_hive_runner_implements_sql_runner(self):
         """Test that HiveRunner implements SqlRunner interface."""
-        from vanna.integrations.hive import HiveRunner
+        from vanna.integrations.databases.warehouse.hive import HiveRunner
         from vanna.capabilities.sql_runner import SqlRunner
 
         assert issubclass(HiveRunner, SqlRunner)
 
     def test_hive_runner_has_run_sql_method(self):
         """Test that HiveRunner implements run_sql method."""
-        from vanna.integrations.hive import HiveRunner
+        from vanna.integrations.databases.warehouse.hive import HiveRunner
 
         assert hasattr(HiveRunner, "run_sql")
         assert not getattr(HiveRunner.run_sql, "__isabstractmethod__", False)
 
     def test_hive_runner_instantiation(self):
         """Test that HiveRunner can be instantiated with required parameters."""
-        from vanna.integrations.hive import HiveRunner
+        from vanna.integrations.databases.warehouse.hive import HiveRunner
 
         runner = HiveRunner(host="localhost", user="test-user", password="test-pass")
         assert runner is not None

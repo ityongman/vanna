@@ -1,9 +1,19 @@
 """
-PostgreSQL integration.
+Deprecated: use vanna.integrations.databases.relational.postgres instead.
 
-This module provides PostgreSQL runner implementation.
+This module is a compatibility shim kept for 1-2 minor versions after the
+integrations directory was reorganized by capability (llm / vector /
+databases / visualization). It re-exports every public name of the new
+package so that ``isinstance`` checks keep working (same class objects).
 """
+import warnings
 
-from .sql_runner import PostgresRunner
+from vanna.integrations.databases.relational.postgres import *  # noqa: F401,F403
+from vanna.integrations.databases.relational.postgres import __all__  # noqa: F401
 
-__all__ = ["PostgresRunner"]
+warnings.warn(
+    "vanna.integrations.postgres is deprecated; "
+    "import from vanna.integrations.databases.relational.postgres instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)

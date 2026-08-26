@@ -10,7 +10,7 @@ export default defineConfig({
     lib: {
       entry: 'src/index.ts',
       formats: ['es'],
-      fileName: () => 'vanna-components.js',
+      fileName: () => 'chatbot-components.js',
     },
     rollupOptions: {
       // Remove external to bundle lit with the components

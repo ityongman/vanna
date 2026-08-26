@@ -98,7 +98,7 @@ class ExampleAgentLoader:
 )
 @click.option(
     "--cdn-url",
-    default="https://img.vanna.ai/vanna-components.js",
+    default="https://img.vanna.ai/chatbot-components.js",
     help="CDN URL for web components",
 )
 def main(
@@ -153,10 +153,10 @@ def main(
         # Fallback to basic agent
         try:
             from ...agents import create_basic_agent
-            from ...integrations.mock import MockLlmService
+            from ...integrations.llm.mock import MockLlmService
 
             llm_service = MockLlmService(
-                response_content="Hello! I'm a Vanna Agents demo server. How can I help you?"
+                response_content="Hello! I'm a demo chatbot server. How can I help you?"
             )
             agent = create_basic_agent(llm_service)
             click.echo(

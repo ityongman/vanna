@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 
 from .._compat import StrEnum
 
+from .autolink_config import AutoLinkConfig
+
 if TYPE_CHECKING:
     from ..user import User
 
@@ -121,3 +123,7 @@ class AgentConfig(BaseModel):
     max_tokens: Optional[int] = Field(default=None, gt=0)
     ui_features: UiFeatures = Field(default_factory=UiFeatures)
     audit_config: AuditConfig = Field(default_factory=AuditConfig)
+    autolink_config: AutoLinkConfig = Field(
+        default_factory=AutoLinkConfig,
+        description="AutoLink schema linking configuration (disabled by default)",
+    )

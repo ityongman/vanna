@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { vannaDesignTokens } from '../styles/vanna-design-tokens.js';
+import { chatbotDesignTokens } from '../styles/chatbot-design-tokens.js';
 
 interface ProgressItem {
   id: string;
@@ -9,22 +9,22 @@ interface ProgressItem {
   detail?: string;
 }
 
-@customElement('vanna-progress-tracker')
-export class VannaProgressTracker extends LitElement {
+@customElement('chatbot-progress-tracker')
+export class ChatbotProgressTracker extends LitElement {
   static styles = [
-    vannaDesignTokens,
+    chatbotDesignTokens,
     css`
       :host {
         display: block;
-        background: var(--vanna-background-default);
-        border: 1px solid var(--vanna-outline-default);
-        border-radius: 0 0 var(--vanna-border-radius-lg) var(--vanna-border-radius-lg);
+        background: var(--chatbot-background-default);
+        border: 1px solid var(--chatbot-outline-default);
+        border-radius: 0 0 var(--chatbot-border-radius-lg) var(--chatbot-border-radius-lg);
         overflow: hidden;
-        font-family: var(--vanna-font-family-default);
+        font-family: var(--chatbot-font-family-default);
       }
 
       .progress-label {
-        padding: var(--vanna-space-3) var(--vanna-space-4) var(--vanna-space-2);
+        padding: var(--chatbot-space-3) var(--chatbot-space-4) var(--chatbot-space-2);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -33,7 +33,7 @@ export class VannaProgressTracker extends LitElement {
       .progress-label-text {
         font-size: 11px;
         font-weight: 500;
-        color: var(--vanna-foreground-dimmest);
+        color: var(--chatbot-foreground-dimmest);
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin: 0;
@@ -41,7 +41,7 @@ export class VannaProgressTracker extends LitElement {
 
       .progress-summary {
         font-size: 10px;
-        color: var(--vanna-foreground-dimmest);
+        color: var(--chatbot-foreground-dimmest);
         font-weight: 400;
       }
 
@@ -52,12 +52,12 @@ export class VannaProgressTracker extends LitElement {
       }
 
       .progress-item {
-        padding: var(--vanna-space-3) var(--vanna-space-4);
-        border-bottom: 1px solid var(--vanna-outline-dimmest);
+        padding: var(--chatbot-space-3) var(--chatbot-space-4);
+        border-bottom: 1px solid var(--chatbot-outline-dimmest);
         display: flex;
         align-items: flex-start;
-        gap: var(--vanna-space-3);
-        transition: background var(--vanna-duration-150) ease;
+        gap: var(--chatbot-space-3);
+        transition: background var(--chatbot-duration-150) ease;
       }
 
       .progress-item:last-child {
@@ -65,12 +65,12 @@ export class VannaProgressTracker extends LitElement {
       }
 
       .progress-item:hover {
-        background: var(--vanna-background-higher);
+        background: var(--chatbot-background-higher);
       }
 
       .progress-item.in_progress {
         background: rgba(0, 123, 255, 0.05);
-        border-left: 3px solid var(--vanna-accent-primary-default);
+        border-left: 3px solid var(--chatbot-accent-primary-default);
       }
 
       .progress-item.completed {
@@ -78,17 +78,17 @@ export class VannaProgressTracker extends LitElement {
       }
 
       .progress-item.error {
-        background: var(--vanna-accent-negative-subtle);
-        border-left: 3px solid var(--vanna-accent-negative-default);
-        padding-left: calc(var(--vanna-space-3) - 3px);
+        background: var(--chatbot-accent-negative-subtle);
+        border-left: 3px solid var(--chatbot-accent-negative-default);
+        padding-left: calc(var(--chatbot-space-3) - 3px);
       }
 
       .progress-item.error .progress-text {
-        color: var(--vanna-accent-negative-stronger);
+        color: var(--chatbot-accent-negative-stronger);
       }
 
       .progress-item.error .progress-detail {
-        color: var(--vanna-accent-negative-default);
+        color: var(--chatbot-accent-negative-default);
         font-weight: 500;
       }
 
@@ -104,20 +104,20 @@ export class VannaProgressTracker extends LitElement {
       }
 
       .progress-icon.pending {
-        background: var(--vanna-outline-default);
+        background: var(--chatbot-outline-default);
       }
 
       .progress-icon.in_progress {
-        background: var(--vanna-accent-primary-default);
+        background: var(--chatbot-accent-primary-default);
       }
 
       .progress-icon.completed {
-        background: var(--vanna-accent-positive-default);
+        background: var(--chatbot-accent-positive-default);
       }
 
       .progress-icon.error {
-        background: var(--vanna-accent-negative-default);
-        box-shadow: 0 0 0 2px var(--vanna-accent-negative-subtle);
+        background: var(--chatbot-accent-negative-default);
+        box-shadow: 0 0 0 2px var(--chatbot-accent-negative-subtle);
       }
 
       .progress-icon svg {
@@ -148,23 +148,23 @@ export class VannaProgressTracker extends LitElement {
 
       .progress-text {
         font-size: 13px;
-        color: var(--vanna-foreground-default);
+        color: var(--chatbot-foreground-default);
         font-weight: 500;
-        margin: 0 0 var(--vanna-space-1) 0;
+        margin: 0 0 var(--chatbot-space-1) 0;
         line-height: 1.3;
       }
 
       .progress-detail {
         font-size: 11px;
-        color: var(--vanna-foreground-dimmest);
+        color: var(--chatbot-foreground-dimmest);
         margin: 0;
         line-height: 1.3;
       }
 
       .empty-state {
-        padding: var(--vanna-space-6) var(--vanna-space-4);
+        padding: var(--chatbot-space-6) var(--chatbot-space-4);
         text-align: center;
-        color: var(--vanna-foreground-dimmest);
+        color: var(--chatbot-foreground-dimmest);
         font-size: 12px;
       }
 

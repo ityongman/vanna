@@ -1,8 +1,8 @@
 {
-  "name": "@vanna/webcomponent",
-  "version": "2.0.0",
-  "description": "Lit-based web components for Vanna User Agents",
-  "main": "dist/vanna-components.js",
+  "name": "@chatbot/webcomponent",
+  "version": "2.0.2",
+  "description": "Lit-based web components for the AI chatbot frontend",
+  "main": "dist/chatbot-components.js",
   "scripts": {
     "sync-version": "node scripts/sync-version.js",
     "dev": "vite",
@@ -13,7 +13,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
-    "vanna",
+    "chatbot",
     "ai",
     "sql",
     "web-components",
@@ -22,18 +22,9 @@
     "llm",
     "natural-language"
   ],
-  "author": "Zain Hoda <zain@vanna.ai>",
+  "author": "Zain Hoda",
   "license": "MIT",
   "type": "commonjs",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/vanna-ai/vanna.git",
-    "directory": "frontends/webcomponent"
-  },
-  "homepage": "https://github.com/vanna-ai/vanna",
-  "bugs": {
-    "url": "https://github.com/vanna-ai/vanna/issues"
-  },
   "files": [
     "dist",
     "src"

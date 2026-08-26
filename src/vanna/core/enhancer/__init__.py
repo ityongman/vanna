@@ -6,6 +6,13 @@ with additional context before LLM calls (e.g., from memory, RAG, documentation)
 """
 
 from .base import LlmContextEnhancer
+from .chain import LlmContextEnhancerChain
 from .default import DefaultLlmContextEnhancer
+from .autolink_schema import AutoLinkSchemaEnhancer
 
-__all__ = ["LlmContextEnhancer", "DefaultLlmContextEnhancer"]
+__all__ = [
+    "LlmContextEnhancer",
+    "LlmContextEnhancerChain",
+    "DefaultLlmContextEnhancer",
+    "AutoLinkSchemaEnhancer",
+]

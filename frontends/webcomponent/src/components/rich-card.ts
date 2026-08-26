@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { vannaDesignTokens } from '../styles/vanna-design-tokens.js';
+import { chatbotDesignTokens } from '../styles/chatbot-design-tokens.js';
 
 export interface CardAction {
   label: string;
@@ -11,34 +11,34 @@ export interface CardAction {
 @customElement('rich-card')
 export class RichCard extends LitElement {
   static styles = [
-    vannaDesignTokens,
+    chatbotDesignTokens,
     css`
       :host {
         display: block;
-        margin-bottom: var(--vanna-space-4);
-        font-family: var(--vanna-font-family-default);
+        margin-bottom: var(--chatbot-space-4);
+        font-family: var(--chatbot-font-family-default);
       }
 
       .card {
-        border: 1px solid var(--vanna-outline-default);
-        border-radius: var(--vanna-border-radius-lg);
-        background: var(--vanna-background-default);
-        box-shadow: var(--vanna-shadow-sm);
+        border: 1px solid var(--chatbot-outline-default);
+        border-radius: var(--chatbot-border-radius-lg);
+        background: var(--chatbot-background-default);
+        box-shadow: var(--chatbot-shadow-sm);
         overflow: hidden;
-        transition: box-shadow var(--vanna-duration-200) ease;
+        transition: box-shadow var(--chatbot-duration-200) ease;
       }
 
       .card:hover {
-        box-shadow: var(--vanna-shadow-md);
+        box-shadow: var(--chatbot-shadow-md);
       }
 
       .card-header {
         display: flex;
         align-items: center;
-        padding: var(--vanna-space-4) var(--vanna-space-5);
-        background: var(--vanna-background-higher);
-        border-bottom: 1px solid var(--vanna-outline-default);
-        gap: var(--vanna-space-3);
+        padding: var(--chatbot-space-4) var(--chatbot-space-5);
+        background: var(--chatbot-background-higher);
+        border-bottom: 1px solid var(--chatbot-outline-default);
+        gap: var(--chatbot-space-3);
       }
 
       .card-header.collapsible {
@@ -59,18 +59,18 @@ export class RichCard extends LitElement {
         margin: 0;
         font-size: 1rem;
         font-weight: 600;
-        color: var(--vanna-foreground-default);
+        color: var(--chatbot-foreground-default);
       }
 
       .card-subtitle {
-        margin: var(--vanna-space-1) 0 0 0;
+        margin: var(--chatbot-space-1) 0 0 0;
         font-size: 0.875rem;
-        color: var(--vanna-foreground-dimmer);
+        color: var(--chatbot-foreground-dimmer);
       }
 
       .card-status {
-        padding: var(--vanna-space-1) var(--vanna-space-2);
-        border-radius: var(--vanna-border-radius-md);
+        padding: var(--chatbot-space-1) var(--chatbot-space-2);
+        border-radius: var(--chatbot-border-radius-md);
         font-size: 0.75rem;
         font-weight: 600;
         text-transform: uppercase;
@@ -101,21 +101,21 @@ export class RichCard extends LitElement {
         border: none;
         cursor: pointer;
         font-size: 1rem;
-        color: var(--vanna-foreground-dimmer);
-        padding: var(--vanna-space-1);
-        border-radius: var(--vanna-border-radius-sm);
-        transition: background-color var(--vanna-duration-200) ease;
+        color: var(--chatbot-foreground-dimmer);
+        padding: var(--chatbot-space-1);
+        border-radius: var(--chatbot-border-radius-sm);
+        transition: background-color var(--chatbot-duration-200) ease;
       }
 
       .card-toggle:hover {
-        background: var(--vanna-background-root);
+        background: var(--chatbot-background-root);
       }
 
       .card-content {
-        padding: var(--vanna-space-4) var(--vanna-space-5);
+        padding: var(--chatbot-space-4) var(--chatbot-space-5);
         line-height: 1.5;
-        color: var(--vanna-foreground-default);
-        transition: all var(--vanna-duration-200) ease;
+        color: var(--chatbot-foreground-default);
+        transition: all var(--chatbot-duration-200) ease;
         overflow: hidden;
       }
 
@@ -128,7 +128,7 @@ export class RichCard extends LitElement {
       .card-content h1,
       .card-content h2,
       .card-content h3 {
-        margin: var(--vanna-space-2) 0;
+        margin: var(--chatbot-space-2) 0;
         font-weight: 600;
       }
 
@@ -145,22 +145,22 @@ export class RichCard extends LitElement {
       }
 
       .card-content p {
-        margin: var(--vanna-space-2) 0;
+        margin: var(--chatbot-space-2) 0;
       }
 
       .card-content ul {
-        margin: var(--vanna-space-2) 0;
-        padding-left: var(--vanna-space-5);
+        margin: var(--chatbot-space-2) 0;
+        padding-left: var(--chatbot-space-5);
       }
 
       .card-content li {
-        margin: var(--vanna-space-1) 0;
+        margin: var(--chatbot-space-1) 0;
       }
 
       .card-content code {
-        background: var(--vanna-background-higher);
-        padding: var(--vanna-space-1) var(--vanna-space-2);
-        border-radius: var(--vanna-border-radius-sm);
+        background: var(--chatbot-background-higher);
+        padding: var(--chatbot-space-1) var(--chatbot-space-2);
+        border-radius: var(--chatbot-border-radius-sm);
         font-family: monospace;
         font-size: 0.875em;
       }
@@ -170,37 +170,37 @@ export class RichCard extends LitElement {
       }
 
       .card-actions {
-        padding: var(--vanna-space-3) var(--vanna-space-5);
-        background: var(--vanna-background-root);
-        border-top: 1px solid var(--vanna-outline-default);
+        padding: var(--chatbot-space-3) var(--chatbot-space-5);
+        background: var(--chatbot-background-root);
+        border-top: 1px solid var(--chatbot-outline-default);
         display: flex;
-        gap: var(--vanna-space-2);
+        gap: var(--chatbot-space-2);
       }
 
       .card-action {
-        padding: var(--vanna-space-2) var(--vanna-space-4);
-        border-radius: var(--vanna-border-radius-md);
-        border: 1px solid var(--vanna-outline-default);
-        background: var(--vanna-background-default);
-        color: var(--vanna-foreground-default);
+        padding: var(--chatbot-space-2) var(--chatbot-space-4);
+        border-radius: var(--chatbot-border-radius-md);
+        border: 1px solid var(--chatbot-outline-default);
+        background: var(--chatbot-background-default);
+        color: var(--chatbot-foreground-default);
         cursor: pointer;
         font-size: 0.875rem;
         font-weight: 500;
-        transition: all var(--vanna-duration-200) ease;
+        transition: all var(--chatbot-duration-200) ease;
       }
 
       .card-action:hover {
-        background: var(--vanna-background-higher);
+        background: var(--chatbot-background-higher);
       }
 
       .card-action.primary {
-        background: var(--vanna-accent-primary-default);
+        background: var(--chatbot-accent-primary-default);
         color: white;
-        border-color: var(--vanna-accent-primary-default);
+        border-color: var(--chatbot-accent-primary-default);
       }
 
       .card-action.primary:hover {
-        background: var(--vanna-accent-primary-stronger);
+        background: var(--chatbot-accent-primary-stronger);
       }
     `
   ];
@@ -282,12 +282,12 @@ export class RichCard extends LitElement {
       composed: true
     }));
 
-    // Also directly send to vanna-chat
-    const vannaChat = document.querySelector('vanna-chat') as any;
-    if (vannaChat && typeof vannaChat.sendMessage === 'function') {
-      console.log('   Found vanna-chat, sending message...');
+    // Also directly send to chatbot-chat
+    const chatbotChat = document.querySelector('chatbot-chat') as any;
+    if (chatbotChat && typeof chatbotChat.sendMessage === 'function') {
+      console.log('   Found chatbot-chat, sending message...');
       try {
-        const success = await vannaChat.sendMessage(action);
+        const success = await chatbotChat.sendMessage(action);
         if (success) {
           console.log('   ✅ Action sent successfully');
         } else {
@@ -297,7 +297,7 @@ export class RichCard extends LitElement {
         console.error('   ❌ Error sending action:', error);
       }
     } else {
-      console.warn('   ⚠️ vanna-chat component not found or sendMessage not available');
+      console.warn('   ⚠️ chatbot-chat component not found or sendMessage not available');
     }
   }
 }

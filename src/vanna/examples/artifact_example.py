@@ -11,7 +11,7 @@ from typing import AsyncGenerator, Optional
 
 from vanna import Agent, UiComponent, User, AgentConfig
 from vanna.core.rich_components import ArtifactComponent
-from vanna.integrations.anthropic.mock import MockLlmService
+from vanna.integrations.llm.mock import MockLlmService
 from vanna.core.interfaces import Agent, LlmService
 
 
@@ -273,7 +273,7 @@ async def main() -> None:
     print("""
     In your web application, listen for the 'artifact-opened' event:
 
-    document.querySelector('vanna-chat').addEventListener('artifact-opened', (event) => {
+    document.querySelector('chatbot-chat').addEventListener('artifact-opened', (event) => {
         const { artifactId, content, type, trigger } = event.detail;
 
         if (trigger === 'created' && type === 'dashboard') {

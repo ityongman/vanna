@@ -1,63 +1,63 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { vannaDesignTokens } from '../styles/vanna-design-tokens.js';
+import { chatbotDesignTokens } from '../styles/chatbot-design-tokens.js';
 
 @customElement('rich-progress-bar')
 export class RichProgressBar extends LitElement {
   static styles = [
-    vannaDesignTokens,
+    chatbotDesignTokens,
     css`
       :host {
         display: block;
-        margin-bottom: var(--vanna-space-4);
-        font-family: var(--vanna-font-family-default);
+        margin-bottom: var(--chatbot-space-4);
+        font-family: var(--chatbot-font-family-default);
       }
 
       .progress-container {
-        padding: var(--vanna-space-4);
-        border: 1px solid var(--vanna-outline-default);
-        border-radius: var(--vanna-border-radius-lg);
-        background: var(--vanna-background-default);
-        box-shadow: var(--vanna-shadow-sm);
-        transition: box-shadow var(--vanna-duration-200) ease;
+        padding: var(--chatbot-space-4);
+        border: 1px solid var(--chatbot-outline-default);
+        border-radius: var(--chatbot-border-radius-lg);
+        background: var(--chatbot-background-default);
+        box-shadow: var(--chatbot-shadow-sm);
+        transition: box-shadow var(--chatbot-duration-200) ease;
       }
 
       .progress-container:hover {
-        box-shadow: var(--vanna-shadow-md);
+        box-shadow: var(--chatbot-shadow-md);
       }
 
       .progress-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: var(--vanna-space-3);
+        margin-bottom: var(--chatbot-space-3);
       }
 
       .progress-label {
         font-weight: 500;
-        color: var(--vanna-foreground-default);
+        color: var(--chatbot-foreground-default);
       }
 
       .progress-percentage {
         font-size: 0.875rem;
-        color: var(--vanna-foreground-dimmer);
+        color: var(--chatbot-foreground-dimmer);
         font-weight: 600;
       }
 
       .progress-track {
         height: 12px;
-        background: var(--vanna-background-root);
+        background: var(--chatbot-background-root);
         border-radius: 6px;
         overflow: hidden;
-        border: 1px solid var(--vanna-outline-default);
+        border: 1px solid var(--chatbot-outline-default);
         position: relative;
       }
 
       .progress-fill {
         height: 100%;
-        background: var(--vanna-accent-primary-default);
+        background: var(--chatbot-accent-primary-default);
         border-radius: 6px;
-        transition: width var(--vanna-duration-300) ease;
+        transition: width var(--chatbot-duration-300) ease;
         position: relative;
         overflow: hidden;
       }
@@ -93,19 +93,19 @@ export class RichProgressBar extends LitElement {
       }
 
       .progress-fill.status-success {
-        background: var(--vanna-accent-positive-default);
+        background: var(--chatbot-accent-positive-default);
       }
 
       .progress-fill.status-warning {
-        background: var(--vanna-accent-warning-default);
+        background: var(--chatbot-accent-warning-default);
       }
 
       .progress-fill.status-error {
-        background: var(--vanna-accent-negative-default);
+        background: var(--chatbot-accent-negative-default);
       }
 
       .progress-fill.status-info {
-        background: var(--vanna-accent-primary-default);
+        background: var(--chatbot-accent-primary-default);
       }
 
       /* Indeterminate progress animation */
@@ -113,7 +113,7 @@ export class RichProgressBar extends LitElement {
         background: linear-gradient(
           90deg,
           transparent 0%,
-          var(--vanna-accent-primary-default) 50%,
+          var(--chatbot-accent-primary-default) 50%,
           transparent 100%
         );
         background-size: 200% 100%;
@@ -128,9 +128,9 @@ export class RichProgressBar extends LitElement {
 
       /* Text content for description */
       .progress-description {
-        margin-top: var(--vanna-space-2);
+        margin-top: var(--chatbot-space-2);
         font-size: 0.875rem;
-        color: var(--vanna-foreground-dimmer);
+        color: var(--chatbot-foreground-dimmer);
         line-height: 1.4;
       }
     `

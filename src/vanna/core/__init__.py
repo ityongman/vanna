@@ -11,13 +11,19 @@ from .llm import LlmMessage, LlmRequest, LlmResponse, LlmService, LlmStreamChunk
 from .storage import Conversation, ConversationStore, Message
 from .user import User, UserService
 from .agent import Agent, AgentConfig
+from .agent.autolink_config import AutoLinkConfig
 from .system_prompt import DefaultSystemPromptBuilder, SystemPromptBuilder
 from .lifecycle import LifecycleHook
 from .middleware import LlmMiddleware
 from .workflow import WorkflowHandler, WorkflowResult, DefaultWorkflowHandler
 from .recovery import ErrorRecoveryStrategy, RecoveryAction, RecoveryActionType
 from .enricher import ToolContextEnricher
-from .enhancer import LlmContextEnhancer, DefaultLlmContextEnhancer
+from .enhancer import (
+    LlmContextEnhancer,
+    DefaultLlmContextEnhancer,
+    AutoLinkSchemaEnhancer,
+    LlmContextEnhancerChain,
+)
 from .filter import ConversationFilter
 from .observability import ObservabilityProvider, Span, Metric
 from .audit import (
@@ -67,6 +73,9 @@ from .errors import (
 
 # Core implementations
 from .registry import ToolRegistry
+
+# Capabilities (AutoLink schema linking)
+from ..capabilities.schema_vector_store import SchemaVectorStore
 
 # Evaluation framework
 from .evaluation import (
@@ -127,6 +136,8 @@ __all__ = [
     "ToolContextEnricher",
     "LlmContextEnhancer",
     "DefaultLlmContextEnhancer",
+    "AutoLinkSchemaEnhancer",
+    "LlmContextEnhancerChain",
     "ConversationFilter",
     "ObservabilityProvider",
     "AuditLogger",
@@ -166,6 +177,9 @@ __all__ = [
     "Agent",
     "AgentConfig",
     "DefaultSystemPromptBuilder",
+    # AutoLink schema linking
+    "AutoLinkConfig",
+    "SchemaVectorStore",
     # Evaluation
     "Evaluator",
     "TestCase",

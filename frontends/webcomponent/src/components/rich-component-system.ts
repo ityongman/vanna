@@ -1,5 +1,5 @@
 /**
- * Rich Component System for Vanna Agents
+ * Rich Component System for Chatbot Agents
  *
  * Provides a generic component registry and rendering system that can display
  * any rich component sent from the Python backend.
@@ -50,7 +50,7 @@ declare global {
 }
 
 
-const RICH_COMPONENT_STYLE_ATTR = 'data-vanna-rich-component-styles';
+const RICH_COMPONENT_STYLE_ATTR = 'data-chatbot-rich-component-styles';
 
 function ensureRichComponentStyles(container: HTMLElement): void {
   const doc = container.ownerDocument;
@@ -182,12 +182,12 @@ export class CardComponentRenderer extends BaseComponentRenderer {
             button.disabled = true;
             button.classList.add('button-transitioning', 'button-clicked');
 
-            // Find vanna-chat component and send message
-            const vannaChat = document.querySelector('vanna-chat') as any;
+            // Find chatbot-chat component and send message
+            const chatbotChat = document.querySelector('chatbot-chat') as any;
 
-            if (vannaChat && typeof vannaChat.sendMessage === 'function') {
+            if (chatbotChat && typeof chatbotChat.sendMessage === 'function') {
               try {
-                const success = await vannaChat.sendMessage(action.action);
+                const success = await chatbotChat.sendMessage(action.action);
 
                 if (success) {
                   console.log('✅ Card action sent successfully');
@@ -205,7 +205,7 @@ export class CardComponentRenderer extends BaseComponentRenderer {
                 button.classList.remove('button-transitioning', 'button-clicked');
               }
             } else {
-              console.warn('⚠️ vanna-chat component not found or sendMessage not available');
+              console.warn('⚠️ chatbot-chat component not found or sendMessage not available');
               button.disabled = false;
               button.classList.remove('button-transitioning', 'button-clicked');
             }
@@ -1122,14 +1122,14 @@ export class ButtonComponentRenderer extends BaseComponentRenderer {
         button.disabled = true;
         button.classList.add('button-transitioning', 'button-clicked');
 
-        // Find vanna-chat component and send message with button action
-        const vannaChat = document.querySelector('vanna-chat') as any;
-        console.log('   Found vanna-chat:', !!vannaChat);
+        // Find chatbot-chat component and send message with button action
+        const chatbotChat = document.querySelector('chatbot-chat') as any;
+        console.log('   Found chatbot-chat:', !!chatbotChat);
 
-        if (vannaChat && typeof vannaChat.sendMessage === 'function') {
+        if (chatbotChat && typeof chatbotChat.sendMessage === 'function') {
           console.log('   Calling sendMessage...');
           try {
-            const success = await vannaChat.sendMessage(action);
+            const success = await chatbotChat.sendMessage(action);
             if (success) {
               console.log('   ✓ Message sent successfully');
             } else {
@@ -1149,7 +1149,7 @@ export class ButtonComponentRenderer extends BaseComponentRenderer {
             button.classList.remove('button-transitioning', 'button-clicked');
           }
         } else {
-          console.error('   ✗ vanna-chat not found or sendMessage not available');
+          console.error('   ✗ chatbot-chat not found or sendMessage not available');
           // Restore button state if it wasn't originally disabled
           if (!disabled) {
             button.disabled = false;
@@ -1238,14 +1238,14 @@ export class ButtonGroupComponentRenderer extends BaseComponentRenderer {
           // Immediately apply visual changes to all buttons in the group
           this.applyButtonGroupClickState(container, index);
 
-          // Find vanna-chat component and send message with button action
-          const vannaChat = document.querySelector('vanna-chat') as any;
-          console.log('   Found vanna-chat:', !!vannaChat);
+          // Find chatbot-chat component and send message with button action
+          const chatbotChat = document.querySelector('chatbot-chat') as any;
+          console.log('   Found chatbot-chat:', !!chatbotChat);
 
-          if (vannaChat && typeof vannaChat.sendMessage === 'function') {
+          if (chatbotChat && typeof chatbotChat.sendMessage === 'function') {
             console.log('   Calling sendMessage...');
             try {
-              const success = await vannaChat.sendMessage(buttonConfig.action);
+              const success = await chatbotChat.sendMessage(buttonConfig.action);
               if (success) {
                 console.log('   ✓ Message sent successfully');
               } else {
@@ -1257,7 +1257,7 @@ export class ButtonGroupComponentRenderer extends BaseComponentRenderer {
               this.restoreButtonGroupState(container);
             }
           } else {
-            console.error('   ✗ vanna-chat not found or sendMessage not available');
+            console.error('   ✗ chatbot-chat not found or sendMessage not available');
             this.restoreButtonGroupState(container);
           }
         });
@@ -1331,9 +1331,9 @@ export class ChartComponentRenderer extends BaseComponentRenderer {
       const chartElement = document.createElement('plotly-chart') as any;
 
       // Set theme to match current theme
-      const vannaChat = document.querySelector('vanna-chat');
-      if (vannaChat) {
-        chartElement.theme = vannaChat.getAttribute('theme') || 'dark';
+      const chatbotChat = document.querySelector('chatbot-chat');
+      if (chatbotChat) {
+        chartElement.theme = chatbotChat.getAttribute('theme') || 'dark';
       }
 
       // Wrap in container with optional title
@@ -1502,14 +1502,14 @@ export class ArtifactComponentRenderer extends BaseComponentRenderer {
 
     console.log('📡 Dispatching artifact-opened event:', event);
 
-    // Fire the event from the container element (should bubble up to vanna-chat)
+    // Fire the event from the container element (should bubble up to chatbot-chat)
     container.dispatchEvent(event);
 
-    // Also dispatch directly on the vanna-chat element as backup
-    const vannaChat = container.closest('vanna-chat');
-    if (vannaChat) {
-      console.log('📡 Also dispatching on vanna-chat element');
-      vannaChat.dispatchEvent(new CustomEvent('artifact-opened', {
+    // Also dispatch directly on the chatbot-chat element as backup
+    const chatbotChat = container.closest('chatbot-chat');
+    if (chatbotChat) {
+      console.log('📡 Also dispatching on chatbot-chat element');
+      chatbotChat.dispatchEvent(new CustomEvent('artifact-opened', {
         detail: eventDetail,
         bubbles: true,
         cancelable: true
@@ -1661,11 +1661,11 @@ export class ArtifactComponentRenderer extends BaseComponentRenderer {
 // User message component renderer
 export class UserMessageComponentRenderer extends BaseComponentRenderer {
   render(component: RichComponent): HTMLElement {
-    const messageEl = document.createElement('vanna-message');
+    const messageEl = document.createElement('chatbot-message');
     messageEl.setAttribute('theme', 'light'); // Could be made dynamic
     messageEl.dataset.componentId = component.id;
     
-    // Set properties for vanna-message
+    // Set properties for chatbot-message
     (messageEl as any).content = component.data.content || '';
     (messageEl as any).type = 'user';
     (messageEl as any).timestamp = Date.parse(component.timestamp);
@@ -1677,11 +1677,11 @@ export class UserMessageComponentRenderer extends BaseComponentRenderer {
 // Assistant message component renderer  
 export class AssistantMessageComponentRenderer extends BaseComponentRenderer {
   render(component: RichComponent): HTMLElement {
-    const messageEl = document.createElement('vanna-message');
+    const messageEl = document.createElement('chatbot-message');
     messageEl.setAttribute('theme', 'light'); // Could be made dynamic
     messageEl.dataset.componentId = component.id;
     
-    // Set properties for vanna-message
+    // Set properties for chatbot-message
     (messageEl as any).content = component.data.content || '';
     (messageEl as any).type = 'assistant';
     (messageEl as any).timestamp = Date.parse(component.timestamp);
@@ -1765,7 +1765,7 @@ export class ComponentRegistry {
       }
     });
 
-    // Set theme to match the parent VannaChat theme
+    // Set theme to match the parent ChatbotChat theme
     element.setAttribute('theme', this.getCurrentTheme());
 
 
@@ -1773,10 +1773,10 @@ export class ComponentRegistry {
   }
 
   private getCurrentTheme(): string {
-    // Try to get theme from the parent VannaChat component
-    const vannaChat = document.querySelector('vanna-chat');
-    if (vannaChat) {
-      return vannaChat.getAttribute('theme') || 'dark';
+    // Try to get theme from the parent ChatbotChat component
+    const chatbotChat = document.querySelector('chatbot-chat');
+    if (chatbotChat) {
+      return chatbotChat.getAttribute('theme') || 'dark';
     }
     return 'dark';
   }
@@ -1916,13 +1916,13 @@ export class ComponentManager {
   }
 
   private triggerScroll(): void {
-    // Find the parent vanna-chat component and trigger its scroll method
-    const vannaChat = document.querySelector('vanna-chat') as any;
-    if (vannaChat && typeof vannaChat.scrollToLastMessage === 'function') {
+    // Find the parent chatbot-chat component and trigger its scroll method
+    const chatbotChat = document.querySelector('chatbot-chat') as any;
+    if (chatbotChat && typeof chatbotChat.scrollToLastMessage === 'function') {
       // Use requestAnimationFrame to wait for DOM update
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          vannaChat.scrollToLastMessage();
+          chatbotChat.scrollToLastMessage();
         });
       });
     }
@@ -1987,15 +1987,15 @@ export class ComponentManager {
     // Find the status bar component - first try shadow DOM, then document
     let statusBar: HTMLElement | null = null;
 
-    // Look for vanna-chat and search within its shadow root
-    const vannaChat = document.querySelector('vanna-chat') as any;
-    if (vannaChat && vannaChat.shadowRoot) {
-      statusBar = vannaChat.shadowRoot.querySelector('vanna-status-bar') as HTMLElement | null;
+    // Look for chatbot-chat and search within its shadow root
+    const chatbotChat = document.querySelector('chatbot-chat') as any;
+    if (chatbotChat && chatbotChat.shadowRoot) {
+      statusBar = chatbotChat.shadowRoot.querySelector('chatbot-status-bar') as HTMLElement | null;
     }
 
     // Fallback to document search
     if (!statusBar) {
-      statusBar = document.querySelector('vanna-status-bar') as HTMLElement | null;
+      statusBar = document.querySelector('chatbot-status-bar') as HTMLElement | null;
     }
 
     if (statusBar) {
@@ -2015,15 +2015,15 @@ export class ComponentManager {
     // Find the progress tracker component - first try shadow DOM, then document
     let progressTracker = null;
 
-    // Look for vanna-chat and search within its shadow root
-    const vannaChat = document.querySelector('vanna-chat') as any;
-    if (vannaChat && vannaChat.shadowRoot) {
-      progressTracker = vannaChat.shadowRoot.querySelector('vanna-progress-tracker');
+    // Look for chatbot-chat and search within its shadow root
+    const chatbotChat = document.querySelector('chatbot-chat') as any;
+    if (chatbotChat && chatbotChat.shadowRoot) {
+      progressTracker = chatbotChat.shadowRoot.querySelector('chatbot-progress-tracker');
     }
 
     // Fallback to document search
     if (!progressTracker) {
-      progressTracker = document.querySelector('vanna-progress-tracker');
+      progressTracker = document.querySelector('chatbot-progress-tracker');
     }
 
     console.log('Found progressTracker:', progressTracker);
@@ -2064,10 +2064,10 @@ export class ComponentManager {
     // Find the chat input element - first try shadow DOM, then document
     let chatInput = null;
 
-    // Look for vanna-chat and search within its shadow root
-    const vannaChat = document.querySelector('vanna-chat') as any;
-    if (vannaChat && vannaChat.shadowRoot) {
-      chatInput = vannaChat.shadowRoot.querySelector('textarea.message-input, input.message-input');
+    // Look for chatbot-chat and search within its shadow root
+    const chatbotChat = document.querySelector('chatbot-chat') as any;
+    if (chatbotChat && chatbotChat.shadowRoot) {
+      chatInput = chatbotChat.shadowRoot.querySelector('textarea.message-input, input.message-input');
     }
 
     // Fallback to document search with multiple selectors

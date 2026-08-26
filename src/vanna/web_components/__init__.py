@@ -1,8 +1,8 @@
 """
-Web components for Vanna Agents.
+Web components for the chatbot.
 
 This module provides web components built with Lit that can be embedded
-in web applications to provide rich UI for Vanna agent interactions.
+in web applications to provide rich UI for chatbot agent interactions.
 """
 
 import os
@@ -29,10 +29,10 @@ def get_component_html() -> str:
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Vanna AI Chat</title>
+    <title>AI Chat</title>
 </head>
 <body>
-    <vanna-chat title="Vanna AI Assistant"></vanna-chat>
+    <chatbot-chat title="AI Assistant"></chatbot-chat>
     <script type="module" src="{js_file}"></script>
 </body>
 </html>

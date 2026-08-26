@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
 import { html } from 'lit';
-import './vanna-progress-tracker';
+import './chatbot-progress-tracker';
 
 const meta: Meta = {
-  title: 'Components/VannaProgressTracker',
-  component: 'vanna-progress-tracker',
+  title: 'Components/ChatbotProgressTracker',
+  component: 'chatbot-progress-tracker',
   parameters: {
     layout: 'centered',
     backgrounds: {
@@ -34,7 +34,7 @@ export const Empty: Story = {
   },
   render: (args) => html`
     <div style="width: 350px; height: 400px;">
-      <vanna-progress-tracker .title=${args.title}></vanna-progress-tracker>
+      <chatbot-progress-tracker .title=${args.title}></chatbot-progress-tracker>
     </div>
   `,
 };
@@ -46,7 +46,7 @@ export const WithTasks: Story = {
   },
   render: (args) => {
     setTimeout(() => {
-      const tracker = document.querySelector('vanna-progress-tracker') as any;
+      const tracker = document.querySelector('chatbot-progress-tracker') as any;
       if (tracker) {
         tracker.addItem('Analyze database schema', 'Examining table structure');
         tracker.addItem('Generate SQL query', 'Based on user request');
@@ -63,7 +63,7 @@ export const WithTasks: Story = {
 
     return html`
       <div style="width: 350px; height: 400px; background: ${args.theme === 'light' ? '#ffffff' : 'rgb(11, 15, 25)'}; padding: 20px;">
-        <vanna-progress-tracker .title=${args.title} theme=${args.theme}></vanna-progress-tracker>
+        <chatbot-progress-tracker .title=${args.title} theme=${args.theme}></chatbot-progress-tracker>
       </div>
     `;
   },
@@ -76,7 +76,7 @@ export const WithTasksLight: Story = {
   },
   render: (args) => {
     setTimeout(() => {
-      const tracker = document.querySelector('vanna-progress-tracker') as any;
+      const tracker = document.querySelector('chatbot-progress-tracker') as any;
       if (tracker) {
         tracker.addItem('Analyze database schema', 'Examining table structure');
         tracker.addItem('Generate SQL query', 'Based on user request');
@@ -93,7 +93,7 @@ export const WithTasksLight: Story = {
 
     return html`
       <div style="width: 350px; height: 400px; background: ${args.theme === 'light' ? '#ffffff' : 'rgb(11, 15, 25)'}; padding: 20px;">
-        <vanna-progress-tracker .title=${args.title} theme=${args.theme}></vanna-progress-tracker>
+        <chatbot-progress-tracker .title=${args.title} theme=${args.theme}></chatbot-progress-tracker>
       </div>
     `;
   },
@@ -105,7 +105,7 @@ export const MixedStatuses: Story = {
   },
   render: (args) => {
     setTimeout(() => {
-      const tracker = document.querySelector('vanna-progress-tracker') as any;
+      const tracker = document.querySelector('chatbot-progress-tracker') as any;
       if (tracker) {
         const id1 = tracker.addItem('Connect to database', 'Establishing connection');
         const id2 = tracker.addItem('Validate credentials', 'Checking access permissions');
@@ -128,7 +128,7 @@ export const MixedStatuses: Story = {
 
     return html`
       <div style="width: 350px; height: 400px;">
-        <vanna-progress-tracker .title=${args.title}></vanna-progress-tracker>
+        <chatbot-progress-tracker .title=${args.title}></chatbot-progress-tracker>
       </div>
     `;
   },
@@ -140,7 +140,7 @@ export const WithError: Story = {
   },
   render: (args) => {
     setTimeout(() => {
-      const tracker = document.querySelector('vanna-progress-tracker') as any;
+      const tracker = document.querySelector('chatbot-progress-tracker') as any;
       if (tracker) {
         const id1 = tracker.addItem('Parse request', 'Understanding user query');
         const id2 = tracker.addItem('Generate SQL', 'Creating database query');
@@ -156,7 +156,7 @@ export const WithError: Story = {
 
     return html`
       <div style="width: 350px; height: 400px;">
-        <vanna-progress-tracker .title=${args.title}></vanna-progress-tracker>
+        <chatbot-progress-tracker .title=${args.title}></chatbot-progress-tracker>
       </div>
     `;
   },
@@ -168,7 +168,7 @@ export const MultipleErrors: Story = {
   },
   render: (args) => {
     setTimeout(() => {
-      const tracker = document.querySelector('vanna-progress-tracker') as any;
+      const tracker = document.querySelector('chatbot-progress-tracker') as any;
       if (tracker) {
         const id1 = tracker.addItem('Connect to database', 'Establishing connection');
         const id2 = tracker.addItem('Validate schema', 'Checking table structure');
@@ -185,7 +185,7 @@ export const MultipleErrors: Story = {
 
     return html`
       <div style="width: 350px; height: 400px;">
-        <vanna-progress-tracker .title=${args.title}></vanna-progress-tracker>
+        <chatbot-progress-tracker .title=${args.title}></chatbot-progress-tracker>
         <p style="font-size: 12px; color: #666; margin-top: 10px;">
           Example showing multiple error states with detailed error messages
         </p>
@@ -215,7 +215,7 @@ export const LiveDemo: Story = {
 
     const runDemo = () => {
       if (!tracker) {
-        tracker = document.querySelector('vanna-progress-tracker');
+        tracker = document.querySelector('chatbot-progress-tracker');
         if (!tracker) {
           setTimeout(runDemo, 100);
           return;
@@ -258,7 +258,7 @@ export const LiveDemo: Story = {
 
     return html`
       <div style="width: 350px; height: 400px;">
-        <vanna-progress-tracker .title=${args.title}></vanna-progress-tracker>
+        <chatbot-progress-tracker .title=${args.title}></chatbot-progress-tracker>
         <div style="margin-top: 10px; color: #999; font-size: 12px; text-align: center;">
           Watch tasks complete automatically (demo loops)
         </div>

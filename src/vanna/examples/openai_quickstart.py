@@ -37,7 +37,7 @@ async def main() -> None:
 
     # Lazy import after env load to allow custom base_url/org via env
     try:
-        from vanna.integrations.anthropic import OpenAILlmService
+        from vanna.integrations.llm.openai import OpenAILlmService
     except ImportError as e:
         print(
             "[error] openai extra not installed. Install with: pip install -e .[openai]"

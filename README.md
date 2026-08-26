@@ -150,9 +150,9 @@ from vanna import Agent
 from vanna.servers.fastapi.routes import register_chat_routes
 from vanna.servers.base import ChatHandler
 from vanna.core.user import UserResolver, User, RequestContext
-from vanna.integrations.anthropic import AnthropicLlmService
+from vanna.integrations.llm.anthropic import AnthropicLlmService
 from vanna.tools import RunSqlTool
-from vanna.integrations.sqlite import SqliteRunner
+from vanna.integrations.databases.relational.sqlite import SqliteRunner
 from vanna.core.registry import ToolRegistry
 
 # Your existing FastAPI app

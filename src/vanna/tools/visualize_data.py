@@ -15,7 +15,7 @@ from vanna.components import (
 )
 
 from .file_system import FileSystem, LocalFileSystem
-from vanna.integrations.plotly import PlotlyChartGenerator
+from vanna.integrations.visualization.plotly import PlotlyChartGenerator
 
 logger = logging.getLogger(__name__)
 

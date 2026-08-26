@@ -41,7 +41,7 @@ def create_test_context(test_user, agent_memory):
 def chromadb_memory():
     """Create ChromaDB memory instance."""
     try:
-        from vanna.integrations.chromadb import ChromaAgentMemory
+        from vanna.integrations.vector.chroma import ChromaAgentMemory
 
         temp_dir = tempfile.mkdtemp()
         memory = ChromaAgentMemory(
@@ -59,7 +59,7 @@ def chromadb_memory():
 def qdrant_memory():
     """Create Qdrant memory instance."""
     try:
-        from vanna.integrations.qdrant import QdrantAgentMemory
+        from vanna.integrations.vector.qdrant import QdrantAgentMemory
 
         temp_dir = tempfile.mkdtemp()
         memory = QdrantAgentMemory(path=temp_dir)
@@ -75,7 +75,7 @@ def qdrant_memory():
 def faiss_memory():
     """Create FAISS memory instance."""
     try:
-        from vanna.integrations.faiss import FAISSAgentMemory
+        from vanna.integrations.vector.faiss import FAISSAgentMemory
 
         temp_dir = tempfile.mkdtemp()
         memory = FAISSAgentMemory(persist_path=temp_dir)

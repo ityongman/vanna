@@ -10,7 +10,7 @@ import tempfile
 import shutil
 import asyncio
 
-from vanna.integrations.chromadb import ChromaAgentMemory
+from vanna.integrations.vector.chroma import ChromaAgentMemory
 from vanna.core.user import User
 from vanna.core.tool import ToolContext
 
@@ -139,7 +139,7 @@ async def test_chromadb_collection_creation_with_embedding_function():
     Test that NEW ChromaDB collections are created WITH the embedding function.
     """
     try:
-        from vanna.integrations.chromadb import ChromaAgentMemory
+        from vanna.integrations.vector.chroma import ChromaAgentMemory
     except ImportError:
         pytest.skip("ChromaDB not installed")
 

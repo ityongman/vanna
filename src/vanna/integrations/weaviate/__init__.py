@@ -1,7 +1,19 @@
 """
-Weaviate integration for Vanna Agents.
+Deprecated: use vanna.integrations.vector.weaviate instead.
+
+This module is a compatibility shim kept for 1-2 minor versions after the
+integrations directory was reorganized by capability (llm / vector /
+databases / visualization). It re-exports every public name of the new
+package so that ``isinstance`` checks keep working (same class objects).
 """
+import warnings
 
-from .agent_memory import WeaviateAgentMemory
+from vanna.integrations.vector.weaviate import *  # noqa: F401,F403
+from vanna.integrations.vector.weaviate import __all__  # noqa: F401
 
-__all__ = ["WeaviateAgentMemory"]
+warnings.warn(
+    "vanna.integrations.weaviate is deprecated; "
+    "import from vanna.integrations.vector.weaviate instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)

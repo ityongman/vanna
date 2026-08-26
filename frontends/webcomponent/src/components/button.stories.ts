@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
 import { ComponentManager, ComponentUpdate } from './rich-component-system';
-import { vannaDesignTokens } from '../styles/vanna-design-tokens.js';
+import { chatbotDesignTokens } from '../styles/chatbot-design-tokens.js';
 
 const meta: Meta = {
   title: 'Rich Components/Buttons',
@@ -20,13 +20,13 @@ export default meta;
 type Story = StoryObj;
 
 const ensureTokenStyles = () => {
-  if (document.getElementById('vanna-token-style')) {
+  if (document.getElementById('chatbot-token-style')) {
     return;
   }
 
   const style = document.createElement('style');
-  style.id = 'vanna-token-style';
-  style.textContent = vannaDesignTokens.cssText.replace(/:host/g, '.vanna-tokens');
+  style.id = 'chatbot-token-style';
+  style.textContent = chatbotDesignTokens.cssText.replace(/:host/g, '.chatbot-tokens');
   document.head.appendChild(style);
 };
 
@@ -34,14 +34,14 @@ const createContainer = () => {
   ensureTokenStyles();
 
   const container = document.createElement('div');
-  container.className = 'vanna-tokens';
+  container.className = 'chatbot-tokens';
   container.style.cssText = `
-    padding: var(--vanna-space-5, 20px);
+    padding: var(--chatbot-space-5, 20px);
     max-width: 800px;
     margin: 0 auto;
-    background: var(--vanna-background-default);
-    border-radius: var(--vanna-border-radius-lg);
-    box-shadow: var(--vanna-shadow-md);
+    background: var(--chatbot-background-default);
+    border-radius: var(--chatbot-border-radius-lg);
+    box-shadow: var(--chatbot-shadow-md);
   `;
 
   return container;
@@ -67,24 +67,24 @@ const withDefaults = (component: any) => ({
   ...component,
 });
 
-const addMockVannaChat = (container: HTMLElement) => {
-  // Create a mock vanna-chat element with sendMessage method
-  const mockVannaChat = document.createElement('div');
-  mockVannaChat.setAttribute('id', 'mock-vanna-chat');
+const addMockChatbotChat = (container: HTMLElement) => {
+  // Create a mock chatbot-chat element with sendMessage method
+  const mockChatbotChat = document.createElement('div');
+  mockChatbotChat.setAttribute('id', 'mock-chatbot-chat');
 
   // Store the original querySelector
   const originalQuerySelector = document.querySelector.bind(document);
 
-  // Override querySelector to return our mock when looking for vanna-chat
+  // Override querySelector to return our mock when looking for chatbot-chat
   document.querySelector = function(selector: string) {
-    if (selector === 'vanna-chat') {
-      return mockVannaChat as any;
+    if (selector === 'chatbot-chat') {
+      return mockChatbotChat as any;
     }
     return originalQuerySelector(selector);
   } as any;
 
   // Add sendMessage method that logs to console and shows in UI
-  (mockVannaChat as any).sendMessage = (message: string) => {
+  (mockChatbotChat as any).sendMessage = (message: string) => {
     console.log('📤 Button clicked - Message:', message);
 
     // Show a visual feedback in the storybook
@@ -129,20 +129,20 @@ const addMockVannaChat = (container: HTMLElement) => {
     }, 2000);
   };
 
-  container.appendChild(mockVannaChat);
-  return mockVannaChat;
+  container.appendChild(mockChatbotChat);
+  return mockChatbotChat;
 };
 
 export const SingleButtons: Story = {
   render: () => {
     const container = createContainer();
     const manager = createManager(container);
-    addMockVannaChat(container);
+    addMockChatbotChat(container);
 
     // Add title
     const title = document.createElement('h2');
     title.textContent = 'Single Button Components';
-    title.style.cssText = 'margin-bottom: 20px; color: var(--vanna-text-primary);';
+    title.style.cssText = 'margin-bottom: 20px; color: var(--chatbot-text-primary);';
     container.appendChild(title);
 
     const buttons = [
@@ -253,7 +253,7 @@ export const SingleButtons: Story = {
     // Add instruction
     const instruction = document.createElement('p');
     instruction.textContent = 'Click any button to see the message it sends (wrapped in square brackets)';
-    instruction.style.cssText = 'margin-top: 20px; color: var(--vanna-text-secondary); font-style: italic;';
+    instruction.style.cssText = 'margin-top: 20px; color: var(--chatbot-text-secondary); font-style: italic;';
     container.appendChild(instruction);
 
     return container;
@@ -264,11 +264,11 @@ export const ButtonSizes: Story = {
   render: () => {
     const container = createContainer();
     const manager = createManager(container);
-    addMockVannaChat(container);
+    addMockChatbotChat(container);
 
     const title = document.createElement('h2');
     title.textContent = 'Button Sizes';
-    title.style.cssText = 'margin-bottom: 20px; color: var(--vanna-text-primary);';
+    title.style.cssText = 'margin-bottom: 20px; color: var(--chatbot-text-primary);';
     container.appendChild(title);
 
     const sizes = ['small', 'medium', 'large'];
@@ -301,11 +301,11 @@ export const ButtonGroups: Story = {
   render: () => {
     const container = createContainer();
     const manager = createManager(container);
-    addMockVannaChat(container);
+    addMockChatbotChat(container);
 
     const title = document.createElement('h2');
     title.textContent = 'Button Group Components';
-    title.style.cssText = 'margin-bottom: 20px; color: var(--vanna-text-primary);';
+    title.style.cssText = 'margin-bottom: 20px; color: var(--chatbot-text-primary);';
     container.appendChild(title);
 
     // Horizontal action group
@@ -340,7 +340,7 @@ export const ButtonGroups: Story = {
 
     const sectionTitle1 = document.createElement('h3');
     sectionTitle1.textContent = 'Horizontal Action Group';
-    sectionTitle1.style.cssText = 'margin: 20px 0 10px 0; color: var(--vanna-text-primary); font-size: 16px;';
+    sectionTitle1.style.cssText = 'margin: 20px 0 10px 0; color: var(--chatbot-text-primary); font-size: 16px;';
     container.appendChild(sectionTitle1);
     renderComponent(manager, actionGroup);
 
@@ -372,7 +372,7 @@ export const ButtonGroups: Story = {
 
     const sectionTitle2 = document.createElement('h3');
     sectionTitle2.textContent = 'Centered Navigation';
-    sectionTitle2.style.cssText = 'margin: 20px 0 10px 0; color: var(--vanna-text-primary); font-size: 16px;';
+    sectionTitle2.style.cssText = 'margin: 20px 0 10px 0; color: var(--chatbot-text-primary); font-size: 16px;';
     container.appendChild(sectionTitle2);
     renderComponent(manager, navigationGroup);
 
@@ -394,7 +394,7 @@ export const ButtonGroups: Story = {
 
     const sectionTitle3 = document.createElement('h3');
     sectionTitle3.textContent = 'Vertical Options';
-    sectionTitle3.style.cssText = 'margin: 20px 0 10px 0; color: var(--vanna-text-primary); font-size: 16px;';
+    sectionTitle3.style.cssText = 'margin: 20px 0 10px 0; color: var(--chatbot-text-primary); font-size: 16px;';
     container.appendChild(sectionTitle3);
     renderComponent(manager, verticalGroup);
 
@@ -441,7 +441,7 @@ export const ButtonGroups: Story = {
 
     const sectionTitle4 = document.createElement('h3');
     sectionTitle4.textContent = 'Toolbar (Small Buttons)';
-    sectionTitle4.style.cssText = 'margin: 20px 0 10px 0; color: var(--vanna-text-primary); font-size: 16px;';
+    sectionTitle4.style.cssText = 'margin: 20px 0 10px 0; color: var(--chatbot-text-primary); font-size: 16px;';
     container.appendChild(sectionTitle4);
     renderComponent(manager, toolbarGroup);
 
@@ -463,14 +463,14 @@ export const ButtonGroups: Story = {
 
     const sectionTitle5 = document.createElement('h3');
     sectionTitle5.textContent = 'Full Width Confirmation';
-    sectionTitle5.style.cssText = 'margin: 20px 0 10px 0; color: var(--vanna-text-primary); font-size: 16px;';
+    sectionTitle5.style.cssText = 'margin: 20px 0 10px 0; color: var(--chatbot-text-primary); font-size: 16px;';
     container.appendChild(sectionTitle5);
     renderComponent(manager, confirmationGroup);
 
     // Add instruction
     const instruction = document.createElement('p');
     instruction.textContent = 'Click any button in the groups to see the message it sends';
-    instruction.style.cssText = 'margin-top: 20px; color: var(--vanna-text-secondary); font-style: italic;';
+    instruction.style.cssText = 'margin-top: 20px; color: var(--chatbot-text-secondary); font-style: italic;';
     container.appendChild(instruction);
 
     return container;
@@ -481,16 +481,16 @@ export const InteractiveDemo: Story = {
   render: () => {
     const container = createContainer();
     const manager = createManager(container);
-    addMockVannaChat(container);
+    addMockChatbotChat(container);
 
     const title = document.createElement('h2');
     title.textContent = 'Interactive Button Demo';
-    title.style.cssText = 'margin-bottom: 20px; color: var(--vanna-text-primary);';
+    title.style.cssText = 'margin-bottom: 20px; color: var(--chatbot-text-primary);';
     container.appendChild(title);
 
     const description = document.createElement('p');
     description.textContent = 'This demo shows how buttons send messages with their labels wrapped in square brackets.';
-    description.style.cssText = 'margin-bottom: 20px; color: var(--vanna-text-secondary);';
+    description.style.cssText = 'margin-bottom: 20px; color: var(--chatbot-text-secondary);';
     container.appendChild(description);
 
     // Simple choice buttons

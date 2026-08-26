@@ -1,5 +1,5 @@
 /**
- * API client for communicating with Vanna Agents backend
+ * API client for communicating with Chatbot Agents backend
  */
 
 export interface ChatMessage {
@@ -41,7 +41,7 @@ export interface ApiClientConfig {
   customHeaders?: Record<string, string>;
 }
 
-export class VannaApiClient {
+export class ChatbotApiClient {
   public readonly baseUrl: string;
   private sseEndpoint: string;
   private wsEndpoint: string;
@@ -57,8 +57,8 @@ export class VannaApiClient {
     this.timeout = config.timeout || 30000;
     this.customHeaders = config.customHeaders || {};
 
-    console.log('[VannaApiClient] Constructor called with config:', config);
-    console.log('[VannaApiClient] Endpoint configuration:');
+    console.log('[ChatbotApiClient] Constructor called with config:', config);
+    console.log('[ChatbotApiClient] Endpoint configuration:');
     console.log('  - SSE endpoint:', this.sseEndpoint, config.sseEndpoint ? '(custom)' : '(default)');
     console.log('  - WS endpoint:', this.wsEndpoint, config.wsEndpoint ? '(custom)' : '(default)');
     console.log('  - Poll endpoint:', this.pollEndpoint, config.pollEndpoint ? '(custom)' : '(default)');
@@ -87,8 +87,8 @@ export class VannaApiClient {
       ? this.sseEndpoint
       : `${this.baseUrl}${this.sseEndpoint}`;
 
-    console.log('[VannaApiClient] SSE streaming to URL:', url);
-    console.log('[VannaApiClient] SSE endpoint config:', {
+    console.log('[ChatbotApiClient] SSE streaming to URL:', url);
+    console.log('[ChatbotApiClient] SSE endpoint config:', {
       baseUrl: this.baseUrl,
       sseEndpoint: this.sseEndpoint,
       constructedUrl: url
@@ -293,4 +293,4 @@ export class VannaApiClient {
 /**
  * Default API client instance
  */
-export const apiClient = new VannaApiClient();
+export const apiClient = new ChatbotApiClient();

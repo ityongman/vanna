@@ -108,7 +108,7 @@ async def demo() -> None:
     """Demonstrate custom system prompt builders."""
     from vanna import Agent, User
     from vanna.core.registry import ToolRegistry
-    from vanna.integrations.anthropic.mock import MockLlmService
+    from vanna.integrations.llm.mock import MockLlmService
 
     # Example 1: Custom personalized system prompt
     print("=" * 60)

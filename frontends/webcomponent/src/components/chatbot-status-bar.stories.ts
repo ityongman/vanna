@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
 import { html } from 'lit';
-import './vanna-status-bar';
+import './chatbot-status-bar';
 
 const meta: Meta = {
-  title: 'Components/VannaStatusBar',
-  component: 'vanna-status-bar',
+  title: 'Components/ChatbotStatusBar',
+  component: 'chatbot-status-bar',
   parameters: {
     layout: 'centered',
     backgrounds: {
@@ -41,11 +41,11 @@ export const Idle: Story = {
   },
   render: (args) => html`
     <div style="width: 500px; padding: 20px;">
-      <vanna-status-bar
+      <chatbot-status-bar
         .status=${args.status}
         .message=${args.message}
         .detail=${args.detail}>
-      </vanna-status-bar>
+      </chatbot-status-bar>
       <div style="margin-top: 10px; color: #999; font-size: 12px;">
         Status bar is hidden when idle
       </div>
@@ -62,12 +62,12 @@ export const Working: Story = {
   },
   render: (args) => html`
     <div style="width: 500px; padding: 20px; background: ${args.theme === 'light' ? '#ffffff' : 'rgb(11, 15, 25)'};">
-      <vanna-status-bar
+      <chatbot-status-bar
         .status=${args.status}
         .message=${args.message}
         .detail=${args.detail}
         theme=${args.theme}>
-      </vanna-status-bar>
+      </chatbot-status-bar>
     </div>
   `,
 };
@@ -81,12 +81,12 @@ export const WorkingLight: Story = {
   },
   render: (args) => html`
     <div style="width: 500px; padding: 20px; background: ${args.theme === 'light' ? '#ffffff' : 'rgb(11, 15, 25)'};">
-      <vanna-status-bar
+      <chatbot-status-bar
         .status=${args.status}
         .message=${args.message}
         .detail=${args.detail}
         theme=${args.theme}>
-      </vanna-status-bar>
+      </chatbot-status-bar>
     </div>
   `,
 };
@@ -99,11 +99,11 @@ export const Success: Story = {
   },
   render: (args) => html`
     <div style="width: 500px; padding: 20px;">
-      <vanna-status-bar
+      <chatbot-status-bar
         .status=${args.status}
         .message=${args.message}
         .detail=${args.detail}>
-      </vanna-status-bar>
+      </chatbot-status-bar>
     </div>
   `,
 };
@@ -116,11 +116,11 @@ export const Error: Story = {
   },
   render: (args) => html`
     <div style="width: 500px; padding: 20px;">
-      <vanna-status-bar
+      <chatbot-status-bar
         .status=${args.status}
         .message=${args.message}
         .detail=${args.detail}>
-      </vanna-status-bar>
+      </chatbot-status-bar>
     </div>
   `,
 };
@@ -152,13 +152,13 @@ export const StatusSequence: Story = {
     };
 
     setTimeout(() => {
-      statusBar = document.querySelector('vanna-status-bar');
+      statusBar = document.querySelector('chatbot-status-bar');
       updateStatus();
     }, 100);
 
     return html`
       <div style="width: 500px; padding: 20px;">
-        <vanna-status-bar status="idle"></vanna-status-bar>
+        <chatbot-status-bar status="idle"></chatbot-status-bar>
         <div style="margin-top: 10px; color: #999; font-size: 12px;">
           Watch the status bar cycle through different states
         </div>

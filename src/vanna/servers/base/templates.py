@@ -1,16 +1,16 @@
 """
-HTML templates for Vanna Agents servers.
+HTML templates for the chatbot servers.
 """
 
 from typing import Optional
 
 
-def get_vanna_component_script(
+def get_chatbot_component_script(
     dev_mode: bool = False,
     static_path: str = "/static",
-    cdn_url: str = "https://img.vanna.ai/vanna-components.js",
+    cdn_url: str = "https://img.vanna.ai/chatbot-components.js",
 ) -> str:
-    """Get the script tag for loading Vanna web components.
+    """Get the script tag for loading chatbot web components.
 
     Args:
         dev_mode: If True, load from local static files
@@ -28,7 +28,7 @@ def get_vanna_component_script(
             )
         else:
             return (
-                f'<script type="module" src="{static_path}/vanna-components.js"></script>'
+                f'<script type="module" src="{static_path}/chatbot-components.js"></script>'
             )
     else:
         return f'<script type="module" src="{cdn_url}"></script>'
@@ -37,7 +37,7 @@ def get_vanna_component_script(
 def get_index_html(
     dev_mode: bool = False,
     static_path: str = "/static",
-    cdn_url: str = "https://img.vanna.ai/vanna-components.js",
+    cdn_url: str = "https://img.vanna.ai/chatbot-components.js",
     api_base_url: str = "",
 ) -> str:
     """Generate index HTML with configurable component loading.
@@ -51,14 +51,14 @@ def get_index_html(
     Returns:
         Complete HTML page as string
     """
-    component_script = get_vanna_component_script(dev_mode, static_path, cdn_url)
+    component_script = get_chatbot_component_script(dev_mode, static_path, cdn_url)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vanna Agents Chat</title>
+    <title>AI Chatbot</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -68,11 +68,11 @@ def get_index_html(
             theme: {{
                 extend: {{
                     colors: {{
-                        'vanna-navy': '#023d60',
-                        'vanna-cream': '#e7e1cf',
-                        'vanna-teal': '#15a8a8',
-                        'vanna-orange': '#fe5d26',
-                        'vanna-magenta': '#bf1363',
+                        'chatbot-navy': '#023d60',
+                        'chatbot-cream': '#e7e1cf',
+                        'chatbot-teal': '#15a8a8',
+                        'chatbot-orange': '#fe5d26',
+                        'chatbot-magenta': '#bf1363',
                     }},
                     fontFamily: {{
                         'sans': ['Space Grotesk', 'ui-sans-serif', 'system-ui'],
@@ -127,7 +127,7 @@ def get_index_html(
             z-index: 1;
         }}
 
-        vanna-chat {{
+        chatbot-chat {{
             width: 100%;
             height: 100%;
             display: block;
@@ -139,10 +139,9 @@ def get_index_html(
     <div class="max-w-6xl mx-auto p-5">
         <!-- Header -->
         <div class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-vanna-navy mb-2 font-serif">Vanna Agents</h1>
-            <p class="text-lg font-mono font-bold text-vanna-teal mb-4">DATA-FIRST AGENTS</p>
-            <p class="text-slate-600 mb-4">Interactive AI Assistant powered by Vanna Agents Framework</p>
-            <a href="javascript:window.location='view-source:'+window.location.href" class="inline-flex items-center gap-2 px-4 py-2 bg-vanna-teal text-white text-sm font-medium rounded-lg hover:bg-vanna-navy transition">
+            <h1 class="text-4xl font-bold text-chatbot-navy mb-2 font-serif">AI Chatbot</h1>
+            <p class="text-slate-600 mb-4">Interactive AI Assistant</p>
+            <a href="javascript:window.location='view-source:'+window.location.href" class="inline-flex items-center gap-2 px-4 py-2 bg-chatbot-teal text-white text-sm font-medium rounded-lg hover:bg-chatbot-navy transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
                 </svg>
@@ -150,20 +149,20 @@ def get_index_html(
             </a>
         </div>
 
-        {('    <div class="bg-vanna-orange/10 border border-vanna-orange/30 rounded-lg p-3 mb-5 text-vanna-orange text-sm font-medium">📦 Development Mode: Loading components from local assets</div>' if dev_mode else "")}
+        {('    <div class="bg-chatbot-orange/10 border border-chatbot-orange/30 rounded-lg p-3 mb-5 text-chatbot-orange text-sm font-medium">📦 Development Mode: Loading components from local assets</div>' if dev_mode else "")}
 
         <!-- Login Form -->
-        <div id="loginContainer" class="max-w-md mx-auto mb-10 bg-white p-8 rounded-xl shadow-lg border border-vanna-teal/30">
+        <div id="loginContainer" class="max-w-md mx-auto mb-10 bg-white p-8 rounded-xl shadow-lg border border-chatbot-teal/30">
             <div class="text-center mb-6">
-                <h2 class="text-2xl font-semibold text-vanna-navy mb-2 font-serif">Login to Continue</h2>
+                <h2 class="text-2xl font-semibold text-chatbot-navy mb-2 font-serif">Login to Continue</h2>
                 <p class="text-sm text-slate-600">Select your email to access the chat</p>
             </div>
 
             <div class="mb-5">
-                <label for="emailInput" class="block mb-2 text-sm font-medium text-vanna-navy">Email Address</label>
+                <label for="emailInput" class="block mb-2 text-sm font-medium text-chatbot-navy">Email Address</label>
                 <select
                     id="emailInput"
-                    class="w-full px-4 py-3 text-sm border border-vanna-teal/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-vanna-teal focus:border-transparent bg-white"
+                    class="w-full px-4 py-3 text-sm border border-chatbot-teal/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-chatbot-teal focus:border-transparent bg-white"
                 >
                     <option value="">Select an email...</option>
                     <option value="admin@example.com">admin@example.com</option>
@@ -171,50 +170,50 @@ def get_index_html(
                 </select>
             </div>
 
-            <button id="loginButton" class="w-full px-4 py-3 bg-vanna-teal text-white text-sm font-medium rounded-lg hover:bg-vanna-navy focus:outline-none focus:ring-2 focus:ring-vanna-teal focus:ring-offset-2 transition disabled:bg-gray-400 disabled:cursor-not-allowed">
+            <button id="loginButton" class="w-full px-4 py-3 bg-chatbot-teal text-white text-sm font-medium rounded-lg hover:bg-chatbot-navy focus:outline-none focus:ring-2 focus:ring-chatbot-teal focus:ring-offset-2 transition disabled:bg-gray-400 disabled:cursor-not-allowed">
                 Continue
             </button>
 
-            <div class="mt-5 p-3 bg-vanna-teal/10 border-l-4 border-vanna-teal rounded text-xs text-vanna-navy leading-relaxed">
+            <div class="mt-5 p-3 bg-chatbot-teal/10 border-l-4 border-chatbot-teal rounded text-xs text-chatbot-navy leading-relaxed">
                 <strong>Demo Mode:</strong> This is a frontend-only authentication demo.
                 Your email will be stored as a cookie and automatically sent with all API requests.
             </div>
         </div>
 
         <!-- Logged In Status (hidden by default) -->
-        <div id="loggedInStatus" class="hidden text-center p-4 bg-vanna-teal/10 border border-vanna-teal/30 rounded-lg mb-5">
-            Logged in as <span id="loggedInEmail" class="font-semibold text-vanna-navy"></span>
+        <div id="loggedInStatus" class="hidden text-center p-4 bg-chatbot-teal/10 border border-chatbot-teal/30 rounded-lg mb-5">
+            Logged in as <span id="loggedInEmail" class="font-semibold text-chatbot-navy"></span>
             <br>
-            <button id="logoutButton" class="mt-2 px-3 py-1.5 bg-vanna-navy text-white text-xs rounded hover:bg-vanna-teal transition">
+            <button id="logoutButton" class="mt-2 px-3 py-1.5 bg-chatbot-navy text-white text-xs rounded hover:bg-chatbot-teal transition">
                 Logout
             </button>
         </div>
 
         <!-- Chat Container (hidden by default) -->
         <div id="chatSections" class="hidden">
-            <div class="bg-white rounded-xl shadow-lg h-[600px] overflow-hidden border border-vanna-teal/30">
-                <vanna-chat
+            <div class="bg-white rounded-xl shadow-lg h-[600px] overflow-hidden border border-chatbot-teal/30">
+                <chatbot-chat
                     api-base="{api_base_url}"
                     sse-endpoint="{api_base_url}/api/vanna/v2/chat_sse"
                     ws-endpoint="{api_base_url}/api/vanna/v2/chat_websocket"
                     poll-endpoint="{api_base_url}/api/vanna/v2/chat_poll">
-                </vanna-chat>
+                </chatbot-chat>
             </div>
 
-            <div class="mt-8 p-5 bg-white rounded-lg shadow border border-vanna-teal/30">
-                <h3 class="text-lg font-semibold text-vanna-navy mb-3 font-serif">API Endpoints</h3>
+            <div class="mt-8 p-5 bg-white rounded-lg shadow border border-chatbot-teal/30">
+                <h3 class="text-lg font-semibold text-chatbot-navy mb-3 font-serif">API Endpoints</h3>
                 <ul class="space-y-2">
-                    <li class="p-2 bg-vanna-cream/50 rounded font-mono text-sm">
-                        <span class="font-bold text-vanna-teal mr-2">POST</span>{api_base_url}/api/vanna/v2/chat_sse - Server-Sent Events streaming
+                    <li class="p-2 bg-chatbot-cream/50 rounded font-mono text-sm">
+                        <span class="font-bold text-chatbot-teal mr-2">POST</span>{api_base_url}/api/vanna/v2/chat_sse - Server-Sent Events streaming
                     </li>
-                    <li class="p-2 bg-vanna-cream/50 rounded font-mono text-sm">
-                        <span class="font-bold text-vanna-teal mr-2">WS</span>{api_base_url}/api/vanna/v2/chat_websocket - WebSocket real-time chat
+                    <li class="p-2 bg-chatbot-cream/50 rounded font-mono text-sm">
+                        <span class="font-bold text-chatbot-teal mr-2">WS</span>{api_base_url}/api/vanna/v2/chat_websocket - WebSocket real-time chat
                     </li>
-                    <li class="p-2 bg-vanna-cream/50 rounded font-mono text-sm">
-                        <span class="font-bold text-vanna-teal mr-2">POST</span>{api_base_url}/api/vanna/v2/chat_poll - Request/response polling
+                    <li class="p-2 bg-chatbot-cream/50 rounded font-mono text-sm">
+                        <span class="font-bold text-chatbot-teal mr-2">POST</span>{api_base_url}/api/vanna/v2/chat_poll - Request/response polling
                     </li>
-                    <li class="p-2 bg-vanna-cream/50 rounded font-mono text-sm">
-                        <span class="font-bold text-vanna-teal mr-2">GET</span>{api_base_url}/health - Health check
+                    <li class="p-2 bg-chatbot-cream/50 rounded font-mono text-sm">
+                        <span class="font-bold text-chatbot-teal mr-2">GET</span>{api_base_url}/health - Health check
                     </li>
                 </ul>
             </div>
@@ -240,7 +239,7 @@ def get_index_html(
 
         // Login/Logout
         document.addEventListener('DOMContentLoaded', () => {{
-            const email = getCookie('vanna_email');
+            const email = getCookie('chatbot_email');
 
             // Check if already logged in
             if (email) {{
@@ -257,7 +256,7 @@ def get_index_html(
                     alert('Please select an email address');
                     return;
                 }}
-                setCookie('vanna_email', email);
+                setCookie('chatbot_email', email);
                 loginContainer.classList.add('hidden');
                 loggedInStatus.classList.remove('hidden');
                 chatSections.classList.remove('hidden');
@@ -266,7 +265,7 @@ def get_index_html(
 
             // Logout button
             logoutButton.addEventListener('click', () => {{
-                deleteCookie('vanna_email');
+                deleteCookie('chatbot_email');
                 loginContainer.classList.remove('hidden');
                 loggedInStatus.classList.add('hidden');
                 chatSections.classList.add('hidden');
@@ -283,11 +282,11 @@ def get_index_html(
     <script>
         // Artifact demo event listener
         document.addEventListener('DOMContentLoaded', () => {{
-            const vannaChat = document.querySelector('vanna-chat');
+            const chatbotChat = document.querySelector('chatbot-chat');
 
-            if (vannaChat) {{
+            if (chatbotChat) {{
                 // Add artifact event listener to demonstrate external rendering
-                vannaChat.addEventListener('artifact-opened', (event) => {{
+                chatbotChat.addEventListener('artifact-opened', (event) => {{
                     const {{ artifactId, type, title, trigger }} = event.detail;
 
                     console.log('🎨 Artifact Event:', {{ artifactId, type, title, trigger }});
@@ -298,7 +297,7 @@ def get_index_html(
                         if (newWindow) {{
                             newWindow.document.write(event.detail.getStandaloneHTML());
                             newWindow.document.close();
-                            newWindow.document.title = title || 'Vanna Artifact';
+                            newWindow.document.title = title || 'Artifact';
                             console.log(`📱 Opened ${{title}} in new window`);
                         }}
                     }}, 100);
@@ -313,12 +312,12 @@ def get_index_html(
         }});
 
         // Fallback if web component doesn't load
-        if (!customElements.get('vanna-chat')) {{
+        if (!customElements.get('chatbot-chat')) {{
             setTimeout(() => {{
-                if (!customElements.get('vanna-chat')) {{
-                    document.querySelector('vanna-chat').innerHTML = `
+                if (!customElements.get('chatbot-chat')) {{
+                    document.querySelector('chatbot-chat').innerHTML = `
                         <div class="p-10 text-center text-gray-600">
-                            <h3 class="text-xl font-semibold mb-2">Vanna Chat Component</h3>
+                            <h3 class="text-xl font-semibold mb-2">Chatbot Chat Component</h3>
                             <p class="mb-2">Web component failed to load. Please check your connection.</p>
                             <p class="text-sm text-gray-400">
                                 {("Loading from: local static assets" if dev_mode else f"Loading from: {cdn_url}")}

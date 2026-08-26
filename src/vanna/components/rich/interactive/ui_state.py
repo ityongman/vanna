@@ -89,5 +89,5 @@ class ChatInputUpdateComponent(RichComponent):
 
     def __init__(self, **kwargs: Any) -> None:
         # Set a fixed ID for chat input updates
-        kwargs.setdefault("id", "vanna-chat-input")
+        kwargs.setdefault("id", "chatbot-chat-input")
         super().__init__(**kwargs)

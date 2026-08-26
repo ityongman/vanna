@@ -45,7 +45,7 @@ async def main() -> None:
     ensure_env()
 
     try:
-        from vanna.integrations.anthropic import AnthropicLlmService
+        from vanna.integrations.llm.anthropic import AnthropicLlmService
     except ImportError:
         print(
             "[error] anthropic extra not installed. Install with: pip install -e .[anthropic]"
@@ -55,7 +55,7 @@ async def main() -> None:
     from vanna import AgentConfig, Agent
     from vanna.core.registry import ToolRegistry
     from vanna.core.user import CookieEmailUserResolver, RequestContext
-    from vanna.integrations.sqlite import SqliteRunner
+    from vanna.integrations.databases.relational.sqlite import SqliteRunner
     from vanna.tools import (
         RunSqlTool,
         VisualizeDataTool,
@@ -174,7 +174,7 @@ def create_demo_agent() -> "Agent":
     ensure_env()
 
     try:
-        from vanna.integrations.anthropic import AnthropicLlmService
+        from vanna.integrations.llm.anthropic import AnthropicLlmService
     except ImportError:
         print(
             "[error] anthropic extra not installed. Install with: pip install -e .[anthropic]"
@@ -184,7 +184,7 @@ def create_demo_agent() -> "Agent":
     from vanna import AgentConfig, Agent
     from vanna.core.registry import ToolRegistry
     from vanna.core.user import CookieEmailUserResolver
-    from vanna.integrations.sqlite import SqliteRunner
+    from vanna.integrations.databases.relational.sqlite import SqliteRunner
     from vanna.tools import (
         RunSqlTool,
         VisualizeDataTool,

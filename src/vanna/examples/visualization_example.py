@@ -29,7 +29,7 @@ from vanna.core import (
     ToolCall,
     ToolSchema,
 )
-from vanna.integrations.sqlite import SqliteRunner
+from vanna.integrations.databases.relational.sqlite import SqliteRunner
 from vanna.tools import (
     RunSqlTool,
     VisualizeDataTool,

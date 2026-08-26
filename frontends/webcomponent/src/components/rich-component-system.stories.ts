@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
 import { ComponentManager, ComponentUpdate } from './rich-component-system';
-import { vannaDesignTokens } from '../styles/vanna-design-tokens.js';
+import { chatbotDesignTokens } from '../styles/chatbot-design-tokens.js';
 
 const meta: Meta = {
   title: 'Rich Components/Component System',
@@ -20,13 +20,13 @@ export default meta;
 type Story = StoryObj;
 
 const ensureTokenStyles = () => {
-  if (document.getElementById('vanna-token-style')) {
+  if (document.getElementById('chatbot-token-style')) {
     return;
   }
 
   const style = document.createElement('style');
-  style.id = 'vanna-token-style';
-  style.textContent = vannaDesignTokens.cssText.replace(/:host/g, '.vanna-tokens');
+  style.id = 'chatbot-token-style';
+  style.textContent = chatbotDesignTokens.cssText.replace(/:host/g, '.chatbot-tokens');
   document.head.appendChild(style);
 };
 
@@ -34,14 +34,14 @@ const createContainer = () => {
   ensureTokenStyles();
 
   const container = document.createElement('div');
-  container.className = 'vanna-tokens';
+  container.className = 'chatbot-tokens';
   container.style.cssText = `
-    padding: var(--vanna-space-5, 20px);
+    padding: var(--chatbot-space-5, 20px);
     max-width: 800px;
     margin: 0 auto;
-    background: var(--vanna-background-default);
-    border-radius: var(--vanna-border-radius-lg);
-    box-shadow: var(--vanna-shadow-md);
+    background: var(--chatbot-background-default);
+    border-radius: var(--chatbot-border-radius-lg);
+    box-shadow: var(--chatbot-shadow-md);
   `;
 
   return container;

@@ -216,7 +216,7 @@ class TestChromaDBAgentMemory:
     def test_chromadb_import(self):
         """Test that ChromaAgentMemory can be imported."""
         try:
-            from vanna.integrations.chromadb import ChromaAgentMemory
+            from vanna.integrations.vector.chroma import ChromaAgentMemory
 
             assert ChromaAgentMemory is not None
         except ImportError:
@@ -225,7 +225,7 @@ class TestChromaDBAgentMemory:
     def test_chromadb_implements_agent_memory(self):
         """Test that ChromaAgentMemory implements AgentMemory."""
         try:
-            from vanna.integrations.chromadb import ChromaAgentMemory
+            from vanna.integrations.vector.chroma import ChromaAgentMemory
             from vanna.capabilities.agent_memory import AgentMemory
 
             assert issubclass(ChromaAgentMemory, AgentMemory)
@@ -235,7 +235,7 @@ class TestChromaDBAgentMemory:
     def test_chromadb_has_all_methods(self):
         """Test that ChromaAgentMemory implements all required methods."""
         try:
-            from vanna.integrations.chromadb import ChromaAgentMemory
+            from vanna.integrations.vector.chroma import ChromaAgentMemory
 
             required_methods = [
                 "save_tool_usage",
@@ -261,7 +261,7 @@ class TestChromaDBAgentMemory:
     def test_chromadb_instantiation(self):
         """Test that ChromaAgentMemory can be instantiated."""
         try:
-            from vanna.integrations.chromadb import ChromaAgentMemory
+            from vanna.integrations.vector.chroma import ChromaAgentMemory
             import tempfile
 
             temp_dir = tempfile.mkdtemp()
@@ -282,7 +282,7 @@ class TestQdrantAgentMemory:
     def test_qdrant_import(self):
         """Test that QdrantAgentMemory can be imported."""
         try:
-            from vanna.integrations.qdrant import QdrantAgentMemory
+            from vanna.integrations.vector.qdrant import QdrantAgentMemory
 
             assert QdrantAgentMemory is not None
         except ImportError:
@@ -291,7 +291,7 @@ class TestQdrantAgentMemory:
     def test_qdrant_implements_agent_memory(self):
         """Test that QdrantAgentMemory implements AgentMemory."""
         try:
-            from vanna.integrations.qdrant import QdrantAgentMemory
+            from vanna.integrations.vector.qdrant import QdrantAgentMemory
             from vanna.capabilities.agent_memory import AgentMemory
 
             assert issubclass(QdrantAgentMemory, AgentMemory)
@@ -301,7 +301,7 @@ class TestQdrantAgentMemory:
     def test_qdrant_has_all_methods(self):
         """Test that QdrantAgentMemory implements all required methods."""
         try:
-            from vanna.integrations.qdrant import QdrantAgentMemory
+            from vanna.integrations.vector.qdrant import QdrantAgentMemory
 
             required_methods = [
                 "save_tool_usage",
@@ -323,7 +323,7 @@ class TestQdrantAgentMemory:
     def test_qdrant_instantiation(self):
         """Test that QdrantAgentMemory can be instantiated."""
         try:
-            from vanna.integrations.qdrant import QdrantAgentMemory
+            from vanna.integrations.vector.qdrant import QdrantAgentMemory
 
             # In-memory mode doesn't require actual service
             memory = QdrantAgentMemory(path=":memory:")
@@ -339,7 +339,7 @@ class TestPineconeAgentMemory:
     def test_pinecone_import(self):
         """Test that PineconeAgentMemory can be imported."""
         try:
-            from vanna.integrations.pinecone import PineconeAgentMemory
+            from vanna.integrations.vector.pinecone import PineconeAgentMemory
 
             assert PineconeAgentMemory is not None
         except ImportError:
@@ -348,7 +348,7 @@ class TestPineconeAgentMemory:
     def test_pinecone_implements_agent_memory(self):
         """Test that PineconeAgentMemory implements AgentMemory."""
         try:
-            from vanna.integrations.pinecone import PineconeAgentMemory
+            from vanna.integrations.vector.pinecone import PineconeAgentMemory
             from vanna.capabilities.agent_memory import AgentMemory
 
             assert issubclass(PineconeAgentMemory, AgentMemory)
@@ -358,7 +358,7 @@ class TestPineconeAgentMemory:
     def test_pinecone_has_all_methods(self):
         """Test that PineconeAgentMemory implements all required methods."""
         try:
-            from vanna.integrations.pinecone import PineconeAgentMemory
+            from vanna.integrations.vector.pinecone import PineconeAgentMemory
 
             required_methods = [
                 "save_tool_usage",
@@ -384,7 +384,7 @@ class TestMilvusAgentMemory:
     def test_milvus_import(self):
         """Test that MilvusAgentMemory can be imported."""
         try:
-            from vanna.integrations.milvus import MilvusAgentMemory
+            from vanna.integrations.vector.milvus import MilvusAgentMemory
 
             assert MilvusAgentMemory is not None
         except ImportError:
@@ -393,7 +393,7 @@ class TestMilvusAgentMemory:
     def test_milvus_implements_agent_memory(self):
         """Test that MilvusAgentMemory implements AgentMemory."""
         try:
-            from vanna.integrations.milvus import MilvusAgentMemory
+            from vanna.integrations.vector.milvus import MilvusAgentMemory
             from vanna.capabilities.agent_memory import AgentMemory
 
             assert issubclass(MilvusAgentMemory, AgentMemory)
@@ -403,7 +403,7 @@ class TestMilvusAgentMemory:
     def test_milvus_has_all_methods(self):
         """Test that MilvusAgentMemory implements all required methods."""
         try:
-            from vanna.integrations.milvus import MilvusAgentMemory
+            from vanna.integrations.vector.milvus import MilvusAgentMemory
 
             required_methods = [
                 "save_tool_usage",
@@ -429,7 +429,7 @@ class TestWeaviateAgentMemory:
     def test_weaviate_import(self):
         """Test that WeaviateAgentMemory can be imported."""
         try:
-            from vanna.integrations.weaviate import WeaviateAgentMemory
+            from vanna.integrations.vector.weaviate import WeaviateAgentMemory
 
             assert WeaviateAgentMemory is not None
         except ImportError:
@@ -438,7 +438,7 @@ class TestWeaviateAgentMemory:
     def test_weaviate_implements_agent_memory(self):
         """Test that WeaviateAgentMemory implements AgentMemory."""
         try:
-            from vanna.integrations.weaviate import WeaviateAgentMemory
+            from vanna.integrations.vector.weaviate import WeaviateAgentMemory
             from vanna.capabilities.agent_memory import AgentMemory
 
             assert issubclass(WeaviateAgentMemory, AgentMemory)
@@ -448,7 +448,7 @@ class TestWeaviateAgentMemory:
     def test_weaviate_has_all_methods(self):
         """Test that WeaviateAgentMemory implements all required methods."""
         try:
-            from vanna.integrations.weaviate import WeaviateAgentMemory
+            from vanna.integrations.vector.weaviate import WeaviateAgentMemory
 
             required_methods = [
                 "save_tool_usage",
@@ -474,7 +474,7 @@ class TestFAISSAgentMemory:
     def test_faiss_import(self):
         """Test that FAISSAgentMemory can be imported."""
         try:
-            from vanna.integrations.faiss import FAISSAgentMemory
+            from vanna.integrations.vector.faiss import FAISSAgentMemory
 
             assert FAISSAgentMemory is not None
         except ImportError:
@@ -483,7 +483,7 @@ class TestFAISSAgentMemory:
     def test_faiss_implements_agent_memory(self):
         """Test that FAISSAgentMemory implements AgentMemory."""
         try:
-            from vanna.integrations.faiss import FAISSAgentMemory
+            from vanna.integrations.vector.faiss import FAISSAgentMemory
             from vanna.capabilities.agent_memory import AgentMemory
 
             assert issubclass(FAISSAgentMemory, AgentMemory)
@@ -493,7 +493,7 @@ class TestFAISSAgentMemory:
     def test_faiss_has_all_methods(self):
         """Test that FAISSAgentMemory implements all required methods."""
         try:
-            from vanna.integrations.faiss import FAISSAgentMemory
+            from vanna.integrations.vector.faiss import FAISSAgentMemory
 
             required_methods = [
                 "save_tool_usage",
@@ -515,14 +515,14 @@ class TestFAISSAgentMemory:
     def test_faiss_instantiation(self):
         """Test that FAISSAgentMemory can be instantiated."""
         try:
-            from vanna.integrations.faiss import FAISSAgentMemory
+            from vanna.integrations.vector.faiss import FAISSAgentMemory
             import tempfile
 
             temp_dir = tempfile.mkdtemp()
             memory = FAISSAgentMemory(persist_path=temp_dir)
 
             assert memory is not None
-            assert memory.persist_path == temp_dir
+            assert memory.index_path == temp_dir
         except ImportError:
             pytest.skip("FAISS not installed")
 
@@ -533,7 +533,7 @@ class TestOpenSearchAgentMemory:
     def test_opensearch_import(self):
         """Test that OpenSearchAgentMemory can be imported."""
         try:
-            from vanna.integrations.opensearch import OpenSearchAgentMemory
+            from vanna.integrations.vector.opensearch import OpenSearchAgentMemory
 
             assert OpenSearchAgentMemory is not None
         except ImportError:
@@ -542,7 +542,7 @@ class TestOpenSearchAgentMemory:
     def test_opensearch_implements_agent_memory(self):
         """Test that OpenSearchAgentMemory implements AgentMemory."""
         try:
-            from vanna.integrations.opensearch import OpenSearchAgentMemory
+            from vanna.integrations.vector.opensearch import OpenSearchAgentMemory
             from vanna.capabilities.agent_memory import AgentMemory
 
             assert issubclass(OpenSearchAgentMemory, AgentMemory)
@@ -552,7 +552,7 @@ class TestOpenSearchAgentMemory:
     def test_opensearch_has_all_methods(self):
         """Test that OpenSearchAgentMemory implements all required methods."""
         try:
-            from vanna.integrations.opensearch import OpenSearchAgentMemory
+            from vanna.integrations.vector.opensearch import OpenSearchAgentMemory
 
             required_methods = [
                 "save_tool_usage",
@@ -578,7 +578,7 @@ class TestAzureAISearchAgentMemory:
     def test_azuresearch_import(self):
         """Test that AzureAISearchAgentMemory can be imported."""
         try:
-            from vanna.integrations.azuresearch import AzureAISearchAgentMemory
+            from vanna.integrations.vector.azuresearch import AzureAISearchAgentMemory
 
             assert AzureAISearchAgentMemory is not None
         except ImportError:
@@ -587,7 +587,7 @@ class TestAzureAISearchAgentMemory:
     def test_azuresearch_implements_agent_memory(self):
         """Test that AzureAISearchAgentMemory implements AgentMemory."""
         try:
-            from vanna.integrations.azuresearch import AzureAISearchAgentMemory
+            from vanna.integrations.vector.azuresearch import AzureAISearchAgentMemory
             from vanna.capabilities.agent_memory import AgentMemory
 
             assert issubclass(AzureAISearchAgentMemory, AgentMemory)
@@ -597,7 +597,7 @@ class TestAzureAISearchAgentMemory:
     def test_azuresearch_has_all_methods(self):
         """Test that AzureAISearchAgentMemory implements all required methods."""
         try:
-            from vanna.integrations.azuresearch import AzureAISearchAgentMemory
+            from vanna.integrations.vector.azuresearch import AzureAISearchAgentMemory
 
             required_methods = [
                 "save_tool_usage",
@@ -623,7 +623,7 @@ class TestMarqoAgentMemory:
     def test_marqo_import(self):
         """Test that MarqoAgentMemory can be imported."""
         try:
-            from vanna.integrations.marqo import MarqoAgentMemory
+            from vanna.integrations.vector.marqo import MarqoAgentMemory
 
             assert MarqoAgentMemory is not None
         except ImportError:
@@ -632,7 +632,7 @@ class TestMarqoAgentMemory:
     def test_marqo_implements_agent_memory(self):
         """Test that MarqoAgentMemory implements AgentMemory."""
         try:
-            from vanna.integrations.marqo import MarqoAgentMemory
+            from vanna.integrations.vector.marqo import MarqoAgentMemory
             from vanna.capabilities.agent_memory import AgentMemory
 
             assert issubclass(MarqoAgentMemory, AgentMemory)
@@ -642,7 +642,7 @@ class TestMarqoAgentMemory:
     def test_marqo_has_all_methods(self):
         """Test that MarqoAgentMemory implements all required methods."""
         try:
-            from vanna.integrations.marqo import MarqoAgentMemory
+            from vanna.integrations.vector.marqo import MarqoAgentMemory
 
             required_methods = [
                 "save_tool_usage",

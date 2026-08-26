@@ -68,7 +68,7 @@ class ChromaAgentMemory(AgentMemory):
                            re-downloading the model.
 
     Example:
-        >>> from vanna.integrations.chromadb import ChromaAgentMemory
+        >>> from vanna.integrations.vector.chroma import ChromaAgentMemory
         >>> # Basic usage with defaults
         >>> memory = ChromaAgentMemory(
         ...     persist_directory="/app/data/chroma",

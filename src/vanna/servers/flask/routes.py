@@ -30,7 +30,7 @@ def register_chat_routes(
     def index() -> str:
         """Serve the main chat interface."""
         dev_mode = config.get("dev_mode", False)
-        cdn_url = config.get("cdn_url", "https://img.vanna.ai/vanna-components.js")
+        cdn_url = config.get("cdn_url", "https://img.vanna.ai/chatbot-components.js")
         api_base_url = config.get("api_base_url", "")
 
         return get_index_html(

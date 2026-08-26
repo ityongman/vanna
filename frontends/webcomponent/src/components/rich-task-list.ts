@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { vannaDesignTokens } from '../styles/vanna-design-tokens.js';
+import { chatbotDesignTokens } from '../styles/chatbot-design-tokens.js';
 
 export interface TaskItem {
   id: string;
@@ -14,65 +14,65 @@ export interface TaskItem {
 @customElement('rich-task-list')
 export class RichTaskList extends LitElement {
   static styles = [
-    vannaDesignTokens,
+    chatbotDesignTokens,
     css`
       :host {
         display: block;
-        margin-bottom: var(--vanna-space-4);
-        font-family: var(--vanna-font-family-default);
+        margin-bottom: var(--chatbot-space-4);
+        font-family: var(--chatbot-font-family-default);
       }
 
       .task-list {
-        border: 1px solid var(--vanna-outline-default);
-        border-radius: var(--vanna-border-radius-lg);
-        background: var(--vanna-background-default);
-        box-shadow: var(--vanna-shadow-sm);
+        border: 1px solid var(--chatbot-outline-default);
+        border-radius: var(--chatbot-border-radius-lg);
+        background: var(--chatbot-background-default);
+        box-shadow: var(--chatbot-shadow-sm);
         overflow: hidden;
-        transition: box-shadow var(--vanna-duration-200) ease;
+        transition: box-shadow var(--chatbot-duration-200) ease;
       }
 
       .task-list:hover {
-        box-shadow: var(--vanna-shadow-md);
+        box-shadow: var(--chatbot-shadow-md);
       }
 
       .task-list-header {
-        padding: var(--vanna-space-4) var(--vanna-space-5);
-        background: var(--vanna-background-higher);
-        border-bottom: 1px solid var(--vanna-outline-default);
+        padding: var(--chatbot-space-4) var(--chatbot-space-5);
+        background: var(--chatbot-background-higher);
+        border-bottom: 1px solid var(--chatbot-outline-default);
       }
 
       .task-list-title {
-        margin: 0 0 var(--vanna-space-3) 0;
+        margin: 0 0 var(--chatbot-space-3) 0;
         font-size: 1rem;
         font-weight: 600;
-        color: var(--vanna-foreground-default);
+        color: var(--chatbot-foreground-default);
       }
 
       .task-list-progress {
         display: flex;
         align-items: center;
-        gap: var(--vanna-space-3);
+        gap: var(--chatbot-space-3);
       }
 
       .progress-text {
         font-size: 0.875rem;
-        color: var(--vanna-foreground-dimmer);
+        color: var(--chatbot-foreground-dimmer);
         min-width: fit-content;
       }
 
       .progress-bar {
         flex: 1;
         height: 6px;
-        background: var(--vanna-background-root);
+        background: var(--chatbot-background-root);
         border-radius: 3px;
         overflow: hidden;
       }
 
       .progress-fill {
         height: 100%;
-        background: var(--vanna-accent-primary-default);
+        background: var(--chatbot-accent-primary-default);
         border-radius: 3px;
-        transition: width var(--vanna-duration-300) ease;
+        transition: width var(--chatbot-duration-300) ease;
       }
 
       .progress-fill.animated {
@@ -85,32 +85,32 @@ export class RichTaskList extends LitElement {
       }
 
       .progress-fill.status-success {
-        background: var(--vanna-accent-positive-default);
+        background: var(--chatbot-accent-positive-default);
       }
 
       .progress-fill.status-warning {
-        background: var(--vanna-accent-warning-default);
+        background: var(--chatbot-accent-warning-default);
       }
 
       .progress-fill.status-error {
-        background: var(--vanna-accent-negative-default);
+        background: var(--chatbot-accent-negative-default);
       }
 
       .task-list-items {
-        padding: var(--vanna-space-2);
+        padding: var(--chatbot-space-2);
       }
 
       .task-item {
         display: flex;
         align-items: flex-start;
-        gap: var(--vanna-space-3);
-        padding: var(--vanna-space-3);
-        border-radius: var(--vanna-border-radius-md);
-        transition: background-color var(--vanna-duration-200) ease;
+        gap: var(--chatbot-space-3);
+        padding: var(--chatbot-space-3);
+        border-radius: var(--chatbot-border-radius-md);
+        transition: background-color var(--chatbot-duration-200) ease;
       }
 
       .task-item:hover {
-        background: var(--vanna-background-root);
+        background: var(--chatbot-background-root);
       }
 
       .task-item.status-completed {
@@ -133,60 +133,60 @@ export class RichTaskList extends LitElement {
 
       .task-title {
         font-weight: 500;
-        color: var(--vanna-foreground-default);
-        margin-bottom: var(--vanna-space-1);
+        color: var(--chatbot-foreground-default);
+        margin-bottom: var(--chatbot-space-1);
       }
 
       .task-description {
         font-size: 0.875rem;
-        color: var(--vanna-foreground-dimmer);
-        margin-bottom: var(--vanna-space-2);
+        color: var(--chatbot-foreground-dimmer);
+        margin-bottom: var(--chatbot-space-2);
       }
 
       .task-progress {
         display: flex;
         align-items: center;
-        gap: var(--vanna-space-2);
-        margin-bottom: var(--vanna-space-2);
+        gap: var(--chatbot-space-2);
+        margin-bottom: var(--chatbot-space-2);
       }
 
       .task-progress-bar {
         flex: 1;
         height: 4px;
-        background: var(--vanna-background-root);
+        background: var(--chatbot-background-root);
         border-radius: 2px;
         overflow: hidden;
       }
 
       .task-progress-fill {
         height: 100%;
-        background: var(--vanna-accent-primary-default);
+        background: var(--chatbot-accent-primary-default);
         border-radius: 2px;
-        transition: width var(--vanna-duration-300) ease;
+        transition: width var(--chatbot-duration-300) ease;
       }
 
       .task-progress-text {
         font-size: 0.75rem;
-        color: var(--vanna-foreground-dimmer);
+        color: var(--chatbot-foreground-dimmer);
         min-width: fit-content;
       }
 
       .task-timestamp {
         font-size: 0.75rem;
-        color: var(--vanna-foreground-dimmest);
+        color: var(--chatbot-foreground-dimmest);
       }
 
       /* Responsive adjustments */
       @media (max-width: 768px) {
         .task-list-header {
-          padding-left: var(--vanna-space-4);
-          padding-right: var(--vanna-space-4);
+          padding-left: var(--chatbot-space-4);
+          padding-right: var(--chatbot-space-4);
         }
 
         .task-list-progress {
           flex-direction: column;
           align-items: stretch;
-          gap: var(--vanna-space-2);
+          gap: var(--chatbot-space-2);
         }
       }
     `

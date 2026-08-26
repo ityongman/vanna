@@ -7,8 +7,8 @@ from pathlib import Path
 
 from vanna import AgentConfig, Agent
 from vanna.core.registry import ToolRegistry
-from vanna.integrations.anthropic import AnthropicLlmService
-from vanna.integrations.sqlite import SqliteRunner
+from vanna.integrations.llm.anthropic import AnthropicLlmService
+from vanna.integrations.databases.relational.sqlite import SqliteRunner
 from vanna.integrations.local import LocalFileSystem
 from vanna.tools import (
     RunSqlTool,

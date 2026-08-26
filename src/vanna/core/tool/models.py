@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 # Import AgentMemory at runtime for Pydantic model resolution
 from vanna.capabilities.agent_memory import AgentMemory
+from vanna.capabilities.schema_vector_store import SchemaVectorStore
 
 if TYPE_CHECKING:
     from ..components import UiComponent
@@ -34,10 +35,15 @@ class ToolContext(BaseModel):
     agent_memory: AgentMemory = Field(
         description="Agent memory for tool usage learning"
     )
+    schema_vector_store: Optional[SchemaVectorStore] = Field(
+        default=None,
+        description="Optional schema vector store for schema linking (AutoLink)",
+    )
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    # Reserved for future use; not yet implemented (预留暂未实现).
     observability_provider: Optional["ObservabilityProvider"] = Field(
         default=None,
-        description="Optional observability provider for metrics and spans",
+        description="Reserved for future use; not yet implemented",
     )
 
     class Config:

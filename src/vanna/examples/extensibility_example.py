@@ -205,7 +205,7 @@ async def run_example() -> None:
     """
     Example showing all extensibility interfaces working together.
     """
-    from vanna.integrations.anthropic import AnthropicLlmService
+    from vanna.integrations.llm.anthropic import AnthropicLlmService
 
     # Create all extensibility components
     caching_middleware = CachingMiddleware()

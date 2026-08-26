@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive test backend for vanna-webcomponent validation.
+Comprehensive test backend for chatbot webcomponent validation.
 
 This backend exercises all component types and update patterns to validate
 that nothing breaks during webcomponent pruning.
@@ -853,7 +853,7 @@ async def root():
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Test backend for vanna-webcomponent")
+    parser = argparse.ArgumentParser(description="Test backend for chatbot webcomponent")
     parser.add_argument(
         "--mode",
         choices=["rapid", "realistic"],

@@ -109,7 +109,7 @@ async def test_agent_top_artist(agent, expected_artist="Iron Maiden"):
 @pytest.mark.asyncio
 async def test_anthropic_top_artist(chinook_db):
     """Test Anthropic agent finding the top artist by sales."""
-    from vanna.integrations.anthropic import AnthropicLlmService
+    from vanna.integrations.llm.anthropic import AnthropicLlmService
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
     llm = AnthropicLlmService(api_key=api_key, model="claude-sonnet-4-5")
@@ -122,7 +122,7 @@ async def test_anthropic_top_artist(chinook_db):
 @pytest.mark.asyncio
 async def test_openai_top_artist(chinook_db):
     """Test OpenAI agent finding the top artist by sales."""
-    from vanna.integrations.openai import OpenAILlmService
+    from vanna.integrations.llm.openai import OpenAILlmService
 
     api_key = os.getenv("OPENAI_API_KEY")
     llm = OpenAILlmService(api_key=api_key, model="gpt-5")
@@ -135,7 +135,7 @@ async def test_openai_top_artist(chinook_db):
 @pytest.mark.asyncio
 async def test_azure_openai_top_artist(chinook_db):
     """Test Azure OpenAI agent finding the top artist by sales."""
-    from vanna.integrations.azureopenai import AzureOpenAILlmService
+    from vanna.integrations.llm.azureopenai import AzureOpenAILlmService
 
     # Get Azure OpenAI credentials from environment
     api_key = os.getenv("AZURE_OPENAI_API_KEY")
@@ -158,7 +158,7 @@ async def test_azure_openai_top_artist(chinook_db):
 # @pytest.mark.asyncio
 # async def test_openai_responses_top_artist(chinook_db):
 #     """Test OpenAI Responses API agent finding the top artist by sales."""
-#     from vanna.integrations.openai import OpenAIResponsesService
+#     from vanna.integrations.llm.openai import OpenAIResponsesService
 
 #     api_key = os.getenv("OPENAI_API_KEY")
 #     llm = OpenAIResponsesService(api_key=api_key, model="gpt-5")
@@ -171,7 +171,7 @@ async def test_azure_openai_top_artist(chinook_db):
 @pytest.mark.asyncio
 async def test_ollama_top_artist(chinook_db):
     """Test Ollama agent finding the top artist by sales."""
-    from vanna.integrations.ollama import OllamaLlmService
+    from vanna.integrations.llm.ollama import OllamaLlmService
 
     llm = OllamaLlmService(
         model="gpt-oss:20b-cloud",
@@ -186,7 +186,7 @@ async def test_ollama_top_artist(chinook_db):
 @pytest.mark.asyncio
 async def test_gemini_top_artist(chinook_db):
     """Test Gemini agent finding the top artist by sales."""
-    from vanna.integrations.google import GeminiLlmService
+    from vanna.integrations.llm.google import GeminiLlmService
 
     # API key will be picked up from GOOGLE_API_KEY or GEMINI_API_KEY env var
     llm = GeminiLlmService(model="gemini-2.5-pro", temperature=0.0)

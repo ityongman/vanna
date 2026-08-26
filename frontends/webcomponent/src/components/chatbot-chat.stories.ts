@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
 import { html } from 'lit';
-import './vanna-chat';
-import './vanna-message';
+import './chatbot-chat';
+import './chatbot-message';
 import './plotly-chart';
 
 const meta: Meta = {
-  title: 'Components/VannaChat',
-  component: 'vanna-chat',
+  title: 'Components/ChatbotChat',
+  component: 'chatbot-chat',
   parameters: {
     layout: 'fullscreen',
     backgrounds: {
@@ -36,7 +36,7 @@ type Story = StoryObj;
 
 export const Default: Story = {
   args: {
-    title: 'Vanna AI Agent',
+    title: 'AI Agent',
     placeholder: 'Describe what you want to build...',
     disabled: false,
     showProgress: true,
@@ -45,21 +45,21 @@ export const Default: Story = {
   },
   render: (args) => html`
     <div style="height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: ${args.theme === 'light' ? '#f5f7fa' : 'rgb(11, 15, 25)'};">
-      <vanna-chat
+      <chatbot-chat
         .title=${args.title}
         .placeholder=${args.placeholder}
         .disabled=${args.disabled}
         .showProgress=${args.showProgress}
         .maxAutonomy=${args.maxAutonomy}
         theme=${args.theme}>
-      </vanna-chat>
+      </chatbot-chat>
     </div>
   `,
 };
 
 export const LightMode: Story = {
   args: {
-    title: 'Vanna AI Agent',
+    title: 'AI Agent',
     placeholder: 'Describe what you want to build...',
     disabled: false,
     showProgress: true,
@@ -68,21 +68,21 @@ export const LightMode: Story = {
   },
   render: (args) => html`
     <div style="height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: ${args.theme === 'light' ? '#f5f7fa' : 'rgb(11, 15, 25)'};">
-      <vanna-chat
+      <chatbot-chat
         .title=${args.title}
         .placeholder=${args.placeholder}
         .disabled=${args.disabled}
         .showProgress=${args.showProgress}
         .maxAutonomy=${args.maxAutonomy}
         theme=${args.theme}>
-      </vanna-chat>
+      </chatbot-chat>
     </div>
   `,
 };
 
 export const WithConversation: Story = {
   args: {
-    title: 'Vanna AI Agent',
+    title: 'AI Agent',
     placeholder: 'Continue the conversation...',
     disabled: false,
     showProgress: true,
@@ -91,7 +91,7 @@ export const WithConversation: Story = {
   },
   render: (args) => {
     setTimeout(() => {
-      const chat = document.querySelector('vanna-chat') as any;
+      const chat = document.querySelector('chatbot-chat') as any;
       const tracker = chat?.getProgressTracker();
 
       if (chat && tracker) {
@@ -118,14 +118,14 @@ export const WithConversation: Story = {
 
     return html`
       <div style="height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: ${args.theme === 'light' ? '#f5f7fa' : 'rgb(11, 15, 25)'};">
-        <vanna-chat
+        <chatbot-chat
           .title=${args.title}
           .placeholder=${args.placeholder}
           .disabled=${args.disabled}
           .showProgress=${args.showProgress}
           .maxAutonomy=${args.maxAutonomy}
           theme=${args.theme}>
-        </vanna-chat>
+        </chatbot-chat>
       </div>
     `;
   },
@@ -133,7 +133,7 @@ export const WithConversation: Story = {
 
 export const MaxAutonomyMode: Story = {
   args: {
-    title: 'Vanna AI Agent - Max Autonomy',
+    title: 'AI Agent - Max Autonomy',
     placeholder: 'Describe your project...',
     disabled: false,
     showProgress: true,
@@ -142,7 +142,7 @@ export const MaxAutonomyMode: Story = {
   },
   render: (args) => {
     setTimeout(() => {
-      const chat = document.querySelector('vanna-chat') as any;
+      const chat = document.querySelector('chatbot-chat') as any;
       const tracker = chat?.getProgressTracker();
 
       if (chat && tracker) {
@@ -177,14 +177,14 @@ export const MaxAutonomyMode: Story = {
 
     return html`
       <div style="height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: ${args.theme === 'light' ? '#f5f7fa' : 'rgb(11, 15, 25)'};">
-        <vanna-chat
+        <chatbot-chat
           .title=${args.title}
           .placeholder=${args.placeholder}
           .disabled=${args.disabled}
           .showProgress=${args.showProgress}
           .maxAutonomy=${args.maxAutonomy}
           theme=${args.theme}>
-        </vanna-chat>
+        </chatbot-chat>
       </div>
     `;
   },
@@ -192,7 +192,7 @@ export const MaxAutonomyMode: Story = {
 
 export const WorkingState: Story = {
   args: {
-    title: 'Vanna AI Agent',
+    title: 'AI Agent',
     placeholder: 'Ask me anything...',
     disabled: true,
     showProgress: true,
@@ -201,7 +201,7 @@ export const WorkingState: Story = {
   },
   render: (args) => {
     setTimeout(() => {
-      const chat = document.querySelector('vanna-chat') as any;
+      const chat = document.querySelector('chatbot-chat') as any;
       const tracker = chat?.getProgressTracker();
 
       if (chat && tracker) {
@@ -222,14 +222,14 @@ export const WorkingState: Story = {
 
     return html`
       <div style="height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: ${args.theme === 'light' ? '#f5f7fa' : 'rgb(11, 15, 25)'};">
-        <vanna-chat
+        <chatbot-chat
           .title=${args.title}
           .placeholder=${args.placeholder}
           .disabled=${args.disabled}
           .showProgress=${args.showProgress}
           .maxAutonomy=${args.maxAutonomy}
           theme=${args.theme}>
-        </vanna-chat>
+        </chatbot-chat>
       </div>
     `;
   },
@@ -237,7 +237,7 @@ export const WorkingState: Story = {
 
 export const CompactMode: Story = {
   args: {
-    title: 'Vanna AI Agent',
+    title: 'AI Agent',
     placeholder: 'Quick question...',
     disabled: false,
     showProgress: false,
@@ -246,7 +246,7 @@ export const CompactMode: Story = {
   },
   render: (args) => {
     setTimeout(() => {
-      const chat = document.querySelector('vanna-chat') as any;
+      const chat = document.querySelector('chatbot-chat') as any;
       if (chat) {
         chat.addMessage('What\'s the average order value this month?', 'user');
         chat.addMessage('Let me query that for you...', 'assistant');
@@ -256,14 +256,14 @@ export const CompactMode: Story = {
 
     return html`
       <div style="height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: ${args.theme === 'light' ? '#f5f7fa' : 'rgb(11, 15, 25)'};">
-        <vanna-chat
+        <chatbot-chat
           .title=${args.title}
           .placeholder=${args.placeholder}
           .disabled=${args.disabled}
           .showProgress=${args.showProgress}
           .maxAutonomy=${args.maxAutonomy}
           theme=${args.theme}>
-        </vanna-chat>
+        </chatbot-chat>
       </div>
     `;
   },
@@ -271,7 +271,7 @@ export const CompactMode: Story = {
 
 export const WithRichComponents: Story = {
   args: {
-    title: 'Vanna AI Agent - Rich Components',
+    title: 'AI Agent - Rich Components',
     placeholder: 'Ask me to analyze data or build something...',
     disabled: false,
     showProgress: true,
@@ -280,7 +280,7 @@ export const WithRichComponents: Story = {
   },
   render: (args) => {
     setTimeout(() => {
-      const chat = document.querySelector('vanna-chat') as any;
+      const chat = document.querySelector('chatbot-chat') as any;
       const tracker = chat?.getProgressTracker();
 
       if (chat && tracker) {
@@ -530,14 +530,14 @@ export const WithRichComponents: Story = {
 
     return html`
       <div style="height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: ${args.theme === 'light' ? '#f5f7fa' : 'rgb(11, 15, 25)'};">
-        <vanna-chat
+        <chatbot-chat
           .title=${args.title}
           .placeholder=${args.placeholder}
           .disabled=${args.disabled}
           .showProgress=${args.showProgress}
           .maxAutonomy=${args.maxAutonomy}
           theme=${args.theme}>
-        </vanna-chat>
+        </chatbot-chat>
       </div>
     `;
   },
@@ -545,7 +545,7 @@ export const WithRichComponents: Story = {
 
 export const WithToolExecutionComponents: Story = {
   args: {
-    title: 'Vanna AI Agent - Tool Execution',
+    title: 'AI Agent - Tool Execution',
     placeholder: 'Ask me to run commands or execute tools...',
     disabled: false,
     showProgress: true,
@@ -554,7 +554,7 @@ export const WithToolExecutionComponents: Story = {
   },
   render: (args) => {
     setTimeout(() => {
-      const chat = document.querySelector('vanna-chat') as any;
+      const chat = document.querySelector('chatbot-chat') as any;
       const tracker = chat?.getProgressTracker();
 
       if (chat && tracker) {
@@ -786,14 +786,14 @@ export const WithToolExecutionComponents: Story = {
 
     return html`
       <div style="height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: ${args.theme === 'light' ? '#f5f7fa' : 'rgb(11, 15, 25)'};">
-        <vanna-chat
+        <chatbot-chat
           .title=${args.title}
           .placeholder=${args.placeholder}
           .disabled=${args.disabled}
           .showProgress=${args.showProgress}
           .maxAutonomy=${args.maxAutonomy}
           theme=${args.theme}>
-        </vanna-chat>
+        </chatbot-chat>
       </div>
     `;
   },
@@ -801,7 +801,7 @@ export const WithToolExecutionComponents: Story = {
 
 export const WithChart: Story = {
   args: {
-    title: 'Vanna AI Agent - Chart Display',
+    title: 'AI Agent - Chart Display',
     placeholder: 'Ask me to analyze data...',
     disabled: false,
     showProgress: true,
@@ -810,7 +810,7 @@ export const WithChart: Story = {
   },
   render: (args) => {
     setTimeout(() => {
-      const chat = document.querySelector('vanna-chat') as any;
+      const chat = document.querySelector('chatbot-chat') as any;
       const tracker = chat?.getProgressTracker();
 
       if (chat && tracker) {
@@ -1010,14 +1010,14 @@ The chart shows the distribution of sales across the top 10 artists.`,
 
     return html`
       <div style="height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: ${args.theme === 'light' ? '#f5f7fa' : 'rgb(11, 15, 25)'};">
-        <vanna-chat
+        <chatbot-chat
           .title=${args.title}
           .placeholder=${args.placeholder}
           .disabled=${args.disabled}
           .showProgress=${args.showProgress}
           .maxAutonomy=${args.maxAutonomy}
           theme=${args.theme}>
-        </vanna-chat>
+        </chatbot-chat>
       </div>
     `;
   },
@@ -1025,7 +1025,7 @@ The chart shows the distribution of sales across the top 10 artists.`,
 
 export const WithButtons: Story = {
   args: {
-    title: 'Vanna AI Agent - Button Components',
+    title: 'AI Agent - Button Components',
     placeholder: 'Click buttons to send messages...',
     disabled: false,
     showProgress: false,
@@ -1034,7 +1034,7 @@ export const WithButtons: Story = {
   },
   render: (args) => {
     setTimeout(() => {
-      const chat = document.querySelector('vanna-chat') as any;
+      const chat = document.querySelector('chatbot-chat') as any;
 
       if (chat) {
         // Initial conversation
@@ -1163,14 +1163,14 @@ export const WithButtons: Story = {
 
     return html`
       <div style="height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: ${args.theme === 'light' ? '#f5f7fa' : 'rgb(11, 15, 25)'};">
-        <vanna-chat
+        <chatbot-chat
           .title=${args.title}
           .placeholder=${args.placeholder}
           .disabled=${args.disabled}
           .showProgress=${args.showProgress}
           .maxAutonomy=${args.maxAutonomy}
           theme=${args.theme}>
-        </vanna-chat>
+        </chatbot-chat>
       </div>
     `;
   },

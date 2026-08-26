@@ -11,6 +11,7 @@ from vanna.core.llm.base import LlmService
 from vanna.core.user import User
 from vanna.core.user.request_context import RequestContext
 from vanna.core.user.resolver import UserResolver
+from vanna.capabilities.schema_vector_store import SchemaVectorStore
 from vanna.integrations.local.agent_memory.in_memory import DemoAgentMemory
 
 
@@ -35,6 +36,7 @@ def create_basic_agent(
     tool_registry: Optional[ToolRegistry] = None,
     user_resolver: Optional[UserResolver] = None,
     agent_memory: Optional[DemoAgentMemory] = None,
+    schema_vector_store: Optional[SchemaVectorStore] = None,
 ) -> Agent:
     """Create a basic agent with sensible defaults for development.
 
@@ -44,6 +46,10 @@ def create_basic_agent(
         tool_registry: Optional tool registry (defaults to empty registry)
         user_resolver: Optional user resolver (defaults to anonymous user)
         agent_memory: Optional agent memory (defaults to in-memory demo)
+        schema_vector_store: Optional schema vector store for AutoLink schema
+            linking (e.g. FAISSSchemaVectorStore). Combined with
+            ``config.autolink_config.enabled=True`` it activates the AutoLink
+            retrieval and enhancement pipeline.
 
     Returns:
         Configured Agent instance
@@ -69,6 +75,7 @@ def create_basic_agent(
         user_resolver=user_resolver,
         agent_memory=agent_memory,
         config=config,
+        schema_vector_store=schema_vector_store,
     )
 
 

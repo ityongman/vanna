@@ -32,7 +32,7 @@ async def test_legacy_adapter_with_anthropic():
     from vanna.legacy.adapter import LegacyVannaAdapter
     from vanna.legacy.mock import MockLLM
     from vanna.legacy.chromadb import ChromaDB_VectorStore
-    from vanna.integrations.anthropic import AnthropicLlmService
+    from vanna.integrations.llm.anthropic import AnthropicLlmService
 
     # Create a legacy VannaBase instance (using multiple inheritance like v0.x)
     class MyVanna(ChromaDB_VectorStore, MockLLM):

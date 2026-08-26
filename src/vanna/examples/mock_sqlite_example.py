@@ -46,7 +46,7 @@ from vanna.core.simple_components import (
     SimpleTextComponent,
 )
 from vanna.tools import RunSqlTool
-from vanna.integrations.sqlite import SqliteRunner
+from vanna.integrations.databases.relational.sqlite import SqliteRunner
 
 
 class MockSqliteLlmService(LlmService):

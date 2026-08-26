@@ -19,7 +19,7 @@ from vanna.core.evaluation import (
     OutputEvaluator,
     EfficiencyEvaluator,
 )
-from vanna.integrations.anthropic import AnthropicLlmService
+from vanna.integrations.llm.anthropic import AnthropicLlmService
 from vanna.integrations.local import MemoryConversationStore
 from vanna.core.registry import ToolRegistry
 

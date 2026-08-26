@@ -29,7 +29,7 @@ def test_user():
 @pytest.mark.asyncio
 async def test_gemini_import():
     """Test that Gemini integration can be imported."""
-    from vanna.integrations.google import GeminiLlmService
+    from vanna.integrations.llm.google import GeminiLlmService
 
     print("✓ GeminiLlmService imported successfully")
     assert GeminiLlmService is not None
@@ -39,7 +39,7 @@ async def test_gemini_import():
 @pytest.mark.asyncio
 async def test_gemini_initialization_without_key():
     """Test that Gemini service raises error without API key."""
-    from vanna.integrations.google import GeminiLlmService
+    from vanna.integrations.llm.google import GeminiLlmService
 
     # Clear both env vars if they exist
     old_google_key = os.environ.pop("GOOGLE_API_KEY", None)
@@ -60,7 +60,7 @@ async def test_gemini_initialization_without_key():
 @pytest.mark.asyncio
 async def test_gemini_initialization():
     """Test that Gemini service can be initialized with API key."""
-    from vanna.integrations.google import GeminiLlmService
+    from vanna.integrations.llm.google import GeminiLlmService
 
     # This test will be skipped by conftest.py if GOOGLE_API_KEY is not set
     llm = GeminiLlmService(
@@ -80,7 +80,7 @@ async def test_gemini_initialization():
 @pytest.mark.asyncio
 async def test_gemini_basic_request(test_user):
     """Test a basic request without tools."""
-    from vanna.integrations.google import GeminiLlmService
+    from vanna.integrations.llm.google import GeminiLlmService
 
     llm = GeminiLlmService(model="gemini-2.5-pro", temperature=0.0)
 
@@ -114,7 +114,7 @@ async def test_gemini_basic_request(test_user):
 @pytest.mark.asyncio
 async def test_gemini_streaming_request(test_user):
     """Test streaming request."""
-    from vanna.integrations.google import GeminiLlmService
+    from vanna.integrations.llm.google import GeminiLlmService
 
     llm = GeminiLlmService(model="gemini-2.5-pro", temperature=0.0)
 
@@ -148,7 +148,7 @@ async def test_gemini_streaming_request(test_user):
 @pytest.mark.asyncio
 async def test_gemini_validate_tools():
     """Test tool validation (does not require API key for actual calls)."""
-    from vanna.integrations.google import GeminiLlmService
+    from vanna.integrations.llm.google import GeminiLlmService
 
     # For validation testing, we need to initialize but won't make API calls
     llm = GeminiLlmService(model="gemini-2.5-pro")

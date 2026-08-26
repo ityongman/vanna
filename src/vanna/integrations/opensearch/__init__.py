@@ -1,7 +1,19 @@
 """
-OpenSearch integration for Vanna Agents.
+Deprecated: use vanna.integrations.vector.opensearch instead.
+
+This module is a compatibility shim kept for 1-2 minor versions after the
+integrations directory was reorganized by capability (llm / vector /
+databases / visualization). It re-exports every public name of the new
+package so that ``isinstance`` checks keep working (same class objects).
 """
+import warnings
 
-from .agent_memory import OpenSearchAgentMemory
+from vanna.integrations.vector.opensearch import *  # noqa: F401,F403
+from vanna.integrations.vector.opensearch import __all__  # noqa: F401
 
-__all__ = ["OpenSearchAgentMemory"]
+warnings.warn(
+    "vanna.integrations.opensearch is deprecated; "
+    "import from vanna.integrations.vector.opensearch instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)

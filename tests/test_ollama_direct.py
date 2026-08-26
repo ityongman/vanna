@@ -26,7 +26,7 @@ def test_user():
 async def test_ollama_import():
     """Test that Ollama integration can be imported."""
     try:
-        from vanna.integrations.ollama import OllamaLlmService
+        from vanna.integrations.llm.ollama import OllamaLlmService
 
         print("✓ OllamaLlmService imported successfully")
         assert OllamaLlmService is not None
@@ -38,7 +38,7 @@ async def test_ollama_import():
 @pytest.mark.asyncio
 async def test_ollama_initialization():
     """Test that Ollama service can be initialized."""
-    from vanna.integrations.ollama import OllamaLlmService
+    from vanna.integrations.llm.ollama import OllamaLlmService
 
     try:
         llm = OllamaLlmService(
@@ -62,7 +62,7 @@ async def test_ollama_initialization():
 @pytest.mark.asyncio
 async def test_ollama_basic_request(test_user):
     """Test a basic request without tools."""
-    from vanna.integrations.ollama import OllamaLlmService
+    from vanna.integrations.llm.ollama import OllamaLlmService
 
     llm = OllamaLlmService(model="llama3.2", temperature=0.0)
 
@@ -103,7 +103,7 @@ async def test_ollama_basic_request(test_user):
 @pytest.mark.asyncio
 async def test_ollama_pydantic_response(test_user):
     """Test that the response is a valid Pydantic model."""
-    from vanna.integrations.ollama import OllamaLlmService
+    from vanna.integrations.llm.ollama import OllamaLlmService
     from vanna.core.llm import LlmResponse
 
     llm = OllamaLlmService(model="llama3.2", temperature=0.0)
@@ -146,7 +146,7 @@ async def test_ollama_pydantic_response(test_user):
 @pytest.mark.asyncio
 async def test_ollama_streaming(test_user):
     """Test streaming responses."""
-    from vanna.integrations.ollama import OllamaLlmService
+    from vanna.integrations.llm.ollama import OllamaLlmService
     from vanna.core.llm import LlmStreamChunk
 
     llm = OllamaLlmService(model="llama3.2", temperature=0.0)
@@ -193,7 +193,7 @@ async def test_ollama_streaming(test_user):
 @pytest.mark.asyncio
 async def test_ollama_tool_calling_attempt(test_user):
     """Test tool calling with Ollama (may not work with all models)."""
-    from vanna.integrations.ollama import OllamaLlmService
+    from vanna.integrations.llm.ollama import OllamaLlmService
 
     llm = OllamaLlmService(model="llama3.2", temperature=0.0)
 
@@ -261,7 +261,7 @@ async def test_ollama_tool_calling_attempt(test_user):
 @pytest.mark.asyncio
 async def test_ollama_payload_building(test_user):
     """Test that the payload is built correctly."""
-    from vanna.integrations.ollama import OllamaLlmService
+    from vanna.integrations.llm.ollama import OllamaLlmService
 
     llm = OllamaLlmService(model="llama3.2", temperature=0.5, num_ctx=4096)
 

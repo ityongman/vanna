@@ -1,6 +1,6 @@
-# Vanna Webcomponent Comprehensive Test Suite
+# Chatbot Webcomponent Comprehensive Test Suite
 
-This test suite validates all component types and update patterns in the vanna-webcomponent before pruning unused code.
+This test suite validates all component types and update patterns in the chatbot webcomponent before pruning unused code.
 
 ## Overview
 
@@ -14,7 +14,7 @@ The test suite consists of:
 ### 1. Install Dependencies
 
 ```bash
-cd submodule/vanna-webcomponent
+cd frontends/webcomponent
 pip install -r requirements-test.txt
 ```
 
@@ -180,7 +180,7 @@ The test suite is designed to validate that pruning doesn't break functionality:
 
 3. **Remove one piece of cruft**:
    ```bash
-   # Example: Remove unused import from vanna-chat.ts
+   # Example: Remove unused import from chatbot-chat.ts
    # or delete unused utility file
    ```
 
@@ -277,7 +277,7 @@ if (componentType === 'my_component') {
 
 **Solution**: Make sure vanna is in the Python path:
 ```bash
-cd submodule/vanna-webcomponent
+cd frontends/webcomponent
 python test_backend.py  # Already adds ../vanna/src to sys.path
 ```
 
@@ -300,7 +300,7 @@ python test_backend.py  # Already adds ../vanna/src to sys.path
 **Solutions**:
 1. Check you're serving from the right directory:
    ```bash
-   cd submodule/vanna-webcomponent
+   cd frontends/webcomponent
    python -m http.server 8080
    ```
 2. Open correct URL: `http://localhost:8080/test-comprehensive.html`
@@ -322,10 +322,10 @@ python test_backend.py --port 8000
 
 Then update `test-comprehensive.html`:
 ```html
-<vanna-chat
+<chatbot-chat
     api-url="http://localhost:8000"
     ...
-></vanna-chat>
+></chatbot-chat>
 ```
 
 ### Enable Debug Logging
@@ -373,7 +373,7 @@ async def run_comprehensive_test(conversation_id, request_id, mode):
 
 ### Frontend Flow
 
-1. `<vanna-chat>` web component connects to backend
+1. `<chatbot-chat>` web component connects to backend
 2. Opens SSE connection to `/api/vanna/v2/chat_sse`
 3. Receives chunks, parses JSON
 4. `ComponentManager` processes updates

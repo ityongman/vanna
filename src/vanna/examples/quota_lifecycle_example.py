@@ -93,7 +93,7 @@ async def run_example() -> None:
     the behavior using lifecycle hooks.
     """
     from vanna.core.registry import ToolRegistry
-    from vanna.integrations.anthropic import AnthropicLlmService
+    from vanna.integrations.llm.anthropic import AnthropicLlmService
     from vanna.integrations.local import MemoryConversationStore
 
     # Create quota hook

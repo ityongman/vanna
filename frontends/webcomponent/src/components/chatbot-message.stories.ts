@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
 import { html } from 'lit';
-import './vanna-message';
+import './chatbot-message';
 
 const meta: Meta = {
-  title: 'Components/VannaMessage',
-  component: 'vanna-message',
+  title: 'Components/ChatbotMessage',
+  component: 'chatbot-message',
   parameters: {
     layout: 'centered',
   },
@@ -29,11 +29,11 @@ export const UserMessage: Story = {
   },
   render: (args) => html`
     <div style="width: 400px;">
-      <vanna-message
+      <chatbot-message
         .content=${args.content}
         .type=${args.type}
         .timestamp=${args.timestamp}>
-      </vanna-message>
+      </chatbot-message>
     </div>
   `,
 };
@@ -46,11 +46,11 @@ export const AssistantMessage: Story = {
   },
   render: (args) => html`
     <div style="width: 400px;">
-      <vanna-message
+      <chatbot-message
         .content=${args.content}
         .type=${args.type}
         .timestamp=${args.timestamp}>
-      </vanna-message>
+      </chatbot-message>
     </div>
   `,
 };
@@ -63,11 +63,11 @@ export const LongMessage: Story = {
   },
   render: (args) => html`
     <div style="width: 400px;">
-      <vanna-message
+      <chatbot-message
         .content=${args.content}
         .type=${args.type}
         .timestamp=${args.timestamp}>
-      </vanna-message>
+      </chatbot-message>
     </div>
   `,
 };
@@ -75,21 +75,21 @@ export const LongMessage: Story = {
 export const Conversation: Story = {
   render: () => html`
     <div style="width: 400px;">
-      <vanna-message
+      <chatbot-message
         content="What's the total revenue for Q4?"
         type="user"
         .timestamp=${Date.now() - 120000}>
-      </vanna-message>
-      <vanna-message
+      </chatbot-message>
+      <chatbot-message
         content="I'll help you calculate the total revenue for Q4. Let me query your database for this information."
         type="assistant"
         .timestamp=${Date.now() - 60000}>
-      </vanna-message>
-      <vanna-message
+      </chatbot-message>
+      <chatbot-message
         content="The total revenue for Q4 is $2,450,000. This represents a 15% increase compared to Q3."
         type="assistant"
         .timestamp=${Date.now()}>
-      </vanna-message>
+      </chatbot-message>
     </div>
   `,
 };

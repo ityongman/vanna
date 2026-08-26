@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vanna Webcomponent - Comprehensive Test</title>
+    <title>Chatbot Webcomponent - Comprehensive Test</title>
     <style>
         * {
             margin: 0;
@@ -237,7 +237,7 @@
             overflow: hidden;
         }
 
-        vanna-chat {
+        chatbot-chat {
             width: 100%;
             height: 100%;
         }
@@ -384,11 +384,11 @@
     <!-- Main Content -->
     <div class="main-content">
         <div class="chat-container">
-            <vanna-chat
-                id="vanna-chat"
+            <chatbot-chat
+                id="chatbot-chat"
                 api-url="http://localhost:5555"
                 placeholder="Type /test to run comprehensive test..."
-            ></vanna-chat>
+            ></chatbot-chat>
         </div>
 
         <div class="metrics">
@@ -408,7 +408,7 @@
     </div>
 
     <!-- Load webcomponent -->
-    <script type="module" src="/static/vanna-components.js"></script>
+    <script type="module" src="/static/chatbot-components.js"></script>
 
     <script type="module">
         // State
@@ -418,7 +418,7 @@
         const seenComponents = new Set();
 
         // Elements
-        const vannaChat = document.getElementById('vanna-chat');
+        const chatbotChat = document.getElementById('chatbot-chat');
         const modeSelect = document.getElementById('mode-select');
         const startTestBtn = document.getElementById('start-test');
         const clearChatBtn = document.getElementById('clear-chat');
@@ -520,9 +520,9 @@
             });
         });
 
-        // Start observing when vanna-chat is ready
+        // Start observing when chatbot-chat is ready
         setTimeout(() => {
-            const shadowRoot = vannaChat.shadowRoot;
+            const shadowRoot = chatbotChat.shadowRoot;
             if (shadowRoot) {
                 const container = shadowRoot.querySelector('.rich-components-container');
                 if (container) {
@@ -542,15 +542,15 @@
                 addConsoleLog('info', `Starting comprehensive test in ${mode} mode...`);
 
                 // Send test message through chat
-                vannaChat.dispatchEvent(new CustomEvent('send-message', {
+                chatbotChat.dispatchEvent(new CustomEvent('send-message', {
                     detail: { message: '/test' }
                 }));
 
                 // Alternative: directly trigger if API is exposed
-                const inputEl = vannaChat.shadowRoot?.querySelector('textarea, input');
+                const inputEl = chatbotChat.shadowRoot?.querySelector('textarea, input');
                 if (inputEl) {
                     inputEl.value = '/test';
-                    const form = vannaChat.shadowRoot?.querySelector('form');
+                    const form = chatbotChat.shadowRoot?.querySelector('form');
                     if (form) {
                         form.dispatchEvent(new Event('submit', { bubbles: true }));
                     }
@@ -582,7 +582,7 @@
             consoleStatus.className = 'status-dot';
             consoleText.textContent = 'No errors detected';
 
-            // Reload page to truly clear (vanna-chat doesn't expose clear method)
+            // Reload page to truly clear (chatbot-chat doesn't expose clear method)
             location.reload();
         });
 

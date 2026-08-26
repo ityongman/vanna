@@ -52,7 +52,7 @@ from vanna import Agent, AgentConfig
 from vanna.servers.fastapi import VannaFastAPIServer
 from vanna.core.user import UserResolver, User, RequestContext
 from vanna.legacy.adapter import LegacyVannaAdapter
-from vanna.integrations.anthropic import AnthropicLlmService
+from vanna.integrations.llm.anthropic import AnthropicLlmService
 
 # Define simple user resolver
 class SimpleUserResolver(UserResolver):
@@ -96,7 +96,7 @@ from vanna import Agent, AgentConfig
 from vanna.servers.fastapi import VannaFastAPIServer
 from vanna.core.user import UserResolver, User, RequestContext
 from vanna.legacy.adapter import LegacyVannaAdapter
-from vanna.integrations.anthropic import AnthropicLlmService
+from vanna.integrations.llm.anthropic import AnthropicLlmService
 
 # Assume you already have a working vn object from your existing code:
 # vn = MyVanna(config={'model': 'gpt-4', 'api_key': 'your-key'})
@@ -200,9 +200,9 @@ from vanna import Agent, AgentConfig
 from vanna.servers.fastapi import VannaFastAPIServer
 from vanna.core.registry import ToolRegistry
 from vanna.core.user import UserResolver, User, RequestContext
-from vanna.integrations.anthropic import AnthropicLlmService
+from vanna.integrations.llm.anthropic import AnthropicLlmService
 from vanna.tools import RunSqlTool
-from vanna.integrations.postgres import PostgresRunner
+from vanna.integrations.databases.relational.postgres import PostgresRunner
 
 # 1. Define user resolution
 class MyUserResolver(UserResolver):

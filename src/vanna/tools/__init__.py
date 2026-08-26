@@ -15,9 +15,10 @@ from .python import (
     RunPythonFileTool,
     create_python_tools,
 )
-from vanna.integrations.plotly import PlotlyChartGenerator
+from vanna.integrations.visualization.plotly import PlotlyChartGenerator
 from .run_sql import RunSqlTool
 from .visualize_data import VisualizeDataTool
+from .explore_schema_links import ExploreSchemaLinksTool
 
 __all__ = [
     # File system
@@ -38,4 +39,6 @@ __all__ = [
     # Visualization
     "PlotlyChartGenerator",
     "VisualizeDataTool",
+    # AutoLink schema exploration
+    "ExploreSchemaLinksTool",
 ]

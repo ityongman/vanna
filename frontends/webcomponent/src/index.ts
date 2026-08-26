@@ -1,6 +1,6 @@
 // Log build information when the module loads
 console.log(
-  '%c🎨 Vanna Web Components',
+  '%c🎨 Chatbot Web Components',
   'color: #4CAF50; font-weight: bold; font-size: 14px;'
 );
 console.log(
@@ -16,10 +16,10 @@ console.log(
   'color: #9E9E9E;'
 );
 
-export { VannaChat } from './components/vanna-chat';
-export { VannaMessage } from './components/vanna-message';
-export { VannaStatusBar } from './components/vanna-status-bar';
-export { VannaProgressTracker } from './components/vanna-progress-tracker';
+export { ChatbotChat } from './components/chatbot-chat';
+export { ChatbotMessage } from './components/chatbot-message';
+export { ChatbotStatusBar } from './components/chatbot-status-bar';
+export { ChatbotProgressTracker } from './components/chatbot-progress-tracker';
 export { PlotlyChart } from './components/plotly-chart';
 
 // Rich component system

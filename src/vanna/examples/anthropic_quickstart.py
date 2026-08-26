@@ -36,7 +36,7 @@ async def main() -> None:
     ensure_env()
 
     try:
-        from vanna.integrations.anthropic import AnthropicLlmService
+        from vanna.integrations.llm.anthropic import AnthropicLlmService
     except ImportError:
         print(
             "[error] anthropic extra not installed. Install with: pip install -e .[anthropic]"

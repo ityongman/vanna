@@ -74,7 +74,7 @@ def chinook_db(tmp_path_factory):
     Uses session scope so the database is only downloaded once per test session.
     """
     import httpx
-    from vanna.integrations.sqlite import SqliteRunner
+    from vanna.integrations.databases.relational.sqlite import SqliteRunner
 
     tmp_path = tmp_path_factory.mktemp("data")
     db_path = tmp_path / "Chinook.sqlite"

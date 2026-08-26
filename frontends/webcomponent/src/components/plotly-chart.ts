@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { vannaDesignTokens } from '../styles/vanna-design-tokens.js';
+import { chatbotDesignTokens } from '../styles/chatbot-design-tokens.js';
 import Plotly from 'plotly.js-dist-min';
 
 export interface PlotlyData {
@@ -32,11 +32,11 @@ export interface PlotlyLayout {
 @customElement('plotly-chart')
 export class PlotlyChart extends LitElement {
   static styles = [
-    vannaDesignTokens,
+    chatbotDesignTokens,
     css`
       :host {
         display: block;
-        font-family: var(--vanna-font-family-default);
+        font-family: var(--chatbot-font-family-default);
         width: 100%;
         height: 100%;
       }
@@ -67,15 +67,15 @@ export class PlotlyChart extends LitElement {
       }
 
       .error-message {
-        padding: var(--vanna-space-4);
-        color: var(--vanna-accent-negative-default);
+        padding: var(--chatbot-space-4);
+        color: var(--chatbot-accent-negative-default);
         text-align: center;
         font-style: italic;
       }
 
       .loading-message {
-        padding: var(--vanna-space-4);
-        color: var(--vanna-foreground-dimmer);
+        padding: var(--chatbot-space-4);
+        color: var(--chatbot-foreground-dimmer);
         text-align: center;
         font-style: italic;
       }

@@ -21,7 +21,7 @@ from vanna import AgentConfig, Agent
 from vanna.core.registry import ToolRegistry
 from vanna.core.llm import LlmRequest, LlmResponse
 from vanna.core.middleware import LlmMiddleware
-from vanna.integrations.mock import MockLlmService
+from vanna.integrations.llm.mock import MockLlmService
 from vanna.core.user import CookieEmailUserResolver, RequestContext
 
 

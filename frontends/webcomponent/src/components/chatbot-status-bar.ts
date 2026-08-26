@@ -1,26 +1,26 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { vannaDesignTokens } from '../styles/vanna-design-tokens.js';
+import { chatbotDesignTokens } from '../styles/chatbot-design-tokens.js';
 
-@customElement('vanna-status-bar')
-export class VannaStatusBar extends LitElement {
+@customElement('chatbot-status-bar')
+export class ChatbotStatusBar extends LitElement {
   static styles = [
-    vannaDesignTokens,
+    chatbotDesignTokens,
     css`
       :host {
         display: block;
         background: rgba(254, 93, 38, 0.1);
-        border: 2px solid var(--vanna-orange);
-        border-radius: var(--vanna-border-radius-xl);
-        padding: var(--vanna-space-4) var(--vanna-space-5);
-        margin-bottom: var(--vanna-space-4);
-        font-family: var(--vanna-font-family-default);
+        border: 2px solid var(--chatbot-orange);
+        border-radius: var(--chatbot-border-radius-xl);
+        padding: var(--chatbot-space-4) var(--chatbot-space-5);
+        margin-bottom: var(--chatbot-space-4);
+        font-family: var(--chatbot-font-family-default);
         font-size: 14px;
         font-weight: 500;
-        color: var(--vanna-navy);
+        color: var(--chatbot-navy);
         backdrop-filter: blur(12px);
         box-shadow:
-          var(--vanna-shadow-lg),
+          var(--chatbot-shadow-lg),
           0 0 0 1px rgba(254, 93, 38, 0.1);
         
         /* Animation properties */
@@ -29,12 +29,12 @@ export class VannaStatusBar extends LitElement {
         max-height: 200px;
         overflow: hidden;
         transition: 
-          opacity var(--vanna-duration-300) cubic-bezier(0.4, 0, 0.2, 1),
-          transform var(--vanna-duration-300) cubic-bezier(0.4, 0, 0.2, 1),
-          max-height var(--vanna-duration-300) ease,
-          margin var(--vanna-duration-300) ease,
-          padding var(--vanna-duration-300) ease,
-          box-shadow var(--vanna-duration-200) ease;
+          opacity var(--chatbot-duration-300) cubic-bezier(0.4, 0, 0.2, 1),
+          transform var(--chatbot-duration-300) cubic-bezier(0.4, 0, 0.2, 1),
+          max-height var(--chatbot-duration-300) ease,
+          margin var(--chatbot-duration-300) ease,
+          padding var(--chatbot-duration-300) ease,
+          box-shadow var(--chatbot-duration-200) ease;
       }
 
       /* Hide when there's no actual content */
@@ -53,12 +53,12 @@ export class VannaStatusBar extends LitElement {
 
       /* Entrance animation when content appears */
       :host(.entering) {
-        animation: statusEnter var(--vanna-duration-300) ease-out;
+        animation: statusEnter var(--chatbot-duration-300) ease-out;
       }
 
       /* Exit animation when content disappears */
       :host(.exiting) {
-        animation: statusExit var(--vanna-duration-300) ease-in;
+        animation: statusExit var(--chatbot-duration-300) ease-in;
       }
 
       @keyframes statusEnter {
@@ -96,32 +96,32 @@ export class VannaStatusBar extends LitElement {
       }
 
       :host([status="working"]) {
-        background: var(--vanna-orange);
-        border-color: var(--vanna-orange);
+        background: var(--chatbot-orange);
+        border-color: var(--chatbot-orange);
         color: white;
         box-shadow:
-          var(--vanna-shadow-xl),
+          var(--chatbot-shadow-xl),
           0 0 0 2px rgba(254, 93, 38, 0.3),
           0 0 20px rgba(254, 93, 38, 0.4);
       }
 
       :host([status="error"]) {
-        background: linear-gradient(135deg, var(--vanna-accent-negative-subtle) 0%, rgba(239, 68, 68, 0.15) 100%);
-        border-color: var(--vanna-accent-negative-default);
-        color: var(--vanna-accent-negative-stronger);
+        background: linear-gradient(135deg, var(--chatbot-accent-negative-subtle) 0%, rgba(239, 68, 68, 0.15) 100%);
+        border-color: var(--chatbot-accent-negative-default);
+        color: var(--chatbot-accent-negative-stronger);
         box-shadow: 
-          var(--vanna-shadow-xl),
+          var(--chatbot-shadow-xl),
           0 0 0 2px rgba(239, 68, 68, 0.3),
           0 0 20px rgba(239, 68, 68, 0.2);
         animation: errorShake 0.5s ease-in-out, errorGlow 2s ease-in-out;
       }
 
       :host([status="success"]) {
-        background: linear-gradient(135deg, var(--vanna-accent-positive-subtle) 0%, rgba(16, 185, 129, 0.15) 100%);
-        border-color: var(--vanna-accent-positive-default);
-        color: var(--vanna-accent-positive-stronger);
+        background: linear-gradient(135deg, var(--chatbot-accent-positive-subtle) 0%, rgba(16, 185, 129, 0.15) 100%);
+        border-color: var(--chatbot-accent-positive-default);
+        color: var(--chatbot-accent-positive-stronger);
         box-shadow: 
-          var(--vanna-shadow-xl),
+          var(--chatbot-shadow-xl),
           0 0 0 2px rgba(16, 185, 129, 0.3),
           0 0 20px rgba(16, 185, 129, 0.2);
         animation: successPulse 0.6s ease-out, successGlow 2s ease-out;
@@ -148,8 +148,8 @@ export class VannaStatusBar extends LitElement {
       .status-content {
         display: flex;
         align-items: center;
-        gap: var(--vanna-space-3);
-        animation: contentFadeIn var(--vanna-duration-200) ease-out;
+        gap: var(--chatbot-space-3);
+        animation: contentFadeIn var(--chatbot-duration-200) ease-out;
       }
 
       @keyframes contentFadeIn {
@@ -166,8 +166,8 @@ export class VannaStatusBar extends LitElement {
       .status-indicator {
         width: 12px;
         height: 12px;
-        border-radius: var(--vanna-border-radius-full);
-        background: var(--vanna-accent-primary-default);
+        border-radius: var(--chatbot-border-radius-full);
+        background: var(--chatbot-accent-primary-default);
         flex-shrink: 0;
         box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5), 0 2px 8px rgba(0, 0, 0, 0.15);
       }
@@ -178,12 +178,12 @@ export class VannaStatusBar extends LitElement {
       }
 
       .status-indicator.error {
-        background: linear-gradient(45deg, var(--vanna-accent-negative-default), var(--vanna-accent-negative-stronger));
+        background: linear-gradient(45deg, var(--chatbot-accent-negative-default), var(--chatbot-accent-negative-stronger));
         box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5), 0 0 8px rgba(239, 68, 68, 0.4);
       }
 
       .status-indicator.success {
-        background: linear-gradient(45deg, var(--vanna-accent-positive-default), var(--vanna-accent-positive-stronger));
+        background: linear-gradient(45deg, var(--chatbot-accent-positive-default), var(--chatbot-accent-positive-stronger));
         box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5), 0 0 8px rgba(16, 185, 129, 0.4);
       }
 
@@ -191,8 +191,8 @@ export class VannaStatusBar extends LitElement {
         width: 16px;
         height: 16px;
         border: 3px solid rgba(21, 168, 168, 0.3);
-        border-top-color: var(--vanna-teal);
-        border-radius: var(--vanna-border-radius-full);
+        border-top-color: var(--chatbot-teal);
+        border-radius: var(--chatbot-border-radius-full);
         animation: spin 1s linear infinite, spinnerGlow 2s ease-in-out infinite;
         flex-shrink: 0;
       }
@@ -206,8 +206,8 @@ export class VannaStatusBar extends LitElement {
 
       .status-detail {
         font-size: 12px;
-        color: var(--vanna-foreground-dimmest);
-        margin-left: var(--vanna-space-4);
+        color: var(--chatbot-foreground-dimmest);
+        margin-left: var(--chatbot-space-4);
         opacity: 0.9;
         font-weight: 500;
       }
@@ -215,26 +215,26 @@ export class VannaStatusBar extends LitElement {
       .status-actions {
         display: flex;
         align-items: center;
-        gap: var(--vanna-space-2);
+        gap: var(--chatbot-space-2);
         margin-left: auto;
       }
 
       .status-button {
-        padding: var(--vanna-space-1) var(--vanna-space-2);
-        border: 1px solid var(--vanna-outline-default);
-        border-radius: var(--vanna-border-radius-sm);
-        background: var(--vanna-background-subtle);
-        color: var(--vanna-foreground-dimmer);
+        padding: var(--chatbot-space-1) var(--chatbot-space-2);
+        border: 1px solid var(--chatbot-outline-default);
+        border-radius: var(--chatbot-border-radius-sm);
+        background: var(--chatbot-background-subtle);
+        color: var(--chatbot-foreground-dimmer);
         font-size: 11px;
         font-weight: 500;
         cursor: pointer;
-        transition: all var(--vanna-duration-150) ease;
+        transition: all var(--chatbot-duration-150) ease;
       }
 
       .status-button:hover {
-        background: var(--vanna-background-higher);
-        border-color: var(--vanna-outline-hover);
-        color: var(--vanna-foreground-default);
+        background: var(--chatbot-background-higher);
+        border-color: var(--chatbot-outline-hover);
+        color: var(--chatbot-foreground-default);
       }
 
       @keyframes spin {
@@ -279,19 +279,19 @@ export class VannaStatusBar extends LitElement {
       @keyframes errorGlow {
         0% {
           box-shadow: 
-            var(--vanna-shadow-xl),
+            var(--chatbot-shadow-xl),
             0 0 0 2px rgba(239, 68, 68, 0.3),
             0 0 20px rgba(239, 68, 68, 0.2);
         }
         50% {
           box-shadow: 
-            var(--vanna-shadow-2xl),
+            var(--chatbot-shadow-2xl),
             0 0 0 3px rgba(239, 68, 68, 0.4),
             0 0 30px rgba(239, 68, 68, 0.3);
         }
         100% {
           box-shadow: 
-            var(--vanna-shadow-xl),
+            var(--chatbot-shadow-xl),
             0 0 0 2px rgba(239, 68, 68, 0.3),
             0 0 20px rgba(239, 68, 68, 0.2);
         }
@@ -300,19 +300,19 @@ export class VannaStatusBar extends LitElement {
       @keyframes successGlow {
         0% {
           box-shadow: 
-            var(--vanna-shadow-xl),
+            var(--chatbot-shadow-xl),
             0 0 0 2px rgba(16, 185, 129, 0.3),
             0 0 20px rgba(16, 185, 129, 0.2);
         }
         50% {
           box-shadow: 
-            var(--vanna-shadow-2xl),
+            var(--chatbot-shadow-2xl),
             0 0 0 3px rgba(16, 185, 129, 0.4),
             0 0 30px rgba(16, 185, 129, 0.3);
         }
         100% {
           box-shadow: 
-            var(--vanna-shadow-xl),
+            var(--chatbot-shadow-xl),
             0 0 0 2px rgba(16, 185, 129, 0.3),
             0 0 20px rgba(16, 185, 129, 0.2);
         }
@@ -320,18 +320,18 @@ export class VannaStatusBar extends LitElement {
 
       /* Dark theme overrides */
       :host([theme="dark"]) {
-        background: var(--vanna-background-higher);
-        border-color: var(--vanna-outline-default);
+        background: var(--chatbot-background-higher);
+        border-color: var(--chatbot-outline-default);
       }
 
       :host([theme="dark"]) .status-button {
-        background: var(--vanna-background-highest);
-        border-color: var(--vanna-outline-default);
+        background: var(--chatbot-background-highest);
+        border-color: var(--chatbot-outline-default);
       }
 
       :host([theme="dark"]) .status-button:hover {
-        background: var(--vanna-background-highest);
-        border-color: var(--vanna-outline-hover);
+        background: var(--chatbot-background-highest);
+        border-color: var(--chatbot-outline-hover);
       }
     `
   ];

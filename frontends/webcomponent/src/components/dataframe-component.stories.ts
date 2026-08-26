@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/web-components';
 import { ComponentManager, ComponentUpdate } from './rich-component-system';
-import { vannaDesignTokens } from '../styles/vanna-design-tokens.js';
+import { chatbotDesignTokens } from '../styles/chatbot-design-tokens.js';
 import { richComponentStyleText } from '../styles/rich-component-styles.js';
 
 const meta: Meta = {
@@ -45,23 +45,23 @@ export default meta;
 type Story = StoryObj;
 
 const ensureTokenStyles = () => {
-  if (document.getElementById('vanna-token-style')) {
+  if (document.getElementById('chatbot-token-style')) {
     return;
   }
 
   const style = document.createElement('style');
-  style.id = 'vanna-token-style';
-  style.textContent = vannaDesignTokens.cssText.replace(/:host/g, '.vanna-tokens');
+  style.id = 'chatbot-token-style';
+  style.textContent = chatbotDesignTokens.cssText.replace(/:host/g, '.chatbot-tokens');
   document.head.appendChild(style);
 };
 
 const ensureRichComponentStyles = () => {
-  if (document.getElementById('vanna-rich-component-styles')) {
+  if (document.getElementById('chatbot-rich-component-styles')) {
     return;
   }
 
   const style = document.createElement('style');
-  style.id = 'vanna-rich-component-styles';
+  style.id = 'chatbot-rich-component-styles';
   style.textContent = richComponentStyleText;
   document.head.appendChild(style);
 };
@@ -71,110 +71,110 @@ const createContainer = () => {
   ensureRichComponentStyles();
 
   const container = document.createElement('div');
-  container.className = 'vanna-tokens';
+  container.className = 'chatbot-tokens';
   container.style.cssText = `
-    padding: var(--vanna-space-5, 20px);
+    padding: var(--chatbot-space-5, 20px);
     max-width: 1200px;
     margin: 0 auto;
-    background: var(--vanna-background-default, #0b0f19);
-    border-radius: var(--vanna-border-radius-lg, 8px);
-    box-shadow: var(--vanna-shadow-md, 0 4px 6px rgba(0, 0, 0, 0.1));
-    color: var(--vanna-foreground-default, #ffffff);
+    background: var(--chatbot-background-default, #0b0f19);
+    border-radius: var(--chatbot-border-radius-lg, 8px);
+    box-shadow: var(--chatbot-shadow-md, 0 4px 6px rgba(0, 0, 0, 0.1));
+    color: var(--chatbot-foreground-default, #ffffff);
   `;
 
   // Add some additional DataFrame-specific debugging styles
   const additionalStyles = document.createElement('style');
   additionalStyles.textContent = `
     /* Ensure DataFrame styles are applied with higher specificity */
-    .vanna-tokens {
-      font-family: var(--vanna-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
+    .chatbot-tokens {
+      font-family: var(--chatbot-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
     }
 
-    .vanna-tokens .rich-dataframe {
-      background: var(--vanna-background-default, #0b0f19) !important;
-      border: 1px solid var(--vanna-outline-default, #333) !important;
-      border-radius: var(--vanna-border-radius-lg, 8px) !important;
+    .chatbot-tokens .rich-dataframe {
+      background: var(--chatbot-background-default, #0b0f19) !important;
+      border: 1px solid var(--chatbot-outline-default, #333) !important;
+      border-radius: var(--chatbot-border-radius-lg, 8px) !important;
       overflow: hidden !important;
-      font-family: var(--vanna-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
+      font-family: var(--chatbot-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
     }
 
-    .vanna-tokens .dataframe-table {
+    .chatbot-tokens .dataframe-table {
       width: 100% !important;
       border-collapse: collapse !important;
       font-size: 0.875rem !important;
-      color: var(--vanna-foreground-default, #ffffff) !important;
-      font-family: var(--vanna-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
+      color: var(--chatbot-foreground-default, #ffffff) !important;
+      font-family: var(--chatbot-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
     }
 
-    .vanna-tokens .dataframe-table th {
-      background: var(--vanna-background-higher, #1a1f2e) !important;
-      color: var(--vanna-foreground-default, #ffffff) !important;
+    .chatbot-tokens .dataframe-table th {
+      background: var(--chatbot-background-higher, #1a1f2e) !important;
+      color: var(--chatbot-foreground-default, #ffffff) !important;
       font-weight: 600 !important;
       text-align: left !important;
       padding: 12px 16px !important;
-      border-bottom: 2px solid var(--vanna-outline-default, #333) !important;
-      font-family: var(--vanna-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
+      border-bottom: 2px solid var(--chatbot-outline-default, #333) !important;
+      font-family: var(--chatbot-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
     }
 
-    .vanna-tokens .dataframe-table td {
+    .chatbot-tokens .dataframe-table td {
       padding: 12px 16px !important;
-      border-bottom: 1px solid var(--vanna-outline-dimmer, #222) !important;
-      color: var(--vanna-foreground-default, #ffffff) !important;
-      font-family: var(--vanna-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
+      border-bottom: 1px solid var(--chatbot-outline-dimmer, #222) !important;
+      color: var(--chatbot-foreground-default, #ffffff) !important;
+      font-family: var(--chatbot-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
     }
 
-    .vanna-tokens .dataframe-table.striped tbody tr:nth-child(even) {
+    .chatbot-tokens .dataframe-table.striped tbody tr:nth-child(even) {
       background: rgba(255, 255, 255, 0.02) !important;
     }
 
-    .vanna-tokens .dataframe-header {
+    .chatbot-tokens .dataframe-header {
       padding: 16px 20px !important;
-      background: var(--vanna-background-higher, #1a1f2e) !important;
-      border-bottom: 1px solid var(--vanna-outline-default, #333) !important;
-      font-family: var(--vanna-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
+      background: var(--chatbot-background-higher, #1a1f2e) !important;
+      border-bottom: 1px solid var(--chatbot-outline-default, #333) !important;
+      font-family: var(--chatbot-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
     }
 
-    .vanna-tokens .dataframe-title {
-      font-family: var(--vanna-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
-      color: var(--vanna-foreground-default, #ffffff) !important;
+    .chatbot-tokens .dataframe-title {
+      font-family: var(--chatbot-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
+      color: var(--chatbot-foreground-default, #ffffff) !important;
       font-weight: 600 !important;
     }
 
-    .vanna-tokens .dataframe-description {
-      font-family: var(--vanna-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
-      color: var(--vanna-foreground-dimmer, #b1bac4) !important;
+    .chatbot-tokens .dataframe-description {
+      font-family: var(--chatbot-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
+      color: var(--chatbot-foreground-dimmer, #b1bac4) !important;
     }
 
-    .vanna-tokens .dataframe-actions {
+    .chatbot-tokens .dataframe-actions {
       padding: 12px 20px !important;
-      background: var(--vanna-background-default, #0b0f19) !important;
-      border-bottom: 1px solid var(--vanna-outline-dimmer, #222) !important;
+      background: var(--chatbot-background-default, #0b0f19) !important;
+      border-bottom: 1px solid var(--chatbot-outline-dimmer, #222) !important;
       display: flex !important;
       justify-content: space-between !important;
       align-items: center !important;
       gap: 12px !important;
     }
 
-    .vanna-tokens .search-input {
+    .chatbot-tokens .search-input {
       width: 100% !important;
       padding: 8px 12px !important;
-      border: 1px solid var(--vanna-outline-default, #333) !important;
+      border: 1px solid var(--chatbot-outline-default, #333) !important;
       border-radius: 6px !important;
-      background: var(--vanna-background-default, #0b0f19) !important;
-      color: var(--vanna-foreground-default, #ffffff) !important;
+      background: var(--chatbot-background-default, #0b0f19) !important;
+      color: var(--chatbot-foreground-default, #ffffff) !important;
       font-size: 0.875rem !important;
-      font-family: var(--vanna-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
+      font-family: var(--chatbot-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
     }
 
-    .vanna-tokens .export-btn {
+    .chatbot-tokens .export-btn {
       padding: 8px 12px !important;
-      border: 1px solid var(--vanna-outline-default, #333) !important;
+      border: 1px solid var(--chatbot-outline-default, #333) !important;
       border-radius: 6px !important;
-      background: var(--vanna-background-default, #0b0f19) !important;
-      color: var(--vanna-foreground-default, #ffffff) !important;
+      background: var(--chatbot-background-default, #0b0f19) !important;
+      color: var(--chatbot-foreground-default, #ffffff) !important;
       cursor: pointer !important;
       font-size: 0.875rem !important;
-      font-family: var(--vanna-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
+      font-family: var(--chatbot-font-family-default, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
     }
   `;
   document.head.appendChild(additionalStyles);
