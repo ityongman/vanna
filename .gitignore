@@ -1,6 +1,8 @@
 build
 **.egg-info
 venn
+.venv/
+venv/
 .DS_Store
 tests/__pycache__
 __pycache__/
