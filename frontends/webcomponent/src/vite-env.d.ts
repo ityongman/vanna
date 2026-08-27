@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
 
-declare const __BUILD_TIME__: string;
-declare const __BUILD_VERSION__: string;
+// Injected by vite define at build time; may be undefined in dev mode
+declare const __BUILD_TIME__: string | undefined;
+declare const __BUILD_VERSION__: string | undefined;
