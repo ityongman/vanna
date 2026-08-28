@@ -36,12 +36,12 @@ def create_agent(llm_service, sql_runner):
 
     # Add SQL tool
     db_tool = RunSqlTool(sql_runner=sql_runner, file_system=LocalFileSystem())
-    tools.register_local_tool(db_tool, access_groups=["user"])
+    tools.register(db_tool)
 
     # Add memory tools (they access agent_memory via ToolContext)
     agent_memory = DemoAgentMemory(max_items=1000)
-    tools.register_local_tool(SaveQuestionToolArgsTool(), access_groups=["user"])
-    tools.register_local_tool(SearchSavedCorrectToolUsesTool(), access_groups=["user"])
+    tools.register(SaveQuestionToolArgsTool())
+    tools.register(SearchSavedCorrectToolUsesTool())
 
     return Agent(
         llm_service=llm_service,

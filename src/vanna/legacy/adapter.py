@@ -90,7 +90,7 @@ class LegacyVannaAdapter(ToolRegistry, AgentMemory):
         adapter = LegacyVannaAdapter(vn)
 
         # Tools are now available through the registry
-        schemas = await adapter.get_schemas(user)
+        schemas = await adapter.get_schemas()
         ```
     """
 
@@ -124,18 +124,18 @@ class LegacyVannaAdapter(ToolRegistry, AgentMemory):
         # Create a LegacySqlRunner to wrap the VannaBase run_sql method
         sql_runner = LegacySqlRunner(self.vn)
 
-        # Register the RunSqlTool with user and admin access
+        # Register the RunSqlTool
         run_sql_tool = RunSqlTool(sql_runner)
-        self.register_local_tool(run_sql_tool, access_groups=["user", "admin"])
+        self.register(run_sql_tool)
 
         # Register memory tools using the internal _agent_memory instance
-        # SaveQuestionToolArgsTool - for saving question-tool-args patterns (admin only)
+        # SaveQuestionToolArgsTool - for saving question-tool-args patterns
         save_memory_tool = SaveQuestionToolArgsTool()
-        self.register_local_tool(save_memory_tool, access_groups=["admin"])
+        self.register(save_memory_tool)
 
-        # SearchSavedCorrectToolUsesTool - for searching similar patterns (user and admin)
+        # SearchSavedCorrectToolUsesTool - for searching similar patterns
         search_memory_tool = SearchSavedCorrectToolUsesTool()
-        self.register_local_tool(search_memory_tool, access_groups=["user", "admin"])
+        self.register(search_memory_tool)
 
     # AgentMemory interface implementation
 
@@ -441,7 +441,7 @@ class LegacyVannaAdapter(ToolRegistry, AgentMemory):
 
         @property
         def access_groups(self) -> List[str]:
-            # This is optional - will be overridden by register_local_tool
+            # This is optional - will be overridden by register
             return []
 
         def get_args_schema(self) -> type[ExampleToolArgs]:

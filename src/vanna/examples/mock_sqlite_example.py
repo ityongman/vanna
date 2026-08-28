@@ -183,7 +183,7 @@ async def main() -> None:
     )
 
     # Show available tools
-    schemas = await tool_registry.get_schemas(user)
+    schemas = await tool_registry.get_schemas()
     print(f"\nAvailable tools for user: {[schema.name for schema in schemas]}")
 
     # Demonstrate the mock LLM triggering SQL queries

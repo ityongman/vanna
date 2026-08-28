@@ -104,7 +104,7 @@ async def example_usage():
     # Create registry and register tool
     registry = RLSToolRegistry()
     sql_tool = SQLExecutionTool()
-    registry.register_local_tool(sql_tool, access_groups=[])
+    registry.register(sql_tool)
 
     # Create a user with organization context
     user = User(

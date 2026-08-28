@@ -132,10 +132,10 @@ class TestToolSchema:
         from vanna.core import ToolRegistry
 
         registry = ToolRegistry()
-        registry.register_local_tool(tool, access_groups=[])
+        registry.register(tool)
         user = User(id="u1", email="u1@example.com", group_memberships=[])
 
-        schemas = await registry.get_schemas(user)
+        schemas = await registry.get_schemas()
         names = [s.name for s in schemas]
         assert "explore_schema_links" in names
 

@@ -111,7 +111,7 @@ class DefaultWorkflowHandler(WorkflowHandler):
         """Generate starter UI based on available tools and setup status."""
 
         # Get available tools
-        tools = await agent.tool_registry.get_schemas(user)
+        tools = await agent.tool_registry.get_schemas()
         tool_names = [tool.name for tool in tools]
 
         # Analyze setup
@@ -367,7 +367,7 @@ class DefaultWorkflowHandler(WorkflowHandler):
         """Generate a detailed status check response."""
 
         # Get available tools
-        tools = await agent.tool_registry.get_schemas(user)
+        tools = await agent.tool_registry.get_schemas()
         tool_names = [tool.name for tool in tools]
         analysis = self._analyze_setup(tool_names)
 

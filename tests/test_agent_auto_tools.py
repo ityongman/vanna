@@ -90,7 +90,7 @@ async def test_existing_tool_not_overwritten():
 
     registry = ToolRegistry()
     my_runner = MagicMock()
-    registry.register_local_tool(RunSqlTool(sql_runner=my_runner), [])
+    registry.register(RunSqlTool(sql_runner=my_runner))
     agent = Agent(
         llm_service=MagicMock(),
         tool_registry=registry,

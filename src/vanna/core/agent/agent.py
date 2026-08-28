@@ -229,7 +229,7 @@ class Agent:
     def _register_if_absent(self, tool: Tool) -> None:
         """Register a tool, silently skipping names already present."""
         try:
-            self.tool_registry.register_local_tool(tool, [])
+            self.tool_registry.register(tool)
         except ValueError:
             logger.debug("Tool '%s' already registered; keeping existing", tool.name)
 
@@ -498,8 +498,8 @@ class Agent:
         for enricher in self.context_enrichers:
             context = await enricher.enrich_context(context)
 
-        # Get available tools for user
-        tool_schemas = await self.tool_registry.get_schemas(user)
+        # Get available tools
+        tool_schemas = await self.tool_registry.get_schemas()
 
         # Update task status to completed
         yield UiComponent(  # type: ignore
@@ -751,7 +751,7 @@ You can:
 
     async def get_available_tools(self, user: User) -> List[ToolSchema]:
         """Get tools available to the user."""
-        return await self.tool_registry.get_schemas(user)
+        return await self.tool_registry.get_schemas()
 
     async def _build_llm_request(
         self,

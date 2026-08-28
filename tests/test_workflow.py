@@ -34,7 +34,7 @@ class MockAgent:
 class MockToolRegistry:
     """Mock tool registry for testing."""
 
-    async def get_schemas(self, user):
+    async def get_schemas(self):
         """Return mock tool schemas."""
         return []
 
@@ -600,7 +600,7 @@ class TestStarterUI:
 
         # Mock tool registry with SQL tool
         class MockToolRegistryWithSQL:
-            async def get_schemas(self, user):
+            async def get_schemas(self):
                 from vanna.core.tool import ToolSchema
 
                 return [
@@ -627,7 +627,7 @@ class TestStarterUI:
 
         # Mock tool registry with SQL and memory tools
         class MockToolRegistryComplete:
-            async def get_schemas(self, user):
+            async def get_schemas(self):
                 from vanna.core.tool import ToolSchema
 
                 return [
@@ -673,7 +673,7 @@ class TestStarterUI:
 
         # Mock tool registry with only SQL
         class MockToolRegistrySQL:
-            async def get_schemas(self, user):
+            async def get_schemas(self):
                 from vanna.core.tool import ToolSchema
 
                 return [
