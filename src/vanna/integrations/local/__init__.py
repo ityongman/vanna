@@ -8,10 +8,12 @@ from .audit import LoggingAuditLogger
 from .file_system import LocalFileSystem
 from .storage import MemoryConversationStore
 from .file_system_conversation_store import FileSystemConversationStore
+from .sqlite_conversation_store import SQLiteConversationStore
 
 __all__ = [
     "MemoryConversationStore",
     "FileSystemConversationStore",
+    "SQLiteConversationStore",
     "LocalFileSystem",
     "LoggingAuditLogger",
 ]

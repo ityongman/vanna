@@ -111,9 +111,9 @@ class Agent:
 
         # Import here to avoid circular dependency
         if conversation_store is None:
-            from vanna.integrations.local import MemoryConversationStore
+            from vanna.integrations.local import SQLiteConversationStore
 
-            conversation_store = MemoryConversationStore()
+            conversation_store = SQLiteConversationStore()
 
         self.conversation_store = conversation_store
         self.config = config

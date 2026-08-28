@@ -216,6 +216,21 @@ export class RichTaskList extends LitElement {
     return icons[status as keyof typeof icons] || '⏳';
   }
 
+  private formatTimestamp(timestamp: string): string {
+    // Backend emits timezone-aware UTC ISO strings; render in local time.
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) {
+      return timestamp; // Not parseable, show raw value
+    }
+    return date.toLocaleString([], {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  }
+
   private renderTask(task: TaskItem) {
     const statusIcon = this.getStatusIcon(task.status);
 
@@ -236,7 +251,7 @@ export class RichTaskList extends LitElement {
             </div>
           ` : ''}
           ${this.showTimestamps && task.timestamp ? html`
-            <div class="task-timestamp">${task.timestamp}</div>
+            <div class="task-timestamp">${this.formatTimestamp(task.timestamp)}</div>
           ` : ''}
         </div>
       </div>
