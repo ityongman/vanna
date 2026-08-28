@@ -4,15 +4,16 @@ Agent implementations.
 This package contains agent implementations and utilities.
 """
 
-from typing import Optional
+from typing import List, Optional
 
-from vanna.core import Agent, AgentConfig, ToolRegistry
+from vanna.core import Agent, AgentConfig, Tool, ToolRegistry
 from vanna.core.llm.base import LlmService
 from vanna.core.user import User
 from vanna.core.user.request_context import RequestContext
 from vanna.core.user.resolver import UserResolver
 from vanna.capabilities.agent_memory import AgentMemory
 from vanna.capabilities.schema_vector_store import SchemaVectorStore
+from vanna.capabilities.sql_runner import SqlRunner
 from vanna.integrations.local.agent_memory.in_memory import DemoAgentMemory
 
 
@@ -56,6 +57,8 @@ def create_basic_agent(
     user_resolver: Optional[UserResolver] = None,
     agent_memory: Optional[AgentMemory] = None,
     schema_vector_store: Optional[SchemaVectorStore] = None,
+    sql_runner: Optional[SqlRunner] = None,
+    extra_tools: Optional[List[Tool]] = None,
 ) -> Agent:
     """Create a basic agent with sensible defaults for development.
 
@@ -70,6 +73,9 @@ def create_basic_agent(
             linking (e.g. FAISSSchemaVectorStore). Combined with
             ``config.autolink_config.enabled=True`` it activates the AutoLink
             retrieval and enhancement pipeline.
+        sql_runner: Optional SqlRunner for text-to-SQL; when omitted it is
+            derived from ``config.database`` (URL-scheme factory)
+        extra_tools: Optional additional tools to register on the agent
 
     Returns:
         Configured Agent instance
@@ -96,6 +102,8 @@ def create_basic_agent(
         agent_memory=agent_memory,
         config=config,
         schema_vector_store=schema_vector_store,
+        sql_runner=sql_runner,
+        extra_tools=extra_tools or [],
     )
 
 

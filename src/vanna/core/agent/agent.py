@@ -25,7 +25,7 @@ from vanna.core.llm import LlmService
 from vanna.core.system_prompt import SystemPromptBuilder
 from vanna.core.storage import Conversation, Message
 from vanna.core.llm import LlmMessage, LlmRequest, LlmResponse
-from vanna.core.tool import ToolCall, ToolContext, ToolResult, ToolSchema
+from vanna.core.tool import Tool, ToolCall, ToolContext, ToolResult, ToolSchema
 from vanna.core.user import User
 from vanna.core.registry import ToolRegistry
 from vanna.core.system_prompt import DefaultSystemPromptBuilder
@@ -48,6 +48,7 @@ from vanna.core.agent.config import UiFeature
 from vanna.core.audit import AuditLogger
 from vanna.capabilities.agent_memory import AgentMemory
 from vanna.capabilities.schema_vector_store import SchemaVectorStore
+from vanna.capabilities.sql_runner import SqlRunner
 
 import logging
 
@@ -103,6 +104,8 @@ class Agent:
         observability_provider: Optional[ObservabilityProvider] = None,
         audit_logger: Optional[AuditLogger] = None,
         schema_vector_store: Optional[SchemaVectorStore] = None,
+        sql_runner: Optional[SqlRunner] = None,
+        extra_tools: List[Tool] = [],
     ):
         self.llm_service = llm_service
         self.tool_registry = tool_registry
@@ -159,12 +162,77 @@ class Agent:
         self.observability_provider = observability_provider
         self.audit_logger = audit_logger
 
+        # Resolve the SQL runner: explicit instance wins (test mocks), else
+        # derive from config.database via the URL-scheme factory.
+        if sql_runner is None and config.database is not None:
+            from vanna.integrations.databases.factory import create_sql_runner
+
+            sql_runner = create_sql_runner(config.database.url)
+        self.sql_runner = sql_runner
+        self.extra_tools = list(extra_tools)
+
         # Wire audit logger into tool registry
         if self.audit_logger and self.config.audit_config.enabled:
             self.tool_registry.audit_logger = self.audit_logger
             self.tool_registry.audit_config = self.config.audit_config
 
+        self._auto_register_tools()
         logger.info("Initialized Agent")
+
+    def _auto_register_tools(self) -> None:
+        """Register built-in tools based on injected capabilities.
+
+        - agent_memory         -> memory tools (few-shot learning loop)
+        - schema_vector_store  -> explore_schema_links (AutoLink)
+        - sql_runner           -> run_sql + visualize_data (text-to-SQL)
+        - extra_tools          -> registered as-is
+        Tools already present in the registry are never overwritten.
+        """
+        if not self.config.auto_register_tools:
+            return
+
+        # Category 1: vector-db tools (bound at runtime via ToolContext).
+        from vanna.tools.agent_memory import (
+            SaveQuestionToolArgsTool,
+            SaveTextMemoryTool,
+            SearchSavedCorrectToolUsesTool,
+        )
+
+        for tool in (
+            SearchSavedCorrectToolUsesTool(),
+            SaveQuestionToolArgsTool(),
+            SaveTextMemoryTool(),
+        ):
+            self._register_if_absent(tool)
+
+        if self.schema_vector_store is not None:
+            from vanna.tools.explore_schema_links import ExploreSchemaLinksTool
+
+            self._register_if_absent(ExploreSchemaLinksTool())
+
+        # Category 2: database tools (text-to-SQL).
+        if self.sql_runner is not None:
+            from vanna.tools.run_sql import RunSqlTool
+            from vanna.tools.visualize_data import VisualizeDataTool
+
+            self._register_if_absent(RunSqlTool(sql_runner=self.sql_runner))
+            self._register_if_absent(VisualizeDataTool())
+        else:
+            logger.warning(
+                "No sql_runner provided and no config.database set; "
+                "text-to-SQL is unavailable (run_sql/visualize_data not registered)"
+            )
+
+        # Category 3: extra tools passed by the caller.
+        for tool in self.extra_tools:
+            self._register_if_absent(tool)
+
+    def _register_if_absent(self, tool: Tool) -> None:
+        """Register a tool, silently skipping names already present."""
+        try:
+            self.tool_registry.register_local_tool(tool, [])
+        except ValueError:
+            logger.debug("Tool '%s' already registered; keeping existing", tool.name)
 
     async def send_message(
         self,
