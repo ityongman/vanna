@@ -5,7 +5,7 @@ This module contains the abstract base class for tools.
 """
 
 from abc import ABC, abstractmethod
-from typing import Generic, List, Type, TypeVar
+from typing import Generic, Type, TypeVar
 
 from .models import ToolContext, ToolResult, ToolSchema
 
@@ -27,11 +27,6 @@ class Tool(ABC, Generic[T]):
     def description(self) -> str:
         """Description of what this tool does."""
         pass
-
-    @property
-    def access_groups(self) -> List[str]:
-        """Groups permitted to access this tool."""
-        return []
 
     @abstractmethod
     def get_args_schema(self) -> Type[T]:
@@ -66,5 +61,4 @@ class Tool(ABC, Generic[T]):
             name=self.name,
             description=self.description,
             parameters=schema,
-            access_groups=self.access_groups,
         )

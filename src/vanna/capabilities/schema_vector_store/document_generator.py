@@ -119,7 +119,6 @@ class SchemaDocumentGenerator:
         description_user = User(
             id="schema_document_generator",
             email="system@vanna.local",
-            group_memberships=[],
         )
 
         # Batch per table to keep prompts small and coherent.

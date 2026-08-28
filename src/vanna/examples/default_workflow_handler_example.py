@@ -37,7 +37,6 @@ async def demonstrate_setup_scenarios():
         id="user1",
         username="alice",
         email="alice@example.com",
-        group_memberships=["user"],
     )
 
     print("=" * 60)

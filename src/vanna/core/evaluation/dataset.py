@@ -109,7 +109,6 @@ class EvaluationDataset:
             id=user_id,
             username=data.get("username", user_id),
             email=data.get("email", f"{user_id}@example.com"),
-            group_memberships=data.get("user_groups", []),
         )
 
         # Parse expected outcome if present
@@ -184,7 +183,6 @@ class EvaluationDataset:
             "user_id": test_case.user.id,
             "username": test_case.user.username,
             "email": test_case.user.email,
-            "user_groups": test_case.user.group_memberships,
             "message": test_case.message,
         }
 

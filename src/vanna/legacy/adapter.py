@@ -439,11 +439,6 @@ class LegacyVannaAdapter(ToolRegistry, AgentMemory):
         def description(self) -> str:
             return "Example tool description"
 
-        @property
-        def access_groups(self) -> List[str]:
-            # This is optional - will be overridden by register
-            return []
-
         def get_args_schema(self) -> type[ExampleToolArgs]:
             return ExampleToolArgs
 

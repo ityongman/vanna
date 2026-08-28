@@ -4,7 +4,7 @@ Tool domain models.
 This module contains data models for tool execution.
 """
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -73,9 +73,6 @@ class ToolSchema(BaseModel):
     name: str = Field(description="Tool name")
     description: str = Field(description="What this tool does")
     parameters: Dict[str, Any] = Field(description="JSON Schema of parameters")
-    access_groups: List[str] = Field(
-        default_factory=list, description="Groups permitted to access this tool"
-    )
 
 
 class ToolRejection(BaseModel):

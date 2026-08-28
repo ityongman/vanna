@@ -147,7 +147,6 @@ class ToolRegistry:
             await self.audit_logger.log_tool_invocation(
                 user=context.user,
                 tool_call=tool_call,
-                ui_features=[],
                 context=context,
                 sanitize_parameters=self.audit_config.sanitize_tool_parameters,
             )
