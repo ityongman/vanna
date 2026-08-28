@@ -55,9 +55,6 @@ class DefaultWorkflowHandler(WorkflowHandler):
 
         # Handle basic help command
         if message.strip().lower() in ["/help", "help", "/h"]:
-            # Check if user is admin
-            is_admin = "admin" in user.group_memberships
-
             help_content = (
                 "## 🤖 AI Assistant\n\n"
                 "I'm your AI data analyst! Here's what I can help you with:\n\n"
@@ -67,15 +64,10 @@ class DefaultWorkflowHandler(WorkflowHandler):
                 '- "Create a chart of revenue by month"\n\n'
                 "**🔧 Commands**\n"
                 "- `/help` - Show this help message\n"
+                "- `/status` - Check setup status\n"
+                "- `/memories` - View and manage recent memories\n"
+                "- `/delete [id]` - Delete a memory by ID\n"
             )
-
-            if is_admin:
-                help_content += (
-                    "\n**🔒 Admin Commands**\n"
-                    "- `/status` - Check setup status\n"
-                    "- `/memories` - View and manage recent memories\n"
-                    "- `/delete [id]` - Delete a memory by ID\n"
-                )
 
             help_content += "\n\nJust ask me anything about your data in plain English!"
 
@@ -92,69 +84,21 @@ class DefaultWorkflowHandler(WorkflowHandler):
                 ],
             )
 
-        # Handle status check command (admin-only)
+        # Handle status check command
         if message.strip().lower() in ["/status", "status"]:
-            # Check if user is admin
-            if "admin" not in user.group_memberships:
-                return WorkflowResult(
-                    should_skip_llm=True,
-                    components=[
-                        UiComponent(
-                            rich_component=RichTextComponent(
-                                content="# 🔒 Access Denied\n\n"
-                                "The `/status` command is only available to administrators.\n\n"
-                                "If you need access to system status information, please contact your system administrator.",
-                                markdown=True,
-                            ),
-                            simple_component=None,
-                        )
-                    ],
-                )
             return await self._generate_status_check(agent, user)
 
-        # Handle get recent memories command (admin-only)
+        # Handle get recent memories command
         if message.strip().lower() in [
             "/memories",
             "memories",
             "/recent_memories",
             "recent_memories",
         ]:
-            # Check if user is admin
-            if "admin" not in user.group_memberships:
-                return WorkflowResult(
-                    should_skip_llm=True,
-                    components=[
-                        UiComponent(
-                            rich_component=RichTextComponent(
-                                content="# 🔒 Access Denied\n\n"
-                                "The `/memories` command is only available to administrators.\n\n"
-                                "If you need access to memory management features, please contact your system administrator.",
-                                markdown=True,
-                            ),
-                            simple_component=None,
-                        )
-                    ],
-                )
             return await self._get_recent_memories(agent, user, conversation)
 
-        # Handle delete memory command (admin-only)
+        # Handle delete memory command
         if message.strip().lower().startswith("/delete "):
-            # Check if user is admin
-            if "admin" not in user.group_memberships:
-                return WorkflowResult(
-                    should_skip_llm=True,
-                    components=[
-                        UiComponent(
-                            rich_component=RichTextComponent(
-                                content="# 🔒 Access Denied\n\n"
-                                "The `/delete` command is only available to administrators.\n\n"
-                                "If you need access to memory management features, please contact your system administrator.",
-                                markdown=True,
-                            ),
-                            simple_component=None,
-                        )
-                    ],
-                )
             memory_id = message.strip()[8:].strip()  # Extract ID after "/delete "
             return await self._delete_memory(agent, user, conversation, memory_id)
 
@@ -173,9 +117,6 @@ class DefaultWorkflowHandler(WorkflowHandler):
         # Analyze setup
         setup_analysis = self._analyze_setup(tool_names)
 
-        # Check if user is admin (has 'admin' in group memberships)
-        is_admin = "admin" in user.group_memberships
-
         # Generate single concise card
         if self.welcome_message:
             # Use custom welcome message
@@ -188,39 +129,27 @@ class DefaultWorkflowHandler(WorkflowHandler):
                 )
             ]
         else:
-            # Generate role-aware welcome card
-            return [self._generate_starter_card(setup_analysis, is_admin)]
+            # Generate welcome card
+            return [self._generate_starter_card(setup_analysis)]
 
-    def _generate_starter_card(
-        self, analysis: Dict[str, Any], is_admin: bool
-    ) -> UiComponent:
-        """Generate a single concise starter card based on role and setup status."""
-
-        if is_admin:
-            # Admin view: includes setup status and memory management
-            return self._generate_admin_starter_card(analysis)
-        else:
-            # User view: simple welcome message
-            return self._generate_user_starter_card(analysis)
-
-    def _generate_admin_starter_card(self, analysis: Dict[str, Any]) -> UiComponent:
-        """Generate admin starter card with setup info and memory management."""
+    def _generate_starter_card(self, analysis: Dict[str, Any]) -> UiComponent:
+        """Generate a single concise starter card based on setup status."""
 
         # Build concise content
         if not analysis["has_sql"]:
-            title = "Admin: Setup Required"
-            content = "**🔒 Admin View** - You have admin privileges and will see additional system information.\n\n**The assistant** requires a SQL connection to function.\n\nPlease configure a SQL tool to get started."
+            title = "Setup Required"
+            content = "**The assistant** requires a SQL connection to function.\n\nPlease configure a SQL tool to get started."
             status = "error"
             icon = "⚠️"
         elif analysis["is_complete"]:
-            title = "Admin: System Ready"
-            content = "**🔒 Admin View** - You have admin privileges and will see additional system information.\n\n**The assistant** is fully configured and ready.\n\n"
+            title = "System Ready"
+            content = "**The assistant** is fully configured and ready.\n\n"
             content += "**Setup:** SQL ✓ | Memory ✓ | Visualization ✓"
             status = "success"
             icon = "✅"
         else:
-            title = "Admin: System Ready"
-            content = "**🔒 Admin View** - You have admin privileges and will see additional system information.\n\n**The assistant** is ready to query your database.\n\n"
+            title = "System Ready"
+            content = "**The assistant** is ready to query your database.\n\n"
             setup_items = []
             setup_items.append("SQL ✓")
             setup_items.append("Memory ✓" if analysis["has_memory"] else "Memory ✗")
@@ -229,7 +158,7 @@ class DefaultWorkflowHandler(WorkflowHandler):
             status = "warning" if not analysis["has_memory"] else "success"
             icon = "⚠️" if not analysis["has_memory"] else "✅"
 
-        # Add memory management info for admins
+        # Add memory management info
         actions: List[Dict[str, Any]] = []
         if analysis["has_sql"]:
             actions.append(
@@ -241,7 +170,7 @@ class DefaultWorkflowHandler(WorkflowHandler):
             )
 
         if analysis["has_memory"]:
-            content += "\n\n**Memory Management:** Tool and text memories are available. As an admin, you can view and manage these memories to help me learn from successful queries."
+            content += "\n\n**Memory Management:** Tool and text memories are available. You can view and manage these memories to help me learn from successful queries."
             actions.append(
                 {
                     "label": "🧠 View Memories",
@@ -259,26 +188,6 @@ class DefaultWorkflowHandler(WorkflowHandler):
                 actions=actions,
                 markdown=True,
             ),
-            simple_component=None,
-        )
-
-    def _generate_user_starter_card(self, analysis: Dict[str, Any]) -> UiComponent:
-        """Generate simple user starter view using RichTextComponent."""
-
-        if not analysis["has_sql"]:
-            content = (
-                "# ⚠️ Setup Required\n\n"
-                "The AI assistant requires configuration before it can help you analyze data."
-            )
-        else:
-            content = (
-                "# 👋 Welcome\n\n"
-                "I'm your AI data analyst assistant. Ask me anything about your data in plain English!\n\n"
-                "Type `/help` to see what I can do."
-            )
-
-        return UiComponent(
-            rich_component=RichTextComponent(content=content, markdown=True),
             simple_component=None,
         )
 

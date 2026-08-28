@@ -1,5 +1,5 @@
 """
-Tests for agent memory tools, including UI feature access control.
+Tests for agent memory tools.
 """
 
 import pytest
@@ -10,7 +10,6 @@ from vanna.tools.agent_memory import (
 )
 from vanna.core.tool import ToolContext
 from vanna.core.user import User
-from vanna.core.agent.config import UiFeature
 from vanna.integrations.local.agent_memory import DemoAgentMemory
 from vanna.core.rich_component import ComponentType
 
@@ -19,18 +18,6 @@ from vanna.core.rich_component import ComponentType
 def demo_agent_memory():
     """Create a demo agent memory instance."""
     return DemoAgentMemory(max_items=100)
-
-
-@pytest.fixture
-def admin_user():
-    """Create an admin user."""
-    return User(id="admin", email="admin@example.com", group_memberships=["admin"])
-
-
-@pytest.fixture
-def regular_user():
-    """Create a regular user."""
-    return User(id="user", email="user@example.com", group_memberships=["user"])
 
 
 @pytest.fixture
@@ -43,21 +30,16 @@ class TestMemoryToolDetailedResults:
     """Test memory tool detailed results feature."""
 
     @pytest.mark.asyncio
-    async def test_admin_sees_detailed_results(
-        self, search_tool, demo_agent_memory, admin_user
+    async def test_search_returns_detailed_results(
+        self, search_tool, demo_agent_memory
     ):
-        """Test that admin users see detailed memory results in a collapsible card."""
-        # Create context with admin user and feature enabled
+        """Test that the search tool shows detailed memory results in a collapsible card."""
+        # Create context without any UI feature flags
         context = ToolContext(
-            user=admin_user,
+            user=User(id="user", email="user@example.com"),
             conversation_id=str(uuid.uuid4()),
             request_id=str(uuid.uuid4()),
             agent_memory=demo_agent_memory,
-            metadata={
-                "ui_features_available": [
-                    UiFeature.UI_FEATURE_SHOW_MEMORY_DETAILED_RESULTS
-                ]
-            },
         )
 
         # Save some memories
@@ -97,17 +79,16 @@ class TestMemoryToolDetailedResults:
         assert "Arguments:" in card.content
 
     @pytest.mark.asyncio
-    async def test_non_admin_sees_simple_status(
-        self, search_tool, demo_agent_memory, regular_user
+    async def test_search_returns_detailed_results_for_all_users(
+        self, search_tool, demo_agent_memory
     ):
-        """Test that non-admin users see simple status message."""
-        # Create context with regular user (no detailed results feature)
+        """Test that the search tool shows detailed results regardless of user."""
+        # Create context without any UI feature flags
         context = ToolContext(
-            user=regular_user,
+            user=User(id="user", email="user@example.com"),
             conversation_id=str(uuid.uuid4()),
             request_id=str(uuid.uuid4()),
             agent_memory=demo_agent_memory,
-            metadata={"ui_features_available": []},  # No detailed results feature
         )
 
         # Save some memories
@@ -131,32 +112,24 @@ class TestMemoryToolDetailedResults:
         assert result.ui_component is not None
         assert result.ui_component.rich_component is not None
 
-        # Check that it's a StatusBarUpdateComponent (simple view)
-        assert (
-            result.ui_component.rich_component.type == ComponentType.STATUS_BAR_UPDATE
-        )
+        # Check that it's a CardComponent (detailed view)
+        assert result.ui_component.rich_component.type == ComponentType.CARD
 
         # Verify it shows success message
-        status = result.ui_component.rich_component
-        assert status.status == "success"
-        assert "similar pattern" in status.message.lower()
+        card = result.ui_component.rich_component
+        assert "Retrieved memories passed to LLM" in card.content
 
     @pytest.mark.asyncio
     async def test_detailed_results_include_all_memory_fields(
-        self, search_tool, demo_agent_memory, admin_user
+        self, search_tool, demo_agent_memory
     ):
         """Test that detailed results include all relevant memory fields."""
-        # Create context with admin user and feature enabled
+        # Create context without any UI feature flags
         context = ToolContext(
-            user=admin_user,
+            user=User(id="user", email="user@example.com"),
             conversation_id=str(uuid.uuid4()),
             request_id=str(uuid.uuid4()),
             agent_memory=demo_agent_memory,
-            metadata={
-                "ui_features_available": [
-                    UiFeature.UI_FEATURE_SHOW_MEMORY_DETAILED_RESULTS
-                ]
-            },
         )
 
         # Save a memory
@@ -190,21 +163,15 @@ class TestMemoryToolDetailedResults:
         # (DemoAgentMemory might not set these, but the code should handle them)
 
     @pytest.mark.asyncio
-    async def test_no_results_works_for_both_admin_and_user(
-        self, search_tool, demo_agent_memory, admin_user, regular_user
+    async def test_no_results_shows_card(
+        self, search_tool, demo_agent_memory
     ):
-        """Test that admin sees card with 0 results while regular user sees status bar."""
-        # Test with admin
-        admin_context = ToolContext(
-            user=admin_user,
+        """Test that no results shows a card with 0 results for all users."""
+        context = ToolContext(
+            user=User(id="user", email="user@example.com"),
             conversation_id=str(uuid.uuid4()),
             request_id=str(uuid.uuid4()),
             agent_memory=demo_agent_memory,
-            metadata={
-                "ui_features_available": [
-                    UiFeature.UI_FEATURE_SHOW_MEMORY_DETAILED_RESULTS
-                ]
-            },
         )
 
         search_params = SearchSavedCorrectToolUsesParams(
@@ -213,57 +180,33 @@ class TestMemoryToolDetailedResults:
             similarity_threshold=0.99,
         )
 
-        admin_result = await search_tool.execute(admin_context, search_params)
+        result = await search_tool.execute(context, search_params)
 
-        assert admin_result.success is True
-        assert "No similar tool usage patterns found" in admin_result.result_for_llm
-        # Admin should see a card showing 0 results
-        assert admin_result.ui_component.rich_component.type == ComponentType.CARD
-        assert "0 Results" in admin_result.ui_component.rich_component.title
-        assert admin_result.ui_component.rich_component.collapsible is True
-
-        # Test with regular user
-        user_context = ToolContext(
-            user=regular_user,
-            conversation_id=str(uuid.uuid4()),
-            request_id=str(uuid.uuid4()),
-            agent_memory=demo_agent_memory,
-            metadata={"ui_features_available": []},
-        )
-
-        user_result = await search_tool.execute(user_context, search_params)
-
-        assert user_result.success is True
-        assert "No similar tool usage patterns found" in user_result.result_for_llm
-        # Regular user should see a status bar update
-        assert (
-            user_result.ui_component.rich_component.type
-            == ComponentType.STATUS_BAR_UPDATE
-        )
+        assert result.success is True
+        assert "No similar tool usage patterns found" in result.result_for_llm
+        # All users should see a card showing 0 results
+        assert result.ui_component.rich_component.type == ComponentType.CARD
+        assert "0 Results" in result.ui_component.rich_component.title
+        assert result.ui_component.rich_component.collapsible is True
 
     @pytest.mark.asyncio
-    async def test_llm_result_same_for_admin_and_user(
-        self, search_tool, demo_agent_memory, admin_user, regular_user
+    async def test_llm_result_consistent_regardless_of_user(
+        self, search_tool, demo_agent_memory
     ):
-        """Test that the LLM receives the same information regardless of UI feature access."""
+        """Test that the LLM receives the same information regardless of user."""
         # Save a memory
-        admin_context = ToolContext(
-            user=admin_user,
+        context = ToolContext(
+            user=User(id="user", email="user@example.com"),
             conversation_id=str(uuid.uuid4()),
             request_id=str(uuid.uuid4()),
             agent_memory=demo_agent_memory,
-            metadata={
-                "ui_features_available": [
-                    UiFeature.UI_FEATURE_SHOW_MEMORY_DETAILED_RESULTS
-                ]
-            },
         )
 
         await demo_agent_memory.save_tool_usage(
             question="Count all records",
             tool_name="run_sql",
             args={"query": "SELECT COUNT(*) FROM table"},
-            context=admin_context,
+            context=context,
             success=True,
         )
 
@@ -271,24 +214,13 @@ class TestMemoryToolDetailedResults:
             question="Count records", limit=10, similarity_threshold=0.3
         )
 
-        # Get admin result
-        admin_result = await search_tool.execute(admin_context, search_params)
+        result = await search_tool.execute(context, search_params)
 
-        # Get regular user result
-        user_context = ToolContext(
-            user=regular_user,
-            conversation_id=str(uuid.uuid4()),
-            request_id=str(uuid.uuid4()),
-            agent_memory=demo_agent_memory,
-            metadata={"ui_features_available": []},
-        )
-
-        user_result = await search_tool.execute(user_context, search_params)
-
-        # Both should have the same result_for_llm
-        assert admin_result.result_for_llm == user_result.result_for_llm
-        assert "Found" in admin_result.result_for_llm
-        assert "similar tool usage pattern" in admin_result.result_for_llm
+        assert result.success is True
+        assert "Found" in result.result_for_llm
+        assert "similar tool usage pattern" in result.result_for_llm
+        # Detailed card view for all users
+        assert result.ui_component.rich_component.type == ComponentType.CARD
 
 
 if __name__ == "__main__":
