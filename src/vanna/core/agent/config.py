@@ -84,6 +84,16 @@ class UiFeatures(BaseModel):
         self.feature_group_access[name] = access_groups
 
 
+class DatabaseConfig(BaseModel):
+    """Target database configuration for text-to-SQL.
+
+    The URL scheme determines which SqlRunner implementation is created
+    (e.g. "sqlite:///Chinook.sqlite" -> SqliteRunner).
+    """
+
+    url: str = Field(description="Database URL, e.g. sqlite:///Chinook.sqlite")
+
+
 class AuditConfig(BaseModel):
     """Configuration for audit logging."""
 
@@ -126,4 +136,14 @@ class AgentConfig(BaseModel):
     autolink_config: AutoLinkConfig = Field(
         default_factory=AutoLinkConfig,
         description="AutoLink schema linking configuration (disabled by default)",
+    )
+    database: Optional[DatabaseConfig] = Field(
+        default=None,
+        description="Target database; when set, a SqlRunner is derived from the "
+        "URL scheme and run_sql/visualize_data tools are auto-registered",
+    )
+    auto_register_tools: bool = Field(
+        default=True,
+        description="Auto-register built-in tools based on injected capabilities "
+        "(agent_memory, schema_vector_store, sql_runner)",
     )
