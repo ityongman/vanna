@@ -10,19 +10,15 @@ from .models import (
     AiResponseEvent,
     AuditEvent,
     AuditEventType,
-    ToolAccessCheckEvent,
     ToolInvocationEvent,
     ToolResultEvent,
-    UiFeatureAccessCheckEvent,
 )
 
 __all__ = [
     "AuditLogger",
     "AuditEvent",
     "AuditEventType",
-    "ToolAccessCheckEvent",
     "ToolInvocationEvent",
     "ToolResultEvent",
-    "UiFeatureAccessCheckEvent",
     "AiResponseEvent",
 ]

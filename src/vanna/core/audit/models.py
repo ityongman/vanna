@@ -16,10 +16,6 @@ from .._compat import StrEnum
 class AuditEventType(StrEnum):
     """Types of audit events."""
 
-    # Access control events
-    TOOL_ACCESS_CHECK = "tool_access_check"
-    UI_FEATURE_ACCESS_CHECK = "ui_feature_access_check"
-
     # Tool execution events
     TOOL_INVOCATION = "tool_invocation"
     TOOL_RESULT = "tool_result"
@@ -30,7 +26,6 @@ class AuditEventType(StrEnum):
     CONVERSATION_CREATED = "conversation_created"
 
     # Security events
-    ACCESS_DENIED = "access_denied"
     AUTHENTICATION_ATTEMPT = "authentication_attempt"
 
 
@@ -45,7 +40,6 @@ class AuditEvent(BaseModel):
     user_id: str
     username: Optional[str] = None
     user_email: Optional[str] = None
-    user_groups: List[str] = Field(default_factory=list)
 
     # Request context
     conversation_id: str
@@ -60,16 +54,6 @@ class AuditEvent(BaseModel):
     redacted_fields: List[str] = Field(default_factory=list)
 
 
-class ToolAccessCheckEvent(AuditEvent):
-    """Audit event for tool access permission checks."""
-
-    event_type: AuditEventType = AuditEventType.TOOL_ACCESS_CHECK
-    tool_name: str
-    access_granted: bool
-    required_groups: List[str] = Field(default_factory=list)
-    reason: Optional[str] = None
-
-
 class ToolInvocationEvent(AuditEvent):
     """Audit event for actual tool executions."""
 
@@ -80,9 +64,6 @@ class ToolInvocationEvent(AuditEvent):
     # Parameters with sanitization support
     parameters: Dict[str, Any] = Field(default_factory=dict)
     parameters_sanitized: bool = False
-
-    # UI context at invocation time
-    ui_features_available: List[str] = Field(default_factory=list)
 
 
 class ToolResultEvent(AuditEvent):
@@ -98,15 +79,6 @@ class ToolResultEvent(AuditEvent):
     # Result metadata (without full content for size)
     result_size_bytes: Optional[int] = None
     ui_component_type: Optional[str] = None
-
-
-class UiFeatureAccessCheckEvent(AuditEvent):
-    """Audit event for UI feature access checks."""
-
-    event_type: AuditEventType = AuditEventType.UI_FEATURE_ACCESS_CHECK
-    feature_name: str
-    access_granted: bool
-    required_groups: List[str] = Field(default_factory=list)
 
 
 class AiResponseEvent(AuditEvent):

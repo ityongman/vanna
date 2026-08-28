@@ -13,10 +13,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from .models import (
     AiResponseEvent,
     AuditEvent,
-    ToolAccessCheckEvent,
     ToolInvocationEvent,
     ToolResultEvent,
-    UiFeatureAccessCheckEvent,
 )
 
 if TYPE_CHECKING:
@@ -59,44 +57,10 @@ class AuditLogger(ABC):
         """
         pass
 
-    async def log_tool_access_check(
-        self,
-        user: "User",
-        tool_name: str,
-        access_granted: bool,
-        required_groups: List[str],
-        context: "ToolContext",
-        reason: Optional[str] = None,
-    ) -> None:
-        """Convenience method for logging tool access checks.
-
-        Args:
-            user: User attempting to access the tool
-            tool_name: Name of the tool being accessed
-            access_granted: Whether access was granted
-            required_groups: Groups required to access the tool
-            context: Tool execution context
-            reason: Optional reason for denial
-        """
-        event = ToolAccessCheckEvent(
-            user_id=user.id,
-            username=user.username,
-            user_email=user.email,
-            user_groups=user.group_memberships,
-            conversation_id=context.conversation_id,
-            request_id=context.request_id,
-            tool_name=tool_name,
-            access_granted=access_granted,
-            required_groups=required_groups,
-            reason=reason,
-        )
-        await self.log_event(event)
-
     async def log_tool_invocation(
         self,
         user: "User",
         tool_call: "ToolCall",
-        ui_features: List[str],
         context: "ToolContext",
         sanitize_parameters: bool = True,
     ) -> None:
@@ -105,7 +69,6 @@ class AuditLogger(ABC):
         Args:
             user: User invoking the tool
             tool_call: Tool call information
-            ui_features: List of UI features available to the user
             context: Tool execution context
             sanitize_parameters: Whether to sanitize sensitive parameters
         """
@@ -119,14 +82,12 @@ class AuditLogger(ABC):
             user_id=user.id,
             username=user.username,
             user_email=user.email,
-            user_groups=user.group_memberships,
             conversation_id=context.conversation_id,
             request_id=context.request_id,
             tool_call_id=tool_call.id,
             tool_name=tool_call.name,
             parameters=parameters,
             parameters_sanitized=sanitized,
-            ui_features_available=ui_features,
         )
         await self.log_event(event)
 
@@ -149,7 +110,6 @@ class AuditLogger(ABC):
             user_id=user.id,
             username=user.username,
             user_email=user.email,
-            user_groups=user.group_memberships,
             conversation_id=context.conversation_id,
             request_id=context.request_id,
             tool_call_id=tool_call.id,
@@ -165,38 +125,6 @@ class AuditLogger(ABC):
             ui_component_type=(
                 result.ui_component.__class__.__name__ if result.ui_component else None
             ),
-        )
-        await self.log_event(event)
-
-    async def log_ui_feature_access(
-        self,
-        user: "User",
-        feature_name: str,
-        access_granted: bool,
-        required_groups: List[str],
-        conversation_id: str,
-        request_id: str,
-    ) -> None:
-        """Convenience method for logging UI feature access checks.
-
-        Args:
-            user: User attempting to access the feature
-            feature_name: Name of the UI feature
-            access_granted: Whether access was granted
-            required_groups: Groups required to access the feature
-            conversation_id: Conversation identifier
-            request_id: Request identifier
-        """
-        event = UiFeatureAccessCheckEvent(
-            user_id=user.id,
-            username=user.username,
-            user_email=user.email,
-            user_groups=user.group_memberships,
-            conversation_id=conversation_id,
-            request_id=request_id,
-            feature_name=feature_name,
-            access_granted=access_granted,
-            required_groups=required_groups,
         )
         await self.log_event(event)
 
@@ -227,7 +155,6 @@ class AuditLogger(ABC):
             user_id=user.id,
             username=user.username,
             user_email=user.email,
-            user_groups=user.group_memberships,
             conversation_id=conversation_id,
             request_id=request_id,
             response_length_chars=len(response_text),

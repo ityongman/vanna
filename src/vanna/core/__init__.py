@@ -30,10 +30,8 @@ from .audit import (
     AuditLogger,
     AuditEvent,
     AuditEventType,
-    ToolAccessCheckEvent,
     ToolInvocationEvent,
     ToolResultEvent,
-    UiFeatureAccessCheckEvent,
     AiResponseEvent,
 )
 
@@ -145,10 +143,8 @@ __all__ = [
     # Audit
     "AuditEvent",
     "AuditEventType",
-    "ToolAccessCheckEvent",
     "ToolInvocationEvent",
     "ToolResultEvent",
-    "UiFeatureAccessCheckEvent",
     "AiResponseEvent",
     # UI Components
     "UiComponent",

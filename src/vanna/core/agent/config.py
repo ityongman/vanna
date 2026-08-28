@@ -25,17 +25,11 @@ class AuditConfig(BaseModel):
     """Configuration for audit logging."""
 
     enabled: bool = Field(default=True, description="Enable audit logging")
-    log_tool_access_checks: bool = Field(
-        default=True, description="Log tool access permission checks"
-    )
     log_tool_invocations: bool = Field(
         default=True, description="Log tool invocations with parameters"
     )
     log_tool_results: bool = Field(
         default=True, description="Log tool execution results"
-    )
-    log_ui_feature_checks: bool = Field(
-        default=False, description="Log UI feature access checks (can be noisy)"
     )
     log_ai_responses: bool = Field(
         default=True, description="Log AI-generated responses"
