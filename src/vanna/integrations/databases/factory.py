@@ -108,6 +108,11 @@ def _create_mssql(url: str) -> SqlRunner:
     )
 
     p = _parse_url(url)
+    if not p["host"]:
+        raise ValueError(
+            "MSSQL URL is missing host. "
+            "Expected format: mssql://user:password@host:1433/database"
+        )
     driver = p["query"].get("driver", "ODBC Driver 17 for SQL Server")
     parts = [
         f"DRIVER={{{driver}}}",
