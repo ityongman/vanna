@@ -44,7 +44,6 @@ from vanna.core.filter import ConversationFilter
 from vanna.core.observability import ObservabilityProvider
 from vanna.core.user.resolver import UserResolver
 from vanna.core.user.request_context import RequestContext
-from vanna.core.agent.config import UiFeature
 from vanna.core.audit import AuditLogger
 from vanna.capabilities.agent_memory import AgentMemory
 from vanna.capabilities.schema_vector_store import SchemaVectorStore
@@ -480,14 +479,7 @@ class Agent:
             rich_component=TaskTrackerUpdateComponent.add_task(context_task)
         )
 
-        # Collect available UI features for auditing
-        ui_features_available = []
-        for feature_name in self.config.ui_features.feature_group_access.keys():
-            if self.config.ui_features.can_user_access_feature(feature_name, user):
-                ui_features_available.append(feature_name)
-
-        # Create context with UI features
-        context_metadata: dict = {"ui_features_available": ui_features_available}
+        context_metadata: dict = {}
         if self.schema_vector_store is not None:
             context_metadata["autolink_database_name"] = (
                 self.config.autolink_config.database_name
@@ -561,35 +553,21 @@ class Agent:
 
                 if response.content is not None:
                     # Yield any partial content from the assistant before tool execution
-                    has_tool_invocation_message_in_chat = (
-                        self.config.ui_features.can_user_access_feature(
-                            UiFeature.UI_FEATURE_SHOW_TOOL_INVOCATION_MESSAGE_IN_CHAT,
-                            user,
+                    yield UiComponent(
+                        rich_component=RichTextComponent(
+                            content=response.content, markdown=True
+                        ),
+                        simple_component=SimpleTextComponent(text=response.content),
+                    )
+
+                    # Update status to executing tools
+                    yield UiComponent(  # type: ignore
+                        rich_component=StatusBarUpdateComponent(
+                            status="working",
+                            message="Executing tools...",
+                            detail=f"Running {len(response.tool_calls or [])} tools",
                         )
                     )
-                    if has_tool_invocation_message_in_chat:
-                        yield UiComponent(
-                            rich_component=RichTextComponent(
-                                content=response.content, markdown=True
-                            ),
-                            simple_component=SimpleTextComponent(text=response.content),
-                        )
-
-                        # Update status to executing tools
-                        yield UiComponent(  # type: ignore
-                            rich_component=StatusBarUpdateComponent(
-                                status="working",
-                                message="Executing tools...",
-                                detail=f"Running {len(response.tool_calls or [])} tools",
-                            )
-                        )
-                    else:
-                        # Yield as a status update instead
-                        yield UiComponent(  # type: ignore
-                            rich_component=StatusBarUpdateComponent(
-                                status="working", message=response.content, detail=""
-                            )
-                        )
 
                 # Collect all tool results first
                 tool_results = []
@@ -600,36 +578,9 @@ class Agent:
                         description=f"Running tool with provided arguments",
                         status="in_progress",
                     )
-
-                    has_tool_names_access = (
-                        self.config.ui_features.can_user_access_feature(
-                            UiFeature.UI_FEATURE_SHOW_TOOL_NAMES, user
-                        )
+                    yield UiComponent(  # type: ignore
+                        rich_component=TaskTrackerUpdateComponent.add_task(tool_task)
                     )
-
-                    # Audit UI feature access check
-                    if (
-                        self.audit_logger
-                        and self.config.audit_config.enabled
-                        and self.config.audit_config.log_ui_feature_checks
-                    ):
-                        await self.audit_logger.log_ui_feature_access(
-                            user=user,
-                            feature_name=UiFeature.UI_FEATURE_SHOW_TOOL_NAMES,
-                            access_granted=has_tool_names_access,
-                            required_groups=self.config.ui_features.feature_group_access.get(
-                                UiFeature.UI_FEATURE_SHOW_TOOL_NAMES, []
-                            ),
-                            conversation_id=conversation.id,
-                            request_id=request_id,
-                        )
-
-                    if has_tool_names_access:
-                        yield UiComponent(  # type: ignore
-                            rich_component=TaskTrackerUpdateComponent.add_task(
-                                tool_task
-                            )
-                        )
 
                     response_str = response.content
 
@@ -642,36 +593,10 @@ class Agent:
                         metadata=tool_call.arguments,
                     )
 
-                    has_tool_args_access = (
-                        self.config.ui_features.can_user_access_feature(
-                            UiFeature.UI_FEATURE_SHOW_TOOL_ARGUMENTS, user
-                        )
+                    yield UiComponent(
+                        rich_component=tool_status_card,
+                        simple_component=SimpleTextComponent(text=response_str or ""),
                     )
-
-                    # Audit UI feature access check
-                    if (
-                        self.audit_logger
-                        and self.config.audit_config.enabled
-                        and self.config.audit_config.log_ui_feature_checks
-                    ):
-                        await self.audit_logger.log_ui_feature_access(
-                            user=user,
-                            feature_name=UiFeature.UI_FEATURE_SHOW_TOOL_ARGUMENTS,
-                            access_granted=has_tool_args_access,
-                            required_groups=self.config.ui_features.feature_group_access.get(
-                                UiFeature.UI_FEATURE_SHOW_TOOL_ARGUMENTS, []
-                            ),
-                            conversation_id=conversation.id,
-                            request_id=request_id,
-                        )
-
-                    if has_tool_args_access:
-                        yield UiComponent(
-                            rich_component=tool_status_card,
-                            simple_component=SimpleTextComponent(
-                                text=response_str or ""
-                            ),
-                        )
 
                     # Run before_tool hooks
                     tool = await self.tool_registry.get_tool(tool_call.name)
@@ -696,104 +621,25 @@ class Agent:
                         else f"Tool failed: {result.error or 'Unknown error'}"
                     )
 
-                    has_tool_args_access_2 = (
-                        self.config.ui_features.can_user_access_feature(
-                            UiFeature.UI_FEATURE_SHOW_TOOL_ARGUMENTS, user
-                        )
+                    yield UiComponent(
+                        rich_component=tool_status_card.set_status(
+                            final_status, final_description
+                        ),
+                        simple_component=SimpleTextComponent(text=final_description),
                     )
 
-                    # Audit UI feature access check
-                    if (
-                        self.audit_logger
-                        and self.config.audit_config.enabled
-                        and self.config.audit_config.log_ui_feature_checks
-                    ):
-                        await self.audit_logger.log_ui_feature_access(
-                            user=user,
-                            feature_name=UiFeature.UI_FEATURE_SHOW_TOOL_ARGUMENTS,
-                            access_granted=has_tool_args_access_2,
-                            required_groups=self.config.ui_features.feature_group_access.get(
-                                UiFeature.UI_FEATURE_SHOW_TOOL_ARGUMENTS, []
-                            ),
-                            conversation_id=conversation.id,
-                            request_id=request_id,
-                        )
-
-                    if has_tool_args_access_2:
-                        yield UiComponent(
-                            rich_component=tool_status_card.set_status(
-                                final_status, final_description
-                            ),
-                            simple_component=SimpleTextComponent(
-                                text=final_description
-                            ),
-                        )
-
-                    has_tool_names_access_2 = (
-                        self.config.ui_features.can_user_access_feature(
-                            UiFeature.UI_FEATURE_SHOW_TOOL_NAMES, user
+                    # Update tool task to completed
+                    yield UiComponent(  # type: ignore
+                        rich_component=TaskTrackerUpdateComponent.update_task(
+                            tool_task.id,
+                            status="completed",
+                            detail=f"Tool {'completed successfully' if result.success else 'return an error'}",
                         )
                     )
-
-                    # Audit UI feature access check
-                    if (
-                        self.audit_logger
-                        and self.config.audit_config.enabled
-                        and self.config.audit_config.log_ui_feature_checks
-                    ):
-                        await self.audit_logger.log_ui_feature_access(
-                            user=user,
-                            feature_name=UiFeature.UI_FEATURE_SHOW_TOOL_NAMES,
-                            access_granted=has_tool_names_access_2,
-                            required_groups=self.config.ui_features.feature_group_access.get(
-                                UiFeature.UI_FEATURE_SHOW_TOOL_NAMES, []
-                            ),
-                            conversation_id=conversation.id,
-                            request_id=request_id,
-                        )
-
-                    if has_tool_names_access_2:
-                        # Update tool task to completed
-                        yield UiComponent(  # type: ignore
-                            rich_component=TaskTrackerUpdateComponent.update_task(
-                                tool_task.id,
-                                status="completed",
-                                detail=f"Tool {'completed successfully' if result.success else 'return an error'}",
-                            )
-                        )
 
                     # Yield tool result
                     if result.ui_component:
-                        # For errors, check if user has access to see error details
-                        if not result.success:
-                            has_tool_error_access = (
-                                self.config.ui_features.can_user_access_feature(
-                                    UiFeature.UI_FEATURE_SHOW_TOOL_ERROR, user
-                                )
-                            )
-
-                            # Audit UI feature access check
-                            if (
-                                self.audit_logger
-                                and self.config.audit_config.enabled
-                                and self.config.audit_config.log_ui_feature_checks
-                            ):
-                                await self.audit_logger.log_ui_feature_access(
-                                    user=user,
-                                    feature_name=UiFeature.UI_FEATURE_SHOW_TOOL_ERROR,
-                                    access_granted=has_tool_error_access,
-                                    required_groups=self.config.ui_features.feature_group_access.get(
-                                        UiFeature.UI_FEATURE_SHOW_TOOL_ERROR, []
-                                    ),
-                                    conversation_id=conversation.id,
-                                    request_id=request_id,
-                                )
-
-                            if has_tool_error_access:
-                                yield result.ui_component
-                        else:
-                            # Success results are always shown if they exist
-                            yield result.ui_component
+                        yield result.ui_component
 
                     # Collect tool result data
                     tool_results.append(
