@@ -21,6 +21,7 @@ chroma.sqlite3
 .coverage.*
 milvus.db
 .milvus.db.lock
+faiss_index/
 
 # Frontend builds and dependencies
 frontends/**/node_modules/

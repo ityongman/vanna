@@ -4,6 +4,7 @@ CLI for running Vanna Agents servers with example agents.
 
 import importlib
 import json
+import os
 from typing import Dict, Optional, Any, cast, TextIO, Union
 
 import click
@@ -69,6 +70,89 @@ class ExampleAgentLoader:
             raise ValueError(f"Example '{example_name}' not found: {e}")
         except Exception as e:
             raise ValueError(f"Failed to load example '{example_name}': {e}")
+
+
+def _load_dotenv_if_present() -> None:
+    """Load .env from the current directory when python-dotenv is available."""
+    if not os.path.exists(".env"):
+        return
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv(override=False)
+    except ImportError:
+        click.echo(
+            "[warn] python-dotenv not installed; .env not loaded "
+            "(install with: pip install python-dotenv)",
+            err=True,
+        )
+
+
+def _create_env_agent() -> Agent:
+    """Create the default agent from .env LLM configuration.
+
+    LLM: uses an OpenAI-compatible service (LLM_PROVIDER=openai with
+    LLM_API_KEY / LLM_MODEL_NAME and optional LLM_BASE_URL); falls back to
+    a mock LLM when unconfigured so the server still runs out of the box.
+
+    Memory: FAISS-backed agent memory when faiss is available, otherwise
+    the in-memory demo implementation (handled by create_basic_agent's
+    default).
+
+    Returns:
+        Configured Agent instance
+    """
+    _load_dotenv_if_present()
+
+    from ...integrations.llm.mock import MockLlmService
+
+    provider = os.getenv("LLM_PROVIDER", "").lower()
+    api_key = os.getenv("LLM_API_KEY")
+    base_url = os.getenv("LLM_BASE_URL")
+    model = os.getenv("LLM_MODEL_NAME")
+
+    llm_service: Any
+    if provider == "openai" and api_key and model:
+        try:
+            from ...integrations.llm.openai import OpenAILlmService
+
+            llm_service = OpenAILlmService(
+                model=model, api_key=api_key, base_url=base_url
+            )
+            target = f"{model}" + (f" @ {base_url}" if base_url else "")
+            click.echo(f"✓ Using LLM from .env: {target}")
+        except Exception as e:
+            click.echo(
+                f"[warn] OpenAI LLM unavailable ({e}); falling back to mock LLM",
+                err=True,
+            )
+            llm_service = MockLlmService(
+                response_content="Hello! I'm a demo chatbot server. How can I help you?"
+            )
+    else:
+        missing = [
+            name
+            for name, value in [
+                ("LLM_PROVIDER", provider or None),
+                ("LLM_API_KEY", api_key),
+                ("LLM_MODEL_NAME", model),
+            ]
+            if not value
+        ]
+        hint = f" (missing: {', '.join(missing)})" if missing else ""
+        click.echo(
+            f"[warn] .env LLM config incomplete{hint}; using mock LLM",
+            err=True,
+        )
+        llm_service = MockLlmService(
+            response_content="Hello! I'm a demo chatbot server. How can I help you?"
+        )
+
+    from ...agents import create_basic_agent
+
+    # agent memory defaults to FAISS-backed when faiss is installed
+    # (see agents.create_basic_agent), otherwise in-memory demo memory.
+    return create_basic_agent(llm_service)
 
 
 @click.command()
@@ -150,19 +234,13 @@ def main(
             click.echo(f"Error: {e}", err=True)
             return
     else:
-        # Fallback to basic agent
+        # Fallback: build agent from .env LLM config (mock LLM when unconfigured)
         try:
-            from ...agents import create_basic_agent
-            from ...integrations.llm.mock import MockLlmService
-
-            llm_service = MockLlmService(
-                response_content="Hello! I'm a demo chatbot server. How can I help you?"
-            )
-            agent = create_basic_agent(llm_service)
+            agent = _create_env_agent()
             click.echo(
-                "✓ Using basic demo agent (use --example to specify different agent)"
+                "✓ Using basic agent from .env config (use --example to specify different agent)"
             )
-        except ImportError as e:
+        except Exception as e:
             click.echo(f"Error: Could not create basic agent: {e}", err=True)
             return
 

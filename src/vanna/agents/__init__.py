@@ -11,8 +11,27 @@ from vanna.core.llm.base import LlmService
 from vanna.core.user import User
 from vanna.core.user.request_context import RequestContext
 from vanna.core.user.resolver import UserResolver
+from vanna.capabilities.agent_memory import AgentMemory
 from vanna.capabilities.schema_vector_store import SchemaVectorStore
 from vanna.integrations.local.agent_memory.in_memory import DemoAgentMemory
+
+
+def _default_agent_memory() -> AgentMemory:
+    """Create the default agent memory.
+
+    Prefers the FAISS-backed implementation (persisted to ./faiss_index)
+    when faiss-cpu is installed; falls back to the zero-dependency
+    in-memory demo implementation otherwise.
+    """
+    try:
+        from vanna.integrations.vector.faiss import FAISSAgentMemory
+
+        memory: AgentMemory = FAISSAgentMemory()
+        print("[agents] Using FAISS agent memory (persisted to ./faiss_index)")
+        return memory
+    except Exception:
+        print("[agents] faiss unavailable; using in-memory demo agent memory")
+        return DemoAgentMemory()
 
 
 class _DefaultUserResolver(UserResolver):
@@ -35,7 +54,7 @@ def create_basic_agent(
     config: Optional[AgentConfig] = None,
     tool_registry: Optional[ToolRegistry] = None,
     user_resolver: Optional[UserResolver] = None,
-    agent_memory: Optional[DemoAgentMemory] = None,
+    agent_memory: Optional[AgentMemory] = None,
     schema_vector_store: Optional[SchemaVectorStore] = None,
 ) -> Agent:
     """Create a basic agent with sensible defaults for development.
@@ -45,7 +64,8 @@ def create_basic_agent(
         config: Optional agent configuration (defaults to streaming + thinking indicators)
         tool_registry: Optional tool registry (defaults to empty registry)
         user_resolver: Optional user resolver (defaults to anonymous user)
-        agent_memory: Optional agent memory (defaults to in-memory demo)
+        agent_memory: Optional agent memory (defaults to FAISS-backed when
+            faiss-cpu is installed, otherwise the in-memory demo implementation)
         schema_vector_store: Optional schema vector store for AutoLink schema
             linking (e.g. FAISSSchemaVectorStore). Combined with
             ``config.autolink_config.enabled=True`` it activates the AutoLink
@@ -67,7 +87,7 @@ def create_basic_agent(
         user_resolver = _DefaultUserResolver()
 
     if agent_memory is None:
-        agent_memory = DemoAgentMemory()
+        agent_memory = _default_agent_memory()
 
     return Agent(
         llm_service=llm_service,

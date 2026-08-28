@@ -16,7 +16,7 @@ class StatusBarUpdateComponent(RichComponent):
 
     def __init__(self, **kwargs: Any) -> None:
         # Set a fixed ID for status bar updates
-        kwargs.setdefault("id", "vanna-status-bar")
+        kwargs.setdefault("id", "chatbot-status-bar")
         super().__init__(**kwargs)
 
 
@@ -42,7 +42,7 @@ class TaskTrackerUpdateComponent(RichComponent):
 
     def __init__(self, **kwargs: Any) -> None:
         # Set a fixed ID for task tracker updates
-        kwargs.setdefault("id", "vanna-task-tracker")
+        kwargs.setdefault("id", "chatbot-task-tracker")
         super().__init__(**kwargs)
 
     @classmethod
