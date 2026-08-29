@@ -100,3 +100,60 @@ async def test_existing_tool_not_overwritten():
     )
     tool = await agent.tool_registry.get_tool("run_sql")
     assert tool.sql_runner is my_runner
+
+
+def _make_basic_agent(
+    agent_memory=None,
+    schema_vector_store=None,
+    vector_backend=None,
+):
+    from vanna.agents import create_basic_agent
+
+    return create_basic_agent(
+        llm_service=MagicMock(),
+        agent_memory=agent_memory,
+        schema_vector_store=schema_vector_store,
+        vector_backend=vector_backend,
+    )
+
+
+@pytest.mark.asyncio
+async def test_vector_backend_derives_faiss_stores():
+    """create_basic_agent(vector_backend='faiss') derives both stores."""
+    faiss_memory = pytest.importorskip("vanna.integrations.vector.faiss")
+    faiss_memory  # noqa: B018 - imported for its conditioning effect
+    # The module can be present while the faiss runtime package is not;
+    # skip in that case as the backend cannot be instantiated.
+    pytest.importorskip("faiss")
+
+    agent = _make_basic_agent(vector_backend="faiss")
+    from vanna.integrations.vector.faiss import (
+        FAISSAgentMemory,
+        FAISSSchemaVectorStore,
+    )
+
+    assert isinstance(agent.agent_memory, FAISSAgentMemory)
+    assert isinstance(agent.schema_vector_store, FAISSSchemaVectorStore)
+
+
+@pytest.mark.asyncio
+async def test_vector_backend_unknown_falls_back_to_default():
+    """Unknown vector_backend: agent_memory is the default implementation."""
+    agent = _make_basic_agent(vector_backend="mysql")
+    default = _make_basic_agent()
+
+    assert agent.agent_memory is not None
+    assert type(agent.agent_memory) is type(default.agent_memory)
+    assert not isinstance(agent.agent_memory, MagicMock)
+    assert agent.schema_vector_store is None
+
+
+@pytest.mark.asyncio
+async def test_vector_backend_none_keeps_defaults():
+    """vector_backend=None must behave exactly like before (default memory)."""
+    default = _make_basic_agent()
+    explicit_none = _make_basic_agent(vector_backend=None)
+
+    assert explicit_none.agent_memory is not None
+    assert type(explicit_none.agent_memory) is type(default.agent_memory)
+    assert explicit_none.schema_vector_store is default.schema_vector_store

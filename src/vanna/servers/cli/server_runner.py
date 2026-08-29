@@ -9,7 +9,29 @@ from typing import Dict, Optional, Any, cast, TextIO, Union
 
 import click
 
-from ...core import Agent
+from ...core import Agent, AgentConfig
+from ...core.agent.config import DatabaseConfig
+from ...tools.file_system import (
+    EditFileTool,
+    ListFilesTool,
+    ReadFileTool,
+    SearchFilesTool,
+    WriteFileTool,
+)
+from ...tools.python import PipInstallTool, RunPythonFileTool
+
+# Optional tools selectable via the EXTRA_TOOLS env var (comma-separated
+# names); classes are looked up here, instantiation happens on demand so
+# importing this module stays cheap.
+_TOOL_CATALOG = {
+    "list_files": ListFilesTool,
+    "read_file": ReadFileTool,
+    "write_file": WriteFileTool,
+    "edit_file": EditFileTool,
+    "search_files": SearchFilesTool,
+    "run_python_file": RunPythonFileTool,
+    "pip_install": PipInstallTool,
+}
 
 
 class ExampleAgentLoader:
@@ -150,9 +172,30 @@ def _create_env_agent() -> Agent:
 
     from ...agents import create_basic_agent
 
+    # Tool assembly from environment (pure parsing; creation happens in Agent).
+    database_url = os.getenv("DATABASE_URL")
+    database = DatabaseConfig(url=database_url) if database_url else None
+
+    extra_tools = []
+    raw_tools = os.getenv("EXTRA_TOOLS", "")
+    for tool_name in [t.strip() for t in raw_tools.split(",") if t.strip()]:
+        if tool_name not in _TOOL_CATALOG:
+            raise ValueError(
+                f"EXTRA_TOOLS contains unknown tool '{tool_name}'. "
+                f"Available: {', '.join(sorted(_TOOL_CATALOG))}"
+            )
+        extra_tools.append(_TOOL_CATALOG[tool_name]())
+
+    vector_backend = os.getenv("VECTOR_BACKEND") or None
+
     # agent memory defaults to FAISS-backed when faiss is installed
     # (see agents.create_basic_agent), otherwise in-memory demo memory.
-    return create_basic_agent(llm_service)
+    return create_basic_agent(
+        llm_service,
+        config=AgentConfig(database=database),
+        extra_tools=extra_tools,
+        vector_backend=vector_backend,
+    )
 
 
 @click.command()

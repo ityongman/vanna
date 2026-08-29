@@ -4,6 +4,7 @@ Agent implementations.
 This package contains agent implementations and utilities.
 """
 
+import logging
 from typing import List, Optional
 
 from vanna.core import Agent, AgentConfig, Tool, ToolRegistry
@@ -15,6 +16,8 @@ from vanna.capabilities.agent_memory import AgentMemory
 from vanna.capabilities.schema_vector_store import SchemaVectorStore
 from vanna.capabilities.sql_runner import SqlRunner
 from vanna.integrations.local.agent_memory.in_memory import DemoAgentMemory
+
+logger = logging.getLogger(__name__)
 
 
 def _default_agent_memory() -> AgentMemory:
@@ -58,6 +61,7 @@ def create_basic_agent(
     schema_vector_store: Optional[SchemaVectorStore] = None,
     sql_runner: Optional[SqlRunner] = None,
     extra_tools: Optional[List[Tool]] = None,
+    vector_backend: Optional[str] = None,
 ) -> Agent:
     """Create a basic agent with sensible defaults for development.
 
@@ -75,6 +79,9 @@ def create_basic_agent(
         sql_runner: Optional SqlRunner for text-to-SQL; when omitted it is
             derived from ``config.database`` (URL-scheme factory)
         extra_tools: Optional additional tools to register on the agent
+        vector_backend: Optional vector backend name (e.g. "faiss"); when set,
+            derives both agent_memory and schema_vector_store from the named
+            integration (only applied when those arguments are None)
 
     Returns:
         Configured Agent instance
@@ -91,8 +98,25 @@ def create_basic_agent(
     if user_resolver is None:
         user_resolver = _DefaultUserResolver()
 
+    # vector_backend: one declaration derives both stores ("faiss").
     if agent_memory is None:
-        agent_memory = _default_agent_memory()
+        if vector_backend == "faiss":
+            try:
+                from vanna.integrations.vector.faiss import FAISSAgentMemory
+
+                agent_memory = FAISSAgentMemory()
+            except ImportError:
+                agent_memory = _default_agent_memory()
+        else:
+            agent_memory = _default_agent_memory()
+
+    if schema_vector_store is None and vector_backend == "faiss":
+        try:
+            from vanna.integrations.vector.faiss import FAISSSchemaVectorStore
+
+            schema_vector_store = FAISSSchemaVectorStore()
+        except ImportError:
+            logger.info("faiss extras unavailable; schema_vector_store not derived")
 
     return Agent(
         llm_service=llm_service,
