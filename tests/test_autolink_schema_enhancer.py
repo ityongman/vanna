@@ -25,7 +25,7 @@ QUESTION = "show me customer emails"
 
 
 def make_user() -> User:
-    return User(id="u1", email="u1@example.com", group_memberships=[])
+    return User(id="u1", email="u1@example.com")
 
 
 def column(table, name, data_type="INTEGER", description=None):

@@ -21,7 +21,6 @@ def test_user():
         id="test_user",
         username="test",
         email="test@example.com",
-        group_memberships=["user"],
     )
 
 

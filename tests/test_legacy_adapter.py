@@ -19,9 +19,9 @@ class SimpleUserResolver(UserResolver):
         user_email = request_context.cookies.get("vanna_email", "test@example.com")
 
         if user_email == "admin@example.com":
-            return User(id="admin_user", email=user_email, group_memberships=["admin"])
+            return User(id="admin_user", email=user_email)
 
-        return User(id=user_email, email=user_email, group_memberships=["user"])
+        return User(id=user_email, email=user_email)
 
 
 @pytest.mark.legacy
@@ -115,7 +115,7 @@ async def test_legacy_adapter_memory_operations():
     adapter = LegacyVannaAdapter(vn)
 
     # Create a properly constructed tool context
-    user = User(id="test_user", email="test@example.com", group_memberships=["user"])
+    user = User(id="test_user", email="test@example.com")
     context = ToolContext(
         user=user,
         conversation_id="test-conversation",

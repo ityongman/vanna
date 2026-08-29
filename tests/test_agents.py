@@ -15,9 +15,7 @@ class SimpleUserResolver(UserResolver):
     """Simple user resolver for tests - always returns the same test user."""
 
     async def resolve_user(self, request_context: RequestContext) -> User:
-        return User(
-            id="test_user", email="test@example.com", group_memberships=["user"]
-        )
+        return User(id="test_user", email="test@example.com")
 
 
 def create_agent(llm_service, sql_runner):

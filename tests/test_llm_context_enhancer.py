@@ -118,9 +118,7 @@ class SimpleUserResolver(UserResolver):
     """Simple user resolver for tests."""
 
     async def resolve_user(self, request_context: RequestContext) -> User:
-        return User(
-            id="test_user", email="test@example.com", group_memberships=["user"]
-        )
+        return User(id="test_user", email="test@example.com")
 
 
 class TrackingEnhancer(LlmContextEnhancer):
@@ -266,7 +264,7 @@ async def test_default_enhancer_with_agent_memory():
     agent_memory = MockAgentMemory()
 
     # Add some test memories
-    user = User(id="test_user", email="test@example.com", group_memberships=["user"])
+    user = User(id="test_user", email="test@example.com")
     context = ToolContext(
         user=user, conversation_id="test", request_id="test", agent_memory=agent_memory
     )

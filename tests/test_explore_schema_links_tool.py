@@ -75,7 +75,7 @@ class FakeSchemaVectorStore(SchemaVectorStore):
 
 def make_context(store, database_name="sales_db"):
     return ToolContext(
-        user=User(id="u1", email="u1@example.com", group_memberships=[]),
+        user=User(id="u1", email="u1@example.com"),
         conversation_id="c1",
         request_id="r1",
         agent_memory=DemoAgentMemory(),
@@ -133,7 +133,7 @@ class TestToolSchema:
 
         registry = ToolRegistry()
         registry.register(tool)
-        user = User(id="u1", email="u1@example.com", group_memberships=[])
+        user = User(id="u1", email="u1@example.com")
 
         schemas = await registry.get_schemas()
         names = [s.name for s in schemas]

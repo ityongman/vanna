@@ -1,5 +1,5 @@
 """
-Tests for tool access control and permissions.
+Tests for tool registry execution and transform_args (including row-level security).
 """
 
 import pytest
@@ -59,76 +59,34 @@ def agent_memory():
 
 @pytest.fixture
 def admin_user():
-    """Admin user with admin group."""
+    """User with the admin role."""
     return User(
         id="admin_1",
         username="admin",
         email="admin@example.com",
-        group_memberships=["admin", "user"],
+        metadata={"role": "admin"},
     )
 
 
 @pytest.fixture
 def regular_user():
-    """Regular user with user group."""
+    """User with no special role."""
     return User(
         id="user_1",
         username="user",
         email="user@example.com",
-        group_memberships=["user"],
     )
 
 
 @pytest.fixture
 def analyst_user():
-    """Analyst user with analyst group."""
+    """User with the analyst role."""
     return User(
         id="analyst_1",
         username="analyst",
         email="analyst@example.com",
-        group_memberships=["analyst", "user"],
+        metadata={"role": "analyst"},
     )
-
-
-@pytest.fixture
-def guest_user():
-    """Guest user with no groups."""
-    return User(
-        id="guest_1", username="guest", email="guest@example.com", group_memberships=[]
-    )
-
-
-@pytest.mark.asyncio
-async def test_tool_access_empty_groups_allows_all(regular_user, agent_memory):
-    """Test that empty access_groups allows all users."""
-    print("\n=== Empty Access Groups Test ===")
-
-    registry = ToolRegistry()
-    tool = MockTool("public_tool")
-
-    # Register with empty access groups
-    registry.register(tool)
-
-    # Create context
-    context = ToolContext(
-        user=regular_user,
-        conversation_id="test_conv",
-        request_id="test_req",
-        agent_memory=agent_memory,
-    )
-
-    # Execute tool
-    tool_call = ToolCall(
-        id="call_1", name="public_tool", arguments={"message": "hello"}
-    )
-
-    result = await registry.execute(tool_call, context)
-
-    print(f"✓ Tool executed with empty access groups")
-    print(f"  Success: {result.success}")
-
-    assert result.success is True
-    assert "Mock tool executed" in result.result_for_llm
 
 
 @pytest.mark.asyncio
@@ -138,7 +96,7 @@ async def test_tool_not_found(agent_memory):
 
     registry = ToolRegistry()
 
-    user = User(id="user", username="user", group_memberships=["user"])
+    user = User(id="user", username="user")
     context = ToolContext(
         user=user,
         conversation_id="test_conv",
@@ -388,15 +346,16 @@ class RowLevelSecurityRegistry(ToolRegistry):
         user: User,
         context: ToolContext,
     ) -> Union[T, ToolRejection]:
-        """Apply RLS by modifying SQL queries based on user groups."""
+        """Apply RLS by modifying SQL queries based on user role."""
         if isinstance(args, SimpleToolArgs):
             # Simulate SQL query transformation for RLS
             if "SELECT" in args.message.upper():
-                # Add WHERE clause based on user groups
-                if "admin" in user.group_memberships:
+                # Add WHERE clause based on user role
+                role = user.metadata.get("role")
+                if role == "admin":
                     # Admins see everything - no modification needed
                     return args
-                elif "analyst" in user.group_memberships:
+                elif role == "analyst":
                     # Analysts see filtered data
                     modified_message = args.message + " WHERE department='analytics'"
                     return SimpleToolArgs(message=modified_message)
@@ -607,7 +566,6 @@ async def test_transform_args_called_during_agent_send_message():
                 id="test_user_123",
                 username="test_user",
                 email="test@example.com",
-                group_memberships=["user"],
             )
 
     # Create a mock LLM service that calls a tool

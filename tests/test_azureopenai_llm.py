@@ -177,7 +177,7 @@ class TestAzureOpenAILlmServicePayloadBuilding:
 
         request = LlmRequest(
             messages=[LlmMessage(role="user", content="test")],
-            user=User(id="test", email="test@example.com", group_memberships=[]),
+            user=User(id="test", email="test@example.com"),
             temperature=0.8,
         )
 
@@ -203,7 +203,7 @@ class TestAzureOpenAILlmServicePayloadBuilding:
 
         request = LlmRequest(
             messages=[LlmMessage(role="user", content="test")],
-            user=User(id="test", email="test@example.com", group_memberships=[]),
+            user=User(id="test", email="test@example.com"),
             temperature=0.8,
         )
 
@@ -226,7 +226,7 @@ class TestAzureOpenAILlmServicePayloadBuilding:
 
         request = LlmRequest(
             messages=[LlmMessage(role="user", content="test")],
-            user=User(id="test", email="test@example.com", group_memberships=[]),
+            user=User(id="test", email="test@example.com"),
             system_prompt="You are a helpful assistant.",
         )
 
@@ -260,7 +260,7 @@ class TestAzureOpenAILlmServicePayloadBuilding:
 
         request = LlmRequest(
             messages=[LlmMessage(role="user", content="test")],
-            user=User(id="test", email="test@example.com", group_memberships=[]),
+            user=User(id="test", email="test@example.com"),
             tools=[tool],
         )
 
