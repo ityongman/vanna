@@ -195,7 +195,6 @@ __all__ = [
     "AgentError",
     "ToolExecutionError",
     "ToolNotFoundError",
-    "PermissionError",
     "ConversationNotFoundError",
     "LlmServiceError",
     "ValidationError",
