@@ -23,12 +23,6 @@ class ToolNotFoundError(AgentError):
     pass
 
 
-class PermissionError(AgentError):
-    """User lacks required permissions."""
-
-    pass
-
-
 class ConversationNotFoundError(AgentError):
     """Conversation not found."""
 

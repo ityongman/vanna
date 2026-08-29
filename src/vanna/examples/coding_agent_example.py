@@ -20,14 +20,8 @@ from vanna import (
     ToolRegistry,
     User,
 )
-from vanna.core.interfaces import LlmService
-from vanna.core.models import (
-    LlmRequest,
-    LlmResponse,
-    LlmStreamChunk,
-    ToolCall,
-    ToolSchema,
-)
+from vanna.core import LlmRequest, LlmResponse, LlmService, LlmStreamChunk, ToolSchema
+from vanna.core.tool import ToolCall
 from vanna.tools.file_system import create_file_system_tools
 from vanna.tools.python import create_python_tools
 

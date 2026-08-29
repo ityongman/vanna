@@ -21,14 +21,13 @@ from vanna import (
     User,
 )
 from vanna.core.components import UiComponent
-from vanna.core.rich_components import (
+from vanna.components import (
     StatusCardComponent,
     ProgressDisplayComponent,
     LogViewerComponent,
     BadgeComponent,
     IconTextComponent,
     RichTextComponent,
-    Task,
 )
 
 

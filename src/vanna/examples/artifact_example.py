@@ -10,9 +10,9 @@ import asyncio
 from typing import AsyncGenerator, Optional
 
 from vanna import Agent, UiComponent, User, AgentConfig
-from vanna.core.rich_components import ArtifactComponent
+from vanna.core import LlmService
+from vanna.components import ArtifactComponent
 from vanna.integrations.llm.mock import MockLlmService
-from vanna.core.interfaces import Agent, LlmService
 
 
 class ArtifactDemoAgent(Agent):

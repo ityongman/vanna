@@ -63,7 +63,6 @@ from .errors import (
     AgentError,
     ConversationNotFoundError,
     LlmServiceError,
-    PermissionError,
     ToolExecutionError,
     ToolNotFoundError,
     ValidationError,

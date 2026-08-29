@@ -10,8 +10,9 @@ Usage:
 
 from typing import List, Optional
 
-from vanna.core.interfaces import SystemPromptBuilder
-from vanna.core.models import ToolSchema, User
+from vanna.core import SystemPromptBuilder
+from vanna.core.tool.models import ToolSchema
+from vanna.core.user.models import User
 
 
 class CustomSystemPromptBuilder(SystemPromptBuilder):

@@ -31,22 +31,9 @@ from vanna import (
     User,
     UiComponent,
 )
-from vanna.core.interfaces import LlmService
-from vanna.core.models import (
-    LlmRequest,
-    LlmResponse,
-    LlmStreamChunk,
-    ToolCall,
-    ToolSchema,
-)
-from vanna.core.rich_components import (
-    CardComponent,
-    NotificationComponent,
-    ComponentType,
-)
-from vanna.core.simple_components import (
-    SimpleTextComponent,
-)
+from vanna.core import LlmRequest, LlmResponse, LlmService, LlmStreamChunk
+from vanna.core.tool import ToolCall, ToolSchema
+from vanna.components import CardComponent, NotificationComponent, ComponentType, SimpleTextComponent
 
 
 class CalculatorArgs(BaseModel):
