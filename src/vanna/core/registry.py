@@ -70,7 +70,7 @@ class ToolRegistry:
 
         This method allows per-user transformation of tool arguments, such as:
         - Applying row-level security (RLS) to SQL queries
-        - Filtering available options based on user permissions
+        - Scoping options based on user metadata
         - Validating required arguments are present
         - Redacting sensitive fields
 

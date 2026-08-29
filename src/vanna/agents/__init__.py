@@ -46,7 +46,6 @@ class _DefaultUserResolver(UserResolver):
             id="default_user",
             username="anonymous",
             email="anonymous@example.com",
-            permissions=[],
         )
 
 

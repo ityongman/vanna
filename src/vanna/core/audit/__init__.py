@@ -2,7 +2,7 @@
 Audit logging for the Vanna Agents framework.
 
 This module provides interfaces and models for audit logging, enabling
-tracking of user actions, tool invocations, and access control decisions.
+safe tracking of user actions, tool invocations, and security-relevant events.
 """
 
 from .base import AuditLogger

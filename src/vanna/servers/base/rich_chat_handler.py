@@ -122,7 +122,7 @@
 #         """Resolve user from ID or create default."""
 #         if user_id:
 #             # In a real implementation, you'd fetch from a user store
-#             return User(id=user_id, username=f"user_{user_id}", email="", permissions=[])
+#             return User(id=user_id, username=f"user_{user_id}", email="")
 
 #         return self.default_user_factory(user_id)
 
@@ -132,8 +132,7 @@
 #         return User(
 #             id=user_id,
 #             username=f"user_{user_id}",
-#             email="",
-#             permissions=[]
+#             email=""
 #         )
 
 #     def _generate_conversation_id(self) -> str:

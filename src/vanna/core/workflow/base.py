@@ -144,8 +144,9 @@ class WorkflowHandler(ABC):
         Args:
             agent: The agent instance, providing access to tool_registry, config,
                    and observability_provider for tool execution and logging.
-            user: The user who sent the message, including their ID, permissions,
-                  and metadata. Use this for permission checks or personalization.
+            user: The user who sent the message, including their ID, email,
+                  and metadata. Use this for personalization or context-aware
+                  workflows.
             conversation: The current conversation context, including message history.
                           Can be inspected for state-based workflows.
             message: The user's raw message content.
@@ -182,13 +183,6 @@ class WorkflowHandler(ABC):
                 if user.metadata.get("needs_onboarding"):
                     return await self._onboarding_flow(agent, user, message)
 
-                # Permission check
-                if message.startswith("/admin") and "admin" not in user.permissions:
-                    return WorkflowResult(
-                        should_skip_llm=True,
-                        components=[RichTextComponent(content="Access denied.")]
-                    )
-
                 # Continue to agent
                 return WorkflowResult(should_skip_llm=False)
         """
@@ -217,8 +211,8 @@ class WorkflowHandler(ABC):
 
         Example:
             async def get_starter_ui(self, agent, user, conversation):
-                # Show role-based quick actions
-                if "analyst" in user.permissions:
+                # Show quick actions based on user preferences
+                if user.metadata.get("show_report_shortcuts"):
                     # Dynamically generate buttons based on available tools
                     report_tools = [
                         tool for tool in agent.tool_registry.list_tools()

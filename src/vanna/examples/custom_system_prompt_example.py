@@ -33,13 +33,13 @@ class CustomSystemPromptBuilder(SystemPromptBuilder):
         username = user.username or user.id
         greeting = f"Hello {username}! I'm your AI assistant."
 
-        # Add role-specific instructions based on user permissions
+        # Add role-specific instructions based on user metadata
         role_instructions = []
-        if "admin" in user.permissions:
+        if user.metadata.get("role") == "manager":
             role_instructions.append(
-                "As an admin user, you have access to all tools and capabilities."
+                "You are the team manager; I'll present a broad overview and highlight key insights."
             )
-        elif "analyst" in user.permissions:
+        elif user.metadata.get("role") == "analyst":
             role_instructions.append(
                 "You're working as an analyst. I'll help you query and visualize data."
             )
@@ -116,7 +116,7 @@ async def demo() -> None:
     print("=" * 60)
 
     custom_builder = CustomSystemPromptBuilder()
-    admin_user = User(id="user-1", username="Alice", permissions=["admin"])
+    manager_user = User(id="user-1", username="Alice", metadata={"role": "manager"})
 
     # Simulate some tools
     mock_tools = [
@@ -130,8 +130,8 @@ async def demo() -> None:
         ),
     ]
 
-    prompt = await custom_builder.build_system_prompt(admin_user, mock_tools)
-    print("\nGenerated system prompt for admin user:")
+    prompt = await custom_builder.build_system_prompt(manager_user, mock_tools)
+    print("\nGenerated system prompt for manager user:")
     print("-" * 60)
     print(prompt)
     print("-" * 60)
@@ -142,7 +142,9 @@ async def demo() -> None:
     print("=" * 60)
 
     sql_builder = SQLAssistantSystemPromptBuilder(database_name="Chinook")
-    analyst_user = User(id="user-2", username="Bob", permissions=["analyst"])
+    analyst_user = User(
+        id="user-2", username="Bob", metadata={"role": "analyst"}
+    )
 
     prompt = await sql_builder.build_system_prompt(analyst_user, mock_tools)
     print("\nGenerated system prompt for SQL assistant:")

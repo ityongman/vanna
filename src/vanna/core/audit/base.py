@@ -1,8 +1,8 @@
 """
 Base audit logger interface.
 
-Audit loggers enable tracking user actions, tool invocations, and access control
-decisions for security, compliance, and debugging.
+Audit loggers enable tracking user actions, tool invocations, and
+security-relevant events for security, compliance, and debugging.
 """
 
 import hashlib

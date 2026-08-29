@@ -54,13 +54,9 @@ async def demonstrate_quota_system() -> None:
     )
 
     # Create users with different quota settings
-    regular_user = User(
-        id="user1", username="alice", email="alice@example.com", permissions=[]
-    )
+    regular_user = User(id="user1", username="alice", email="alice@example.com")
 
-    premium_user = User(
-        id="user2", username="bob", email="bob@example.com", permissions=["premium"]
-    )
+    premium_user = User(id="user2", username="bob", email="bob@example.com")
 
     # Set custom quotas
     agent.set_user_quota(regular_user.id, 3)  # Alice gets 3 messages

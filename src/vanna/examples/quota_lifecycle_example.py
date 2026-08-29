@@ -115,9 +115,7 @@ async def run_example() -> None:
     )
 
     # Create a test user
-    user = User(
-        id="user123", username="test_user", email="test@example.com", permissions=[]
-    )
+    user = User(id="user123", username="test_user", email="test@example.com")
 
     # Send messages - will track quota
     try:

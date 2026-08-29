@@ -339,9 +339,7 @@ async def main() -> None:
     agent = create_rich_demo_agent()
 
     # Create a test user
-    user = User(
-        id="user123", username="demo_user", email="demo@example.com", permissions=[]
-    )
+    user = User(id="user123", username="demo_user", email="demo@example.com")
 
     # Start a conversation
     conversation_id = "primitive_demo_123"

@@ -3,7 +3,7 @@ Legacy VannaBase adapter for the Vanna Agents framework.
 
 This module provides a LegacyVannaAdapter that bridges legacy VannaBase objects
 with the new ToolRegistry system by auto-registering legacy methods as tools
-with appropriate group-based access control.
+available to all users.
 """
 
 from typing import Any, Dict, List, Optional
@@ -20,7 +20,6 @@ from ..capabilities.agent_memory import (
 from ..capabilities.sql_runner import SqlRunner, RunSqlToolArgs
 from ..core.registry import ToolRegistry
 from ..core.tool import Tool, ToolContext, ToolResult
-from ..core.user import User
 from ..tools.agent_memory import (
     SaveQuestionToolArgsTool,
     SearchSavedCorrectToolUsesTool,
@@ -67,12 +66,11 @@ class LegacyVannaAdapter(ToolRegistry, AgentMemory):
     """Adapter that wraps a legacy VannaBase object and exposes its methods as tools.
 
     This adapter automatically registers specific VannaBase methods as tools in the
-    registry with configurable group-based access control. This allows legacy Vanna
-    instances to work seamlessly with the new Agents framework.
+    registry, available to all users. This allows legacy Vanna instances to work
+    seamlessly with the new Agents framework.
 
     Features:
     - Auto-registers legacy methods as tools
-    - Configurable group-based permissions ('user', 'admin', etc.)
     - Seamless integration with ToolRegistry
     - Implements AgentMemory interface
     - Preserves legacy VannaBase functionality
@@ -114,7 +112,7 @@ class LegacyVannaAdapter(ToolRegistry, AgentMemory):
         self._register_tools()
 
     def _register_tools(self) -> None:
-        """Register legacy VannaBase methods as tools with appropriate permissions.
+        """Register legacy VannaBase methods as tools available to all users.
 
         Registers the following tools:
         - RunSqlTool: Wraps the legacy run_sql method via LegacySqlRunner

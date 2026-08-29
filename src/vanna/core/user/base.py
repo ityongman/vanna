@@ -22,8 +22,3 @@ class UserService(ABC):
     async def authenticate(self, credentials: Dict[str, Any]) -> Optional[User]:
         """Authenticate user and return User object if successful."""
         pass
-
-    @abstractmethod
-    async def has_permission(self, user: User, permission: str) -> bool:
-        """Check if user has specific permission."""
-        pass

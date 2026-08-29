@@ -11,7 +11,10 @@ a user profile based on that email.
    - Stores users in memory
    - Authenticates users by email validation
    - Creates user profiles automatically
-   - Manages user permissions
+
+> Note: The framework no longer restricts which tools a user may call — every
+> registered tool is available to all users. `UserService` implementations
+> only need to provide `get_user` and `authenticate`.
 
 2. **Authentication Tool**: An `AuthTool` that:
    - Takes an email address as input
@@ -100,17 +103,12 @@ class DemoEmailUserService(UserService):
             id=user_id,
             username=username,
             email=email,
-            permissions=["basic_user"],
             metadata={"auth_method": "email"},
         )
 
         self._users[user_id] = user
         self._email_to_id[email] = user_id
         return user
-
-    async def has_permission(self, user: User, permission: str) -> bool:
-        """Check if user has permission."""
-        return permission in user.permissions
 
     def _is_valid_email(self, email: str) -> bool:
         """Simple email validation."""
@@ -245,7 +243,7 @@ async def demo_auth_flow():
     agent = create_auth_agent()
 
     # Start with anonymous user
-    user = User(id="anonymous", username="guest", email=None, permissions=[])
+    user = User(id="anonymous", username="guest", email=None)
     conversation_id = "auth_demo_conv"
 
     print("=== Email Authentication Demo ===")

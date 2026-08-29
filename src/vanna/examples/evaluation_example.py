@@ -30,9 +30,7 @@ from vanna.core.registry import ToolRegistry
 def create_sample_dataset() -> EvaluationDataset:
     """Create a sample dataset for demonstration."""
 
-    eval_user = User(
-        id="eval_user", username="evaluator", email="eval@example.com", permissions=[]
-    )
+    eval_user = User(id="eval_user", username="evaluator", email="eval@example.com")
 
     test_cases = [
         TestCase(

@@ -244,7 +244,7 @@ async def main() -> None:
     agent = create_demo_agent()
 
     # Create a test user
-    user = User(id="coder123", username="developer", permissions=[])
+    user = User(id="coder123", username="developer")
 
     # Show available tools
     tools = await agent.get_available_tools(user)

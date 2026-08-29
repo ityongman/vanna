@@ -126,7 +126,6 @@ async def demo_authentication():
     print(
         f"✅ Resolved user: {resolved_user.email} (username: {resolved_user.username}, id: {resolved_user.id})"
     )
-    print(f"   Permissions: {resolved_user.permissions}")
     print(f"   Metadata: {resolved_user.metadata}")
 
     print("\n" + "=" * 60 + "\n")
@@ -161,7 +160,6 @@ async def demo_authentication():
     print(
         f"✅ Resolved user: {resolved_user.email or 'None'} (username: {resolved_user.username}, id: {resolved_user.id})"
     )
-    print(f"   Permissions: {resolved_user.permissions}")
     print(f"   Metadata: {resolved_user.metadata}")
 
     print("\n" + "=" * 60 + "\n")
@@ -198,7 +196,6 @@ async def demo_authentication():
     print(
         f"✅ Resolved user: {resolved_user.email} (username: {resolved_user.username}, id: {resolved_user.id})"
     )
-    print(f"   Permissions: {resolved_user.permissions}")
     print(f"   Metadata: {resolved_user.metadata}")
 
     print("\n" + "=" * 60)

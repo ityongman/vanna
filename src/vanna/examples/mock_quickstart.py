@@ -48,9 +48,7 @@ async def main() -> None:
     agent = create_demo_agent()
 
     # Create a test user
-    user = User(
-        id="user123", username="testuser", email="test@example.com", permissions=[]
-    )
+    user = User(id="user123", username="testuser", email="test@example.com")
 
     # Start a conversation
     conversation_id = "conversation123"

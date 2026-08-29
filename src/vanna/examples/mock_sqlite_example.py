@@ -165,7 +165,7 @@ async def main() -> None:
     tool_registry = agent.tool_registry
 
     # Create a test user
-    user = User(id="user123", username="testuser", permissions=[])
+    user = User(id="user123", username="testuser")
 
     # Test the tool directly
     print("Testing SQL tool directly:")

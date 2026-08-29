@@ -108,7 +108,7 @@ async def example_usage():
 
     # Create a user with organization context
     user = User(
-        user_id="user123",
+        id="user123",
         metadata={"organization_id": 42}
     )
 
