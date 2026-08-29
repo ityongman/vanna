@@ -287,6 +287,12 @@ def main(
             click.echo(f"Error: Could not create basic agent: {e}", err=True)
             return
 
+    registered_tools = sorted(agent.tool_registry._tools)
+    click.echo(
+        "🔧 Auto-registered tools: "
+        + (", ".join(registered_tools) if registered_tools else "(none)")
+    )
+
     from ..flask.app import VannaFlaskServer
     from ..fastapi.app import VannaFastAPIServer
 
