@@ -36,20 +36,19 @@
 
 ---
 
-### 5.3 工具注册与安全校验层
+### 5.3 工具注册与执行层
 
 | 函数/类名称 | 所属文件路径 | 入参 | 返回值 | 核心功能 | 常见报错场景 | 推荐调试断点位置 |
 |------------|-------------|------|--------|---------|-------------|----------------|
-| `ToolRegistry` | [core/registry.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/registry.py) | - | `ToolRegistry` 实例 | 工具注册、权限校验、参数校验、执行调度 | 工具未注册 → `ToolNotFoundError` | `__init__` 后检查 `self.tools` |
-| `ToolRegistry.register()` | [core/registry.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/registry.py#L30-L35) | `tool: Tool` | `None` | 注册工具 | 重复注册同名工具 → 覆盖旧工具（静默） | 注册后检查 `self.tools[tool.name]` |
-| `ToolRegistry.get_schemas()` | [core/registry.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/registry.py#L118-L135) | `user: User` | `List[ToolSchema]` | 获取用户可用工具的 Schema 列表 | 权限过滤后无工具 → LLM 无工具可调用，只返回纯文本 | 权限过滤后检查 `schemas` 列表 |
-| `ToolRegistry._validate_tool_permissions()` | [core/registry.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/registry.py#L98-L111) | `tool`, `user` | `bool` | 基于 `group_memberships` 交集校验权限 | 交集为空 → 返回 False → 工具被拒绝 | 检查 `user.group_memberships` 和 `tool.access_groups` |
-| `ToolRegistry.execute()` | [core/registry.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/registry.py#L144-L278) | `tool_call: ToolCall`, `context: ToolContext` | `ToolResult` | 工具执行主流程：查找→权限→校验→转换→审计→执行→审计 | ①权限拒绝 → `ToolResult(success=False)` ②参数校验失败 → `ValidationError` ③transform_args 拒绝 → `ToolRejection` | ①权限检查后 ②参数校验后 ③工具执行前后 |
-| `ToolRegistry.transform_args()` | [core/registry.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/registry.py#L220-L250) | `tool`, `args`, `user`, `context` | `args` or `ToolRejection` | 参数转换（支持 RLS 行级安全注入） | 自定义转换逻辑错误 → `ToolRejection` | 转换前后对比 `args` 变化 |
+| `ToolRegistry` | [core/registry.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/registry.py) | - | `ToolRegistry` 实例 | 工具注册、参数校验、执行调度 | 工具未注册 → 返回 `ToolResult(success=False, error="Tool ... not found")` | `__init__` 后检查 `self._tools` |
+| `ToolRegistry.register()` | [core/registry.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/registry.py#L37-L48) | `tool: Tool` | `None` | 注册工具；同名重复注册抛 `ValueError` | 重复注册同名工具 → `ValueError` | 注册后检查 `self._tools[tool.name]` |
+| `ToolRegistry.get_schemas()` | [core/registry.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/registry.py#L58-L60) | 无 | `List[ToolSchema]` | 获取全部已注册工具的 Schema 列表（不按用户过滤） | 注册表为空 → LLM 无工具可调用，只返回纯文本 | 返回前检查 `schemas` 列表长度 |
+| `ToolRegistry.execute()` | [core/registry.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/registry.py#L93-L184) | `tool_call: ToolCall`, `context: ToolContext` | `ToolResult` | 工具执行主流程：查找→校验→转换→审计→执行→审计 | ①参数校验失败 → `ToolResult(success=False)` ②transform_args 拒绝 → `ToolRejection` | ①参数校验后 ②工具执行前后 |
+| `ToolRegistry.transform_args()` | [core/registry.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/registry.py#L62-L91) | `tool`, `args`, `user`, `context` | `args` or `ToolRejection` | 参数转换（支持 RLS 行级安全注入） | 自定义转换逻辑错误 → `ToolRejection` | 转换前后对比 `args` 变化 |
 | `Tool` (ABC) | [core/tool/base.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/tool/base.py) | - | - | 工具抽象基类 | `name`/`description` 未实现 → `TypeError` | - |
 | `ToolCall` | [core/tool/models.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/tool/models.py) | `id`, `name`, `arguments` | `ToolCall` 实例 | LLM 生成的工具调用 | `arguments` 类型不匹配 → Pydantic 校验失败 | - |
 | `ToolResult` | [core/tool/models.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/tool/models.py) | `success`, `result_for_llm`, `ui_component?`, `error?`, `metadata?` | `ToolResult` 实例 | 工具执行结果 | `result_for_llm` 为空 → LLM 无上下文 | - |
-| `ToolContext` | [core/tool/models.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/tool/models.py) | `user`, `conversation_id`, `request_id`, `agent_memory?`, `ui_features?`, `metadata?` | `ToolContext` 实例 | 工具执行上下文 | `agent_memory` 为 None 但工具需要 → `AttributeError` | - |
+| `ToolContext` | [core/tool/models.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/tool/models.py) | `user`, `conversation_id`, `request_id`, `agent_memory`, `schema_vector_store?`, `metadata?` | `ToolContext` 实例 | 工具执行上下文 | `agent_memory` 为 None 但工具需要 → `AttributeError` | - |
 
 ---
 
@@ -79,8 +78,8 @@
 | `SqlRunner` (ABC) | [capabilities/sql_runner/base.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/capabilities/sql_runner/base.py) | - | - | 数据库执行器抽象接口 | 子类未实现 `run_sql` → `TypeError` | - |
 | `RunSqlTool` | [tools/run_sql.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/tools/run_sql.py) | `sql_runner`, `file_system?` | `RunSqlTool` 实例 | SQL 执行工具，封装结果格式化 | `sql_runner` 为 None → `AttributeError` | - |
 | `RunSqlTool.execute()` | [tools/run_sql.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/tools/run_sql.py#L56-L165) | `context`, `args: RunSqlToolArgs` | `ToolResult` | 执行 SQL 并格式化结果 | ①SQL 语法错误 → 数据库异常 → `ToolResult(success=False)` ②结果过长 → 截断到 1000 字符 ③CSV 序列化失败 → `Exception` | ①`run_sql` 调用前后 ②CSV 截断处 ③异常捕获处 |
-| `PostgresRunner` | [integrations/postgres/sql_runner.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/integrations/postgres/sql_runner.py) | `connection_string?`, `**connection_params` | `PostgresRunner` 实例 | PostgreSQL 执行器 | ①psycopg2 未安装 → `ImportError` ②连接字符串错误 → `OperationalError` | `__init__` 末尾 |
-| `PostgresRunner.run_sql()` | [integrations/postgres/sql_runner.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/integrations/postgres/sql_runner.py#L65-L112) | `args: RunSqlToolArgs`, `context: ToolContext` | `pd.DataFrame` | 执行 SQL 并返回 DataFrame | ①表不存在 → `UndefinedTable` ②列不存在 → `UndefinedColumn` ③权限不足 → `InsufficientPrivilege` ④连接超时 → `OperationalError` | ①`cursor.execute` 处 ②`fetchall` 处 |
+| `PostgresRunner` | [databases/relational/postgres/sql_runner.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/integrations/databases/relational/postgres/sql_runner.py) | `connection_string?`, `**connection_params` | `PostgresRunner` 实例 | PostgreSQL 执行器 | ①psycopg2 未安装 → `ImportError` ②连接字符串错误 → `OperationalError` | `__init__` 末尾 |
+| `PostgresRunner.run_sql()` | [databases/relational/postgres/sql_runner.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/integrations/databases/relational/postgres/sql_runner.py) | `args: RunSqlToolArgs`, `context: ToolContext` | `pd.DataFrame` | 执行 SQL 并返回 DataFrame | ①表不存在 → `UndefinedTable` ②列不存在 → `UndefinedColumn` ③权限不足 → `InsufficientPrivilege` ④连接超时 → `OperationalError` | ①`cursor.execute` 处 ②`fetchall` 处 |
 | `SqliteRunner` | [integrations/sqlite/sql_runner.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/integrations/sqlite/sql_runner.py) | `db_path` | `SqliteRunner` 实例 | SQLite 执行器 | ①db_path 不存在（非 :memory:）→ 自动创建 ②文件权限不足 → `OperationalError` | `__init__` 末尾 |
 | `MysqlRunner` | [integrations/mysql/sql_runner.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/integrations/mysql/sql_runner.py) | `connection_string?`, `**connection_params` | `MysqlRunner` 实例 | MySQL 执行器 | ①mysql-connector-python 未安装 → `ImportError` ②字符集问题 → 乱码 | `__init__` 末尾 |
 | `DuckDBRunner` | [integrations/duckdb/sql_runner.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/integrations/duckdb/sql_runner.py) | `db_path` | `DuckDBRunner` 实例 | DuckDB 执行器（支持 :memory:） | duckdb 未安装 → `ImportError` | `__init__` 末尾 |
@@ -116,16 +115,15 @@
 
 ---
 
-### 5.8 用户身份与安全层
+### 5.8 用户身份与审计层
 
 | 函数/类名称 | 所属文件路径 | 入参 | 返回值 | 核心功能 | 常见报错场景 | 推荐调试断点位置 |
 |------------|-------------|------|--------|---------|-------------|----------------|
 | `UserResolver` (ABC) | [core/user/resolver.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/user/resolver.py) | - | - | 用户身份解析器接口 | 子类未实现 `resolve_user` → `TypeError` | - |
 | `UserResolver.resolve_user()` | [core/user/resolver.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/user/resolver.py#L29-L42) | `request_context: RequestContext` | `User` | 从 RequestContext 解析用户身份 | ①Cookie/Header 缺失 → 认证失败 ②Token 过期 → 认证失败 | 返回前检查 `User` 对象字段 |
-| `User` | [core/user/models.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/user/models.py) | `id`, `email?`, `name?`, `group_memberships?`, `metadata?` | `User` 实例 | 用户数据模型 | `group_memberships` 为空 → 所有工具的 `access_groups` 权限检查失败 | - |
+| `User` | [core/user/models.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/user/models.py) | `id`, `username?`, `email?`, `metadata?` | `User` 实例 | 用户数据模型（`metadata` 可携带任意扩展信息） | - | - |
 | `RequestContext` | [core/user/request_context.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/user/request_context.py) | `cookies?`, `headers?`, `remote_addr?`, `query_params?`, `metadata?` | `RequestContext` 实例 | HTTP 请求上下文 | `headers` 中 Authorization 缺失 → 用户解析失败 | - |
 | `AuditLogger` (ABC) | [core/audit/base.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/audit/base.py) | - | - | 审计日志接口 | 子类未实现方法 → `TypeError` | - |
-| `UiFeatures` | [core/agent/config.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/agent/config.py#L35-L83) | 5 个 feature → group 映射 | `UiFeatures` 实例 | UI 特性权限控制 | 配置错误 → 敏感信息（SQL/错误）泄露给普通用户 | `__init__` 后检查各 feature 的 group 配置 |
 
 ---
 
@@ -153,12 +151,10 @@
 | 页面无法访问 / 404 | `servers/fastapi/routes.py` 路由注册 | `servers/fastapi/app.py` 应用创建 |
 | SSE 流中断 / 无响应 | `ChatHandler.handle_stream()` | `Agent.send_message()` 异常 |
 | LLM 调用超时 | `OpenAILlmService.send_request()` | 网络/API Key/速率限制 |
-| LLM 不调用工具 | `Agent._build_llm_request()` 检查 `tools` 字段 | `ToolRegistry.get_schemas()` 权限过滤 |
+| LLM 不调用工具 | `Agent._build_llm_request()` 检查 `tools` 字段 | `ToolRegistry.get_schemas()` 返回列表是否为空 |
 | LLM 生成 SQL 语法错误 | `RunSqlTool.execute()` 异常捕获 | 数据库 `run_sql()` 具体错误 |
 | 向量检索无结果 | `ChromaAgentMemory.search_similar_usage()` | `similarity_threshold` 阈值 / collection 是否为空 |
 | 向量检索结果不相关 | `ChromaAgentMemory._get_collection()` embedding 函数 | 是否使用了不同 embedding 函数的 collection |
-| 工具权限被拒绝 | `ToolRegistry._validate_tool_permissions()` | `User.group_memberships` vs `Tool.access_groups` |
-| SQL 语句在前端不显示 | `UiFeatures` 配置 | `tool_arguments` 的 group 配置 |
 | 会话历史丢失 | `ConversationStore` 实现 | 内存存储重启丢失 / 文件系统路径错误 |
 | 内存保存失败 | `SaveQuestionToolArgsTool.execute()` | `AgentMemory.save_tool_usage()` 异常 |
 | 用户身份解析失败 | `UserResolver.resolve_user()` | `RequestContext` 中 Cookie/Header 缺失 |

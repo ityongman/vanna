@@ -418,46 +418,21 @@ class PostgresRunner(SqlRunner):
 
 ---
 
-### 7.6 工具权限拒绝 / SQL 注入拦截误判
+### 7.6 SQL 注入拦截误判 / RLS 排查
 
-**现象描述：** 用户报告 "Insufficient group access" 错误，或者合法的 SQL 查询被拦截。
+> [!NOTE] 用户组权限体系已于本次重构移除（TODO：后期有需要时重新设计），原"工具权限拒绝"排查小节已删除。本节仅保留 SQL 注入拦截与 RLS 注入相关排查。
+
+**现象描述：** 合法的 SQL 查询被 RLS 注入逻辑误判或改写。
 
 **根源源码位置：**
 
 | 文件 | 关键行 | 说明 |
 |------|--------|------|
-| [core/registry.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/registry.py#L98-L111) | `_validate_tool_permissions()` | 权限校验逻辑 |
-| [core/registry.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/registry.py#L220-L250) | `transform_args()` | 参数转换/RLS 注入 |
-| [core/agent/config.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/agent/config.py#L35-L83) | `DEFAULT_UI_FEATURES` | UI 权限配置 |
-| [core/tool/base.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/tool/base.py) | `access_groups` | 工具访问组定义 |
+| [core/registry.py](file:///d:/workspace/sourceWorkspace/vanna/src/vanna/core/registry.py#L62-L91) | `transform_args()` | 参数转换/RLS 注入 |
 
 **排查步骤：**
 
-1. **检查用户 group_memberships**
-   ```python
-   # 在 Agent._send_message() 中打印
-   user = await self.user_resolver.resolve_user(request_context)
-   print(f"User: {user.id}, Groups: {user.group_memberships}")
-   print(f"Available tools: {[t.name for t in tool_schemas]}")
-   ```
-
-2. **检查工具 access_groups 配置**
-   ```python
-   # 在注册工具时检查
-   tool = RunSqlTool(sql_runner=sql_runner)
-   print(f"Tool '{tool.name}' access_groups: {tool.access_groups}")
-   # 如果 access_groups 为空 → 所有人可访问
-   # 如果 access_groups 非空 → 需要交集
-   ```
-
-3. **检查 UiFeatures 导致的前端隐藏**
-   ```python
-   # 在 UiFeatures 中确认
-   print(f"tool_arguments visible to: {ui_features.get('tool_arguments')}")
-   # 如果用户不在该组中，SQL 参数在前端不可见
-   ```
-
-4. **检查 transform_args 中的 RLS 逻辑**
+1. **检查 transform_args 中的 RLS 逻辑**
    ```python
    # 在 ToolRegistry.transform_args() 中添加日志
    async def transform_args(self, tool, args, user, context):
@@ -472,29 +447,7 @@ class PostgresRunner(SqlRunner):
 
 | 参数 | 默认值 | 建议调整 | 位置 |
 |------|--------|---------|------|
-| `access_groups` | `None`（无限制） | 按需设置 `["analyst", "admin"]` | `Tool` 子类 `access_groups` 属性 |
-| `group_memberships` | 依赖 UserResolver | 确保包含正确的组名 | `UserResolver.resolve_user()` |
-| `tool_arguments` UI | `["admin"]` | 改为 `["admin", "analyst"]` | `UiFeatures` 配置 |
-
-**源码修改方案（添加详细拒绝日志）：**
-
-```python
-# 修改 core/registry.py 第98-111行
-async def _validate_tool_permissions(self, tool, user):
-    if not tool.access_groups:
-        return True
-
-    user_groups = set(user.group_memberships)
-    tool_groups = set(tool.access_groups)
-    has_access = bool(user_groups & tool_groups)
-
-    if not has_access:
-        logger.warning(
-            f"Permission denied: user '{user.id}' (groups={user_groups}) "
-            f"tried to access tool '{tool.name}' (required_groups={tool_groups})"
-        )
-    return has_access
-```
+| RLS 注入逻辑 | 由工具自定义 `transform_args` 实现 | 按需调整注入条件与行级过滤 SQL | `Tool` 子类自定义 `transform_args` |
 
 ---
 

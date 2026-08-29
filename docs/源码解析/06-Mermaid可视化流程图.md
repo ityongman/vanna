@@ -38,9 +38,8 @@ graph TB
         LLMImpl["LLM 厂商实现<br/>OpenAI / Anthropic / Azure / Ollama / Gemini"]
     end
 
-    subgraph SecurityLayer["第5层：SQL校验安全层"]
+    subgraph SecurityLayer["第5层：工具注册与审计层"]
         TR["ToolRegistry<br/>core/registry.py"]
-        UF["UiFeatures<br/>UI 权限控制"]
         AL["AuditLogger<br/>core/audit/"]
     end
 
@@ -76,7 +75,6 @@ graph TB
     Agent --> LLM
     LLM --> LLMImpl
     Agent --> TR
-    TR --> UF
     TR --> AL
     TR --> RST
     RST --> SR
@@ -134,7 +132,7 @@ sequenceDiagram
     rect rgb(240, 248, 255)
         Note over Agent,UR: Step 1: 用户身份解析
         Agent->>UR: resolve_user(request_context)
-        UR-->>Agent: User(id, email, group_memberships)
+        UR-->>Agent: User(id, username, email, metadata)
     end
 
     rect rgb(240, 255, 240)
@@ -161,8 +159,7 @@ sequenceDiagram
     rect rgb(255, 240, 255)
         Note over Agent,TR: Step 4: 构建 ToolContext + 获取工具列表
         Agent->>Agent: 构建 ToolContext(user, conversation_id, agent_memory)
-        Agent->>TR: get_schemas(user)
-        TR->>TR: 权限过滤(group_memberships ∩ access_groups)
+        Agent->>TR: get_schemas()
         TR-->>Agent: List[ToolSchema]<br/>(run_sql, search_saved_correct_tool_uses, save_question_tool_args, ...)
     end
 
@@ -199,15 +196,11 @@ sequenceDiagram
                     Agent->>TR: execute(tool_call, context)
 
                     rect rgb(255, 235, 235)
-                        Note over TR,AL: 安全校验
+                        Note over TR: 工具执行前处理
                         TR->>TR: 查找工具 (get_tool)
-                        TR->>TR: 权限校验 (group_memberships ∩ access_groups)
-                        alt 权限拒绝
-                            TR-->>Agent: ToolResult(success=false, "Insufficient group access")
-                        end
                         TR->>TR: Pydantic 参数校验 (model_validate)
                         TR->>TR: 参数转换 (transform_args - RLS注入)
-                        TR->>AL: log_tool_invocation (审计)
+                        TR->>TR: 审计: log_tool_invocation
                     end
 
                     alt tool_call.name == "run_sql"
@@ -461,40 +454,32 @@ flowchart LR
 
 ---
 
-### 6.4 补充：工具权限校验流程图
+### 6.4 补充：工具执行流程图
 
 ```mermaid
 flowchart TB
     Start["ToolRegistry.execute()<br/>接收 ToolCall"] --> Find["1. 查找工具<br/>get_tool(tool_call.name)"]
     Find --> Found{"工具存在?"}
     Found -->|否| Err1["ToolResult(success=false,<br/>error='Tool not found')"]
-    Found -->|是| PermCheck["2. 权限校验<br/>_validate_tool_permissions()"]
-
-    PermCheck --> HasAccess{"tool.access_groups<br/>∩ user.group_memberships<br/>非空?"}
-    HasAccess -->|否| AuditDeny["审计日志: log_tool_access_check<br/>(access_granted=false)"]
-    AuditDeny --> Err2["ToolResult(success=false,<br/>error='Insufficient group access')"]
-
-    HasAccess -->|是| AuditAllow["审计日志: log_tool_access_check<br/>(access_granted=true)"]
-    AuditAllow --> Validate["3. Pydantic 参数校验<br/>args_model.model_validate(tool_call.arguments)"]
+    Found -->|是| Validate["2. Pydantic 参数校验<br/>args_model.model_validate(tool_call.arguments)"]
     Validate --> ValidPass{"校验通过?"}
     ValidPass -->|否| Err3["ToolResult(success=false,<br/>error='Validation error: {details}')"]
-    ValidPass -->|是| Transform["4. 参数转换<br/>transform_args(tool, args, user, context)"]
+    ValidPass -->|是| Transform["3. 参数转换<br/>transform_args(tool, args, user, context)"]
 
     Transform --> TransformResult{"转换结果?"}
     TransformResult -->|ToolRejection| Err4["ToolResult(success=false,<br/>error=rejection.reason)"]
-    TransformResult -->|转换后 args| AuditInvoke["5. 审计日志<br/>log_tool_invocation()"]
+    TransformResult -->|转换后 args| AuditInvoke["4. 审计日志<br/>log_tool_invocation()"]
 
-    AuditInvoke --> Execute["6. 执行工具<br/>start_time = perf_counter()<br/>tool.execute(context, final_args)"]
+    AuditInvoke --> Execute["5. 执行工具<br/>start_time = perf_counter()<br/>tool.execute(context, final_args)"]
     Execute --> ExecResult{"执行结果?"}
-    ExecResult -->|成功| AuditSuccess["7. 审计日志<br/>log_tool_result(success=true)"]
-    ExecResult -->|失败| AuditFail["7. 审计日志<br/>log_tool_result(success=false)"]
+    ExecResult -->|成功| AuditSuccess["6. 审计日志<br/>log_tool_result(success=true)"]
+    ExecResult -->|失败| AuditFail["6. 审计日志<br/>log_tool_result(success=false)"]
 
     AuditSuccess --> ReturnSuccess["返回 ToolResult(success=true)"]
     AuditFail --> ReturnFail["返回 ToolResult(success=false)"]
 
     style Start fill:#e1f5fe,stroke:#0288d1
     style Err1 fill:#ffebee,stroke:#c62828
-    style Err2 fill:#ffebee,stroke:#c62828
     style Err3 fill:#ffebee,stroke:#c62828
     style Err4 fill:#ffebee,stroke:#c62828
     style ReturnSuccess fill:#e8f5e9,stroke:#388e3c

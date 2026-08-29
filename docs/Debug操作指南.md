@@ -221,3 +221,17 @@ VS Code 左侧 "Run and Debug" → "Breakpoints" 面板 → 勾选 "Raised Excep
 | 运行示例 | `python -m vanna.examples <example_name>` |
 | 列出示例 | `python -m vanna.servers --list-examples` |
 | CLI 命令 | `vanna --framework fastapi --port 8000` |
+
+---
+
+## 九、.env 配置项（服务端 Agent 自动装配）
+
+`python -m vanna.servers` 启动时会自动加载 `.env`（`python-dotenv` 未安装时打印警告并跳过，见 `server_runner._load_dotenv_if_present()`）。以下配置项控制服务端 Agent 的工具自动装配：
+
+| 环境变量 | 说明 | 示例 |
+|---|---|---|
+| `DATABASE_URL` | 映射为 `AgentConfig.database`；`Agent.__init__` 经 `create_sql_runner(url)`（`vanna.integrations.databases.factory`）按 scheme 派生 `SqlRunner` 并自动注册 `run_sql` + `visualize_data`。支持 10 种 scheme：sqlite / duckdb / mysql / postgresql / postgres / mssql / oracle / clickhouse / hive / presto；BigQuery / Snowflake / Databricks 需代码显式传入 runner | `DATABASE_URL=sqlite:///Chinook.sqlite` |
+| `EXTRA_TOOLS` | 逗号分隔的附加工具名。内置目录 7 个：`list_files` / `read_file` / `write_file` / `edit_file` / `search_files` / `run_python_file` / `pip_install`；出现未知名时抛 `ValueError` 并列出可用名（`_TOOL_CATALOG`，server_runner.py L26-L34） | `EXTRA_TOOLS=list_files,read_file` |
+| `VECTOR_BACKEND` | 设为 `faiss` 时同时派生 `FAISSAgentMemory` 与 `FAISSSchemaVectorStore`；faiss 依赖缺失（ImportError）时 agent memory 回退默认实现、schema store 置 None（不报错） | `VECTOR_BACKEND=faiss` |
+
+断点参考：`src/vanna/servers/cli/server_runner.py` → `_create_env_agent()`（L113-L198）。
