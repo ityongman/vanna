@@ -96,7 +96,12 @@ def register_ddl_import_routes(app: FastAPI, agent) -> None:
     async def ddl_parse(file: UploadFile = File(...)) -> Dict[str, Any]:
         """Parse the uploaded DDL.csv and stage the result for ingest."""
         contents = await file.read()
-        text = contents.decode("utf-8")
+        try:
+            text = contents.decode("utf-8")
+        except UnicodeDecodeError as e:
+            raise HTTPException(
+                status_code=415, detail="File must be UTF-8 encoded CSV"
+            ) from e
         tmp_path = None
         try:
             with tempfile.NamedTemporaryFile(

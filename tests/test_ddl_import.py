@@ -114,3 +114,13 @@ def test_parse_missing_file_returns_422():
     client = make_client()
     response = client.post("/api/vanna/v1/ddl/parse")
     assert response.status_code == 422
+
+
+def test_parse_non_utf8_returns_415():
+    client = make_client()
+    response = client.post(
+        "/api/vanna/v1/ddl/parse",
+        files={"file": ("DDL.csv", io.BytesIO(b"\xff\xfe\x00\x00not utf8"), "text/csv")},
+    )
+    assert response.status_code == 415
+    assert "utf-8" in response.json()["detail"].lower()
