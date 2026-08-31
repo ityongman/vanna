@@ -127,13 +127,30 @@ def test_parse_non_utf8_returns_415():
 
 
 def _parse_then(client, csv_text=GOOD_CSV):
-    """Parse and return (client, parse_id, preview)."""
+    """Parse the staged CSV and return (parse_id, preview_data)."""
     response = client.post(
         "/api/vanna/v1/ddl/parse",
         files={"file": ("DDL.csv", io.BytesIO(csv_text.encode("utf-8")), "text/csv")},
     )
     data = response.json()
     return data["parse_id"], data
+
+
+def test_page_contains_interaction_elements():
+    html = make_client().get("/ddl-import").text
+    for marker in (
+        "id=\"ddl-file\"",
+        "id=\"database-name\"",
+        "id=\"parse-btn\"",
+        "id=\"ingest-btn\"",
+        "id=\"preview\"",
+        "id=\"result\"",
+        "/api/vanna/v1/ddl/parse",
+        "/api/vanna/v1/ddl/ingest",
+        "fetch(",
+        "parse_id",
+    ):
+        assert marker in html, f"missing {marker}"
 
 
 def test_ingest_success_writes_to_store():

@@ -67,18 +67,116 @@ _INDEX_HTML = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DDL Schema 导入</title>
+<style>
+body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+h1 { font-size: 1.4rem; }
+.note { color: #666; font-size: .9rem; }
+.row { display: flex; gap: .5rem; align-items: center; margin: 1rem 0; flex-wrap: wrap; }
+input[type=text] { width: 220px; padding: .35rem; }
+button { padding: .4rem 1rem; cursor: pointer; }
+table { border-collapse: collapse; width: 100%; margin-top: .5rem; }
+th, td { border: 1px solid #ddd; padding: .3rem .5rem; text-align: left; font-size: .85rem; }
+.stats { display: flex; gap: 1rem; margin: 1rem 0; }
+.stat { border: 1px solid #ddd; border-radius: 6px; padding: .5rem 1rem; }
+.stat b { font-size: 1.2rem; }
+.warn { background: #fff3cd; border: 1px solid #ffe08a; padding: .5rem; border-radius: 4px; margin: .5rem 0; }
+.ok { background: #d1e7dd; border: 1px solid #a3cfbb; padding: .5rem; border-radius: 4px; margin: .5rem 0; }
+.err { background: #f8d7da; border: 1px solid #f1aeb5; padding: .5rem; border-radius: 4px; margin: .5rem 0; }
+details { margin: .25rem 0; }
+</style>
 </head>
 <body>
 <h1>DDL Schema 导入</h1>
-<p>上传 DDL.csv，解析预览后写入当前服务的向量库（database_name 需与 AutoLinkConfig.database_name 一致）。</p>
-<input type="file" id="ddl-file" accept=".csv">
-<input type="text" id="database-name" value="default" placeholder="database_name">
-<button id="parse-btn">解析</button>
+<p class="note">上传 DDL.csv 解析预览，确认后写入当前服务的 schema 向量库。
+写入的 database_name 需与 AutoLinkConfig.database_name 一致，入库存后 AutoLink 检索即刻生效。</p>
+
+<div class="row">
+  <input type="file" id="ddl-file" accept=".csv">
+  <label>database_name <input type="text" id="database-name" value="default"></label>
+  <button id="parse-btn">解析</button>
+</div>
+
 <div id="preview"></div>
+
+<div class="row" id="ingest-row" style="display:none">
+  <button id="ingest-btn">写入向量库</button>
+</div>
+
 <div id="result"></div>
+
 <script>
-// JS 在 Task 4 完整实现
+let parseId = null;
+const input = document.getElementById("ddl-file");
+const dbName = document.getElementById("database-name");
+const preview = document.getElementById("preview");
+const result = document.getElementById("result");
+
+function statsHtml(d) {
+  return '<div class="stats">'
+    + '<div class="stat">表 <b>' + d.tables_count + '</b></div>'
+    + '<div class="stat">列 <b>' + d.columns_count + '</b></div>'
+    + '<div class="stat">关系 <b>' + d.relations_count + '</b></div>'
+    + '</div>';
+}
+
+function rowsHtml(rows) {
+  if (!rows.length) return '';
+  let html = '<table><tr><th>表</th><th>列/关系</th></tr>';
+  rows.forEach(r => {
+    html += '<tr><td>' + r.table_name + '</td><td><ul>'
+      + r.columns.map(c => '<li>' + c.column_name + ' : ' + (c.data_type || '?') + '</li>').join('')
+      + '</ul></td></tr>';
+  });
+  return html + '</table>';
+}
+
+function warningsHtml(warnings) {
+  if (!warnings.length) return '';
+  return '<div class="warn">解析失败的表（将不会被导入）：' + warnings.join(', ') + '</div>';
+}
+
+function showResult(cls, text) {
+  result.innerHTML = '<div class="' + cls + '">' + text + '</div>';
+}
+
+document.getElementById("parse-btn").addEventListener("click", async () => {
+  if (!input.files.length) { showResult("err", "请先选择 DDL.csv 文件"); return; }
+  const form = new FormData();
+  form.append("file", input.files[0]);
+  showResult("ok", "解析中…");
+  try {
+    const resp = await fetch("/api/vanna/v1/ddl/parse", { method: "POST", body: form });
+    const data = await resp.json();
+    if (!resp.ok) { showResult("err", data.detail || ("parse failed: " + resp.status)); return; }
+    parseId = data.parse_id;
+    preview.innerHTML = statsHtml(data) + warningsHtml(data.warnings) + rowsHtml(data.tables);
+    document.getElementById("ingest-row").style.display = "";
+    showResult("ok", "解析成功，请确认后写入向量库（当前 namespace：" + dbName.value + "，重复导入同名 namespace 会覆盖旧索引）");
+  } catch (e) {
+    showResult("err", "解析请求失败：" + e);
+  }
+});
+
+document.getElementById("ingest-btn").addEventListener("click", async () => {
+  if (!parseId) { showResult("err", "请先解析 DDL.csv"); return; }
+  showResult("ok", "写入中…");
+  try {
+    const resp = await fetch("/api/vanna/v1/ddl/ingest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ parse_id: parseId, database_name: dbName.value }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showResult("err", data.detail || ("ingest failed: " + resp.status)); return; }
+    parseId = null;
+    showResult("ok", "写入成功：" + data.tables_count + " 张表 / " + data.columns_count
+      + " 列 / " + data.relations_count + " 关系 -> namespace [" + data.database_name + "]");
+  } catch (e) {
+    showResult("err", "写入请求失败：" + e);
+  }
+});
 </script>
 </body>
 </html>
