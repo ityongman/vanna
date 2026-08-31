@@ -46,3 +46,71 @@ def test_page_served():
     assert response.status_code == 200
     assert "DDL" in response.text
     assert "database_name" in response.text
+
+
+GOOD_CSV = (
+    "table_name,ddl\n"
+    'orders,"CREATE TABLE orders (\n'
+    "    id INTEGER PRIMARY KEY,\n"
+    "    customer_id INTEGER,\n"
+    '    FOREIGN KEY (customer_id) REFERENCES customers(id)\n'
+    ')"\n'
+    'customers,"CREATE TABLE customers (\n'
+    "    id INTEGER PRIMARY KEY,\n"
+    '    name VARCHAR(100)\n'
+    ')"\n'
+)
+
+
+def test_parse_success_returns_preview():
+    client = make_client()
+    response = client.post(
+        "/api/vanna/v1/ddl/parse",
+        files={"file": ("DDL.csv", io.BytesIO(GOOD_CSV.encode("utf-8")), "text/csv")},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["tables_count"] == 2
+    assert data["columns_count"] == 4  # orders: id, customer_id; customers: id, name
+    assert data["relations_count"] == 1
+    assert data["database_name"] == "default"
+    assert data["parse_id"]
+    assert data["warnings"] == []
+    assert {t["table_name"] for t in data["tables"]} == {"orders", "customers"}
+    orders = next(t for t in data["tables"] if t["table_name"] == "orders")
+    assert [c["column_name"] for c in orders["columns"]] == ["id", "customer_id"]
+
+
+def test_parse_empty_csv_returns_400():
+    client = make_client()
+    response = client.post(
+        "/api/vanna/v1/ddl/parse",
+        files={"file": ("DDL.csv", io.BytesIO(b""), "text/csv")},
+    )
+    assert response.status_code == 400
+    assert "table" in response.json()["detail"].lower()
+
+
+def test_parse_unknown_encoding_or_path_never_crashes():
+    # 由 parse_csv 兜底：不存在的路径不会发生（我们落盘了）；此用例验证坏行警告。
+    bad_csv = (
+        "table_name,ddl\n"
+        'bad_table,"CREATE TABLE bad_table (id INTEGER"\n'
+        'good_table,"CREATE TABLE good_table (id INTEGER, name TEXT);"\n'
+    )
+    client = make_client()
+    response = client.post(
+        "/api/vanna/v1/ddl/parse",
+        files={"file": ("DDL.csv", io.BytesIO(bad_csv.encode("utf-8")), "text/csv")},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["tables_count"] == 1
+    assert data["tables"][0]["table_name"] == "good_table"
+    assert "bad_table" in data["warnings"]
+
+
+def test_parse_missing_file_returns_422():
+    client = make_client()
+    response = client.post("/api/vanna/v1/ddl/parse")
+    assert response.status_code == 422
