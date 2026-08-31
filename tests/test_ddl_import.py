@@ -205,3 +205,16 @@ def test_ingest_consumes_parse_id():
         json={"parse_id": parse_id, "database_name": "default"},
     )
     assert second.status_code == 400  # already consumed
+
+
+def test_page_served_via_vanna_server():
+    """The page must be reachable through VannaFastAPIServer.create_app()."""
+    from vanna.servers.fastapi.app import VannaFastAPIServer
+
+    agent = FakeAgent(schema_vector_store=FakeStore())
+    server = VannaFastAPIServer(agent=agent)
+    app = server.create_app()
+    client = TestClient(app)
+    response = client.get("/ddl-import")
+    assert response.status_code == 200
+    assert "DDL" in response.text

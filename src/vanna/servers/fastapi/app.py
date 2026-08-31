@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from ...core import Agent
 from ..base import ChatHandler
 from .routes import register_chat_routes
+from .ddl_import import register_ddl_import_routes
 
 
 class VannaFastAPIServer:
@@ -77,6 +78,7 @@ class VannaFastAPIServer:
 
         # Register routes
         register_chat_routes(app, self.chat_handler, self.config)
+        register_ddl_import_routes(app, self.agent)
 
         # Add health check
         @app.get("/health")
