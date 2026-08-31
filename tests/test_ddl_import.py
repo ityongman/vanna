@@ -124,3 +124,67 @@ def test_parse_non_utf8_returns_415():
     )
     assert response.status_code == 415
     assert "utf-8" in response.json()["detail"].lower()
+
+
+def _parse_then(client, csv_text=GOOD_CSV):
+    """Parse and return (client, parse_id, preview)."""
+    response = client.post(
+        "/api/vanna/v1/ddl/parse",
+        files={"file": ("DDL.csv", io.BytesIO(csv_text.encode("utf-8")), "text/csv")},
+    )
+    data = response.json()
+    return data["parse_id"], data
+
+
+def test_ingest_success_writes_to_store():
+    store = FakeStore()
+    client = make_client(FakeAgent(schema_vector_store=store))
+    parse_id, _ = _parse_then(client)
+    response = client.post(
+        "/api/vanna/v1/ddl/ingest",
+        json={"parse_id": parse_id, "database_name": "chinook"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["database_name"] == "chinook"
+    assert data["tables_count"] == 2
+    assert data["relations_count"] == 1
+    assert len(store.ingested) == 1
+    ingested = store.ingested[0]
+    assert ingested["database_name"] == "chinook"
+    assert {t.table_name for t in ingested["tables"]} == {"orders", "customers"}
+
+
+def test_ingest_unknown_parse_id_returns_400():
+    client = make_client()
+    response = client.post(
+        "/api/vanna/v1/ddl/ingest",
+        json={"parse_id": "nope", "database_name": "default"},
+    )
+    assert response.status_code == 400
+
+
+def test_ingest_without_store_returns_503():
+    client = make_client(FakeAgent(schema_vector_store=None))
+    parse_id, _ = _parse_then(client)
+    response = client.post(
+        "/api/vanna/v1/ddl/ingest",
+        json={"parse_id": parse_id, "database_name": "default"},
+    )
+    assert response.status_code == 503
+    assert "vector" in response.json()["detail"].lower()
+
+
+def test_ingest_consumes_parse_id():
+    store = FakeStore()
+    client = make_client(FakeAgent(schema_vector_store=store))
+    parse_id, _ = _parse_then(client)
+    assert client.post(
+        "/api/vanna/v1/ddl/ingest",
+        json={"parse_id": parse_id, "database_name": "default"},
+    ).status_code == 200
+    second = client.post(
+        "/api/vanna/v1/ddl/ingest",
+        json={"parse_id": parse_id, "database_name": "default"},
+    )
+    assert second.status_code == 400  # already consumed

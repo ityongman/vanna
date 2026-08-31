@@ -128,3 +128,32 @@ def register_ddl_import_routes(app: FastAPI, agent) -> None:
             }
         )
         return preview
+
+    @app.post("/api/vanna/v1/ddl/ingest")
+    async def ddl_ingest(request_body: IngestRequest) -> Dict[str, Any]:
+        """Ingest a previously parsed DDL preview into the vector store."""
+        store = getattr(agent, "schema_vector_store", None)
+        if store is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Current service has no schema vector store configured; "
+                "start with VECTOR_BACKEND=faiss (or inject schema_vector_store) to ingest",
+            )
+        staged = _PENDING_PARSES.pop(request_body.parse_id, None)
+        if staged is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Unknown or already-consumed parse_id; parse the CSV again",
+            )
+        tables, relations = staged
+        try:
+            await store.ingest_schema(tables, relations, request_body.database_name)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Ingest failed: {e}") from e
+        return {
+            "database_name": request_body.database_name,
+            "tables_count": len(tables),
+            "columns_count": sum(len(t.columns) for t in tables),
+            "relations_count": len(relations),
+            "message": "Ingested successfully; AutoLink can now search this namespace",
+        }
