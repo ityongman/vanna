@@ -1,6 +1,5 @@
 """Tests for the DDL import page (parse/ingest into schema vector store)."""
 import io
-from unittest.mock import MagicMock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
