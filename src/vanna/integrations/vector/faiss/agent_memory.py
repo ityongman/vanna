@@ -47,7 +47,7 @@ class FAISSAgentMemory(AgentMemory):
             )
 
         # Accept either index_path or persist_path for backward compatibility
-        self.index_path = persist_path or index_path or "./faiss_index"
+        self.index_path = persist_path or index_path or "./data/vector_db/memory"
         self.dimension = dimension
         self.metric = metric
         self._index = None

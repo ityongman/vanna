@@ -23,15 +23,18 @@ logger = logging.getLogger(__name__)
 def _default_agent_memory() -> AgentMemory:
     """Create the default agent memory.
 
-    Prefers the FAISS-backed implementation (persisted to ./faiss_index)
-    when faiss-cpu is installed; falls back to the zero-dependency
-    in-memory demo implementation otherwise.
+    Prefers the FAISS-backed implementation (persisted to
+    ./data/vector_db/memory) when faiss-cpu is installed; falls back to
+    the zero-dependency in-memory demo implementation otherwise.
     """
     try:
         from vanna.integrations.vector.faiss import FAISSAgentMemory
 
         memory: AgentMemory = FAISSAgentMemory()
-        print("[agents] Using FAISS agent memory (persisted to ./faiss_index)")
+        print(
+            "[agents] Using FAISS agent memory "
+            "(persisted to ./data/vector_db/memory)"
+        )
         return memory
     except Exception:
         print("[agents] faiss unavailable; using in-memory demo agent memory")

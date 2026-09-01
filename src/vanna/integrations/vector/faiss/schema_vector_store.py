@@ -57,7 +57,7 @@ class FAISSSchemaVectorStore(SchemaVectorStore):
 
     def __init__(
         self,
-        persist_dir: str = "./schema_index",
+        persist_dir: str = "./data/vector_db",
         embedding_model: str = "BAAI/bge-large-en-v1.5",
         embedding_model_path: Optional[str] = None,
         embed_fn: Optional[EmbedFn] = None,
