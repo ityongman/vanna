@@ -95,12 +95,31 @@ class RunSqlTool(Tool[RunSqlToolArgs]):
                         filename, csv_content, context, overwrite=True
                     )
 
-                    # Create result text for LLM with truncated results
-                    results_preview = csv_content
-                    if len(results_preview) > 1000:
+                    # Build result text for LLM.
+                    # Small results are passed in full; large results are truncated
+                    # on row boundaries (never mid-row) and the LLM is explicitly
+                    # told the total row count plus how to fetch the rest, so it
+                    # does not mistake the preview for the complete dataset.
+                    preview_char_limit = 8000
+                    if len(csv_content) <= preview_char_limit:
+                        results_preview = csv_content
+                    else:
+                        # Truncate on row boundaries so every previewed row stays complete
+                        lines = csv_content.splitlines(keepends=True)
+                        header = lines[0] if lines else ""
+                        preview_lines = [header]
+                        char_count = len(header)
+                        for line in lines[1:]:
+                            if char_count + len(line) > preview_char_limit:
+                                break
+                            preview_lines.append(line)
+                            char_count += len(line)
+                        preview_rows = len(preview_lines) - 1
                         results_preview = (
-                            results_preview[:1000]
-                            + "\n(Results truncated to 1000 characters. FOR LARGE RESULTS YOU DO NOT NEED TO SUMMARIZE THESE RESULTS OR PROVIDE OBSERVATIONS. THE NEXT STEP SHOULD BE A VISUALIZE_DATA CALL)"
+                            "".join(preview_lines)
+                            + f"\n(SHOWING ONLY FIRST {preview_rows} OF {row_count} ROWS. "
+                            + "FOR LARGE RESULTS YOU DO NOT NEED TO SUMMARIZE THESE RESULTS OR PROVIDE OBSERVATIONS. THE NEXT STEP SHOULD BE A VISUALIZE_DATA CALL. "
+                            + "TO SEE MORE ROWS, RUN THE QUERY AGAIN WITH LIMIT/OFFSET.)"
                         )
 
                     result = f"{results_preview}\n\nResults saved to file: {filename}\n\n**IMPORTANT: FOR VISUALIZE_DATA USE FILENAME: {filename}**"
