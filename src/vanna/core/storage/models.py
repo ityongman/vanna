@@ -4,7 +4,7 @@ Storage domain models.
 This module contains data models for conversation storage.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -13,14 +13,17 @@ from ..tool.models import ToolCall
 from ..user.models import User
 
 
+def _now_local() -> datetime:
+    """Current local time as a timezone-aware datetime."""
+    return datetime.now().astimezone()
+
+
 class Message(BaseModel):
     """Single message in a conversation."""
 
     role: str = Field(description="Message role (user/assistant/system/tool)")
     content: str = Field(description="Message content")
-    timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    timestamp: datetime = Field(default_factory=_now_local)
     metadata: Dict[str, Any] = Field(default_factory=dict)
     tool_calls: Optional[List[ToolCall]] = Field(default=None)
     tool_call_id: Optional[str] = Field(
@@ -36,12 +39,8 @@ class Conversation(BaseModel):
     messages: List[Message] = Field(
         default_factory=list, description="Messages in conversation"
     )
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    created_at: datetime = Field(default_factory=_now_local)
+    updated_at: datetime = Field(default_factory=_now_local)
     metadata: Dict[str, Any] = Field(
         default_factory=dict, description="Additional conversation metadata"
     )
@@ -49,4 +48,4 @@ class Conversation(BaseModel):
     def add_message(self, message: Message) -> None:
         """Add a message to the conversation."""
         self.messages.append(message)
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = _now_local()

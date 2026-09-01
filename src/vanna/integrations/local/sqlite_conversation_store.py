@@ -24,7 +24,7 @@ class SQLiteConversationStore(ConversationStore):
     pydantic models.
     """
 
-    def __init__(self, db_path: str = "conversations.db") -> None:
+    def __init__(self, db_path: str = "./data/db/conversations.db") -> None:
         """Initialize the SQLite conversation store.
 
         Args:

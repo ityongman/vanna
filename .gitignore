@@ -25,6 +25,9 @@ faiss_index/
 conversations.db
 conversations.db-wal
 conversations.db-shm
+# 项目运行时生成的文件
+data/db/
+data/vector_db/
 
 # Frontend builds and dependencies
 frontends/**/node_modules/
@@ -32,3 +35,4 @@ frontends/**/static/
 frontends/**/.storybook-static/
 frontends/**/package-lock.json
 frontends/**/.mypy_cache/
+

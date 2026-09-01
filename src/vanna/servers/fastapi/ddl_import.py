@@ -8,7 +8,7 @@ import io
 import os
 import tempfile
 import uuid
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse
@@ -61,7 +61,25 @@ def _diff_unparsed_tables(csv_text: str, tables: List[SchemaTable]) -> List[str]
 
 class IngestRequest(BaseModel):
     parse_id: str = Field(description="parse_id returned by /ddl/parse")
-    database_name: str = Field(default="default", description="Vector store namespace")
+    database_name: Optional[str] = Field(
+        default=None,
+        description=(
+            "Vector store namespace; defaults to the agent's "
+            "autoLinkConfig.database_name when omitted"
+        ),
+    )
+
+
+def _agent_database_name(agent) -> str:
+    """Namespace used by the agent's AutoLink configuration.
+
+    Falls back to "default" for agents without that configuration (e.g. the
+    FakeAgent used in tests).
+    """
+    try:
+        return agent.config.autolink_config.database_name
+    except Exception:
+        return "default"
 
 _INDEX_HTML = """<!DOCTYPE html>
 <html lang="zh-CN">
@@ -94,7 +112,7 @@ details { margin: .25rem 0; }
 
 <div class="row">
   <input type="file" id="ddl-file" accept=".csv">
-  <label>database_name <input type="text" id="database-name" value="default"></label>
+  <label>database_name <input type="text" id="database-name" value="__AGENT_DATABASE_NAME__"></label>
   <button id="parse-btn">解析</button>
 </div>
 
@@ -151,6 +169,7 @@ document.getElementById("parse-btn").addEventListener("click", async () => {
     const data = await resp.json();
     if (!resp.ok) { showResult("err", data.detail || ("parse failed: " + resp.status)); return; }
     parseId = data.parse_id;
+    dbName.value = data.database_name;  // 服务端 AutoLink namespace 为准
     preview.innerHTML = statsHtml(data) + warningsHtml(data.warnings) + rowsHtml(data.tables);
     document.getElementById("ingest-row").style.display = "";
     showResult("ok", "解析成功，请确认后写入向量库（当前 namespace：" + dbName.value + "，重复导入同名 namespace 会覆盖旧索引）");
@@ -188,7 +207,9 @@ def register_ddl_import_routes(app: FastAPI, agent) -> None:
 
     @app.get("/ddl-import", response_class=HTMLResponse)
     async def ddl_import_page() -> str:
-        return _INDEX_HTML
+        return _INDEX_HTML.replace(
+            "__AGENT_DATABASE_NAME__", _agent_database_name(agent)
+        )
 
     @app.post("/api/vanna/v1/ddl/parse")
     async def ddl_parse(file: UploadFile = File(...)) -> Dict[str, Any]:
@@ -221,7 +242,7 @@ def register_ddl_import_routes(app: FastAPI, agent) -> None:
         preview.update(
             {
                 "parse_id": parse_id,
-                "database_name": "default",
+                "database_name": _agent_database_name(agent),
                 "warnings": _diff_unparsed_tables(text, tables),
             }
         )
@@ -244,12 +265,13 @@ def register_ddl_import_routes(app: FastAPI, agent) -> None:
                 detail="Unknown or already-consumed parse_id; parse the CSV again",
             )
         tables, relations = staged
+        database_name = request_body.database_name or _agent_database_name(agent)
         try:
-            await store.ingest_schema(tables, relations, request_body.database_name)
+            await store.ingest_schema(tables, relations, database_name)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Ingest failed: {e}") from e
         return {
-            "database_name": request_body.database_name,
+            "database_name": database_name,
             "tables_count": len(tables),
             "columns_count": sum(len(t.columns) for t in tables),
             "relations_count": len(relations),

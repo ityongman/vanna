@@ -10,6 +10,7 @@ from typing import Dict, Optional, Any, cast, TextIO, Union
 import click
 
 from ...core import Agent, AgentConfig
+from ...core.agent.autolink_config import AutoLinkConfig
 from ...core.agent.config import DatabaseConfig
 from ...tools.file_system import (
     EditFileTool,
@@ -188,11 +189,21 @@ def _create_env_agent() -> Agent:
 
     vector_backend = os.getenv("VECTOR_BACKEND") or None
 
+    # AutoLink namespace: .env AUTOLINK_DATABASE_NAME, defaults follow
+    # AutoLinkConfig.database_name ("default"). Must match the DDL import
+    # page namespace for schema retrieval to hit the ingested namespace.
+    autolink_database_name = os.getenv("AUTOLINK_DATABASE_NAME") or "default"
+
     # agent memory defaults to FAISS-backed when faiss is installed
     # (see agents.create_basic_agent), otherwise in-memory demo memory.
     return create_basic_agent(
         llm_service,
-        config=AgentConfig(database=database),
+        config=AgentConfig(
+            database=database,
+            autolink_config=AutoLinkConfig(
+                database_name=autolink_database_name
+            ),
+        ),
         extra_tools=extra_tools,
         vector_backend=vector_backend,
         embedding_model_path=os.getenv("EMBEDDING_MODEL_PATH") or None,

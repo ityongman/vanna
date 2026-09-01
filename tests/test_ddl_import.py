@@ -1,5 +1,6 @@
 """Tests for the DDL import page (parse/ingest into schema vector store)."""
 import io
+from types import SimpleNamespace
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -30,8 +31,13 @@ class FakeStore(SchemaVectorStore):
 
 
 class FakeAgent:
-    def __init__(self, schema_vector_store=None):
+    def __init__(self, schema_vector_store=None, autolink_database_name="default"):
         self.schema_vector_store = schema_vector_store
+        self.config = SimpleNamespace(
+            autolink_config=SimpleNamespace(
+                database_name=autolink_database_name
+            )
+        )
 
 
 def make_client(agent=None):
@@ -204,6 +210,40 @@ def test_ingest_consumes_parse_id():
         json={"parse_id": parse_id, "database_name": "default"},
     )
     assert second.status_code == 400  # already consumed
+
+
+def test_parse_preview_reports_agent_autolink_namespace():
+    """parse 响应里的 database_name 必须来自 agent 的 AutoLink 配置。"""
+    client = make_client(FakeAgent(FakeStore(), autolink_database_name="equipment_decay"))
+    response = client.post(
+        "/api/vanna/v1/ddl/parse",
+        files={"file": ("DDL.csv", io.BytesIO(GOOD_CSV.encode("utf-8")), "text/csv")},
+    )
+    assert response.status_code == 200
+    assert response.json()["database_name"] == "equipment_decay"
+
+
+def test_ingest_without_body_namespace_uses_agent_default():
+    """ingest 请求体不带 database_name 时，写入 agent 的 AutoLink namespace。"""
+    store = FakeStore()
+    client = make_client(FakeAgent(store, autolink_database_name="equipment_decay"))
+    parse_id, _ = _parse_then(client)
+    response = client.post(
+        "/api/vanna/v1/ddl/ingest",
+        json={"parse_id": parse_id},
+    )
+    assert response.status_code == 200
+    assert response.json()["database_name"] == "equipment_decay"
+    assert store.ingested[0]["database_name"] == "equipment_decay"
+
+
+def test_page_default_namespace_follows_agent_config():
+    """页面输入框默认值应为 agent 的 AutoLink namespace。"""
+    html = make_client(
+        FakeAgent(FakeStore(), autolink_database_name="equipment_decay")
+    ).get("/ddl-import").text
+    assert 'value="equipment_decay"' in html
+    assert "__AGENT_DATABASE_NAME__" not in html
 
 
 def test_page_served_via_vanna_server():
