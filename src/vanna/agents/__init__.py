@@ -62,6 +62,7 @@ def create_basic_agent(
     sql_runner: Optional[SqlRunner] = None,
     extra_tools: Optional[List[Tool]] = None,
     vector_backend: Optional[str] = None,
+    embedding_model_path: Optional[str] = None,
 ) -> Agent:
     """Create a basic agent with sensible defaults for development.
 
@@ -82,6 +83,9 @@ def create_basic_agent(
         vector_backend: Optional vector backend name (e.g. "faiss"); when set,
             derives both agent_memory and schema_vector_store from the named
             integration (only applied when those arguments are None)
+        embedding_model_path: Optional local path to a downloaded
+            SentenceTransformer model directory; forwarded to the derived
+            FAISSSchemaVectorStore (only applied when currently used)
 
     Returns:
         Configured Agent instance
@@ -114,7 +118,9 @@ def create_basic_agent(
         try:
             from vanna.integrations.vector.faiss import FAISSSchemaVectorStore
 
-            schema_vector_store = FAISSSchemaVectorStore()
+            schema_vector_store = FAISSSchemaVectorStore(
+                embedding_model_path=embedding_model_path
+            )
         except ImportError:
             logger.info("faiss extras unavailable; schema_vector_store not derived")
 

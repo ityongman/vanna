@@ -44,6 +44,10 @@ class FAISSSchemaVectorStore(SchemaVectorStore):
         persist_dir: Root directory for per-database index persistence.
         embedding_model: SentenceTransformer model name used to encode
             column documents and queries.
+        embedding_model_path: Optional local path to a downloaded
+            SentenceTransformer model directory (containing
+            config_sentence_transformers.json). When set it replaces
+            ``embedding_model`` so no download from HuggingFace Hub occurs.
         embed_fn: Optional embedding function (list of texts -> ndarray of
             shape (n, dim)). When provided it replaces SentenceTransformer,
             which is useful for tests and custom embedding backends.
@@ -55,6 +59,7 @@ class FAISSSchemaVectorStore(SchemaVectorStore):
         self,
         persist_dir: str = "./schema_index",
         embedding_model: str = "BAAI/bge-large-en-v1.5",
+        embedding_model_path: Optional[str] = None,
         embed_fn: Optional[EmbedFn] = None,
         document_generator: Optional[SchemaDocumentGenerator] = None,
     ):
@@ -66,6 +71,7 @@ class FAISSSchemaVectorStore(SchemaVectorStore):
 
         self.persist_dir = persist_dir
         self.embedding_model = embedding_model
+        self._embedding_model_path = embedding_model_path
         self._custom_embed_fn = embed_fn
         self._model = None
         self.document_generator = document_generator or SchemaDocumentGenerator()
@@ -92,7 +98,8 @@ class FAISSSchemaVectorStore(SchemaVectorStore):
                     "FAISSSchemaVectorStore embeddings. Install with: "
                     "pip install 'vanna[autolink]'"
                 ) from e
-            self._model = SentenceTransformer(self.embedding_model)
+            model_ref = self._embedding_model_path or self.embedding_model
+            self._model = SentenceTransformer(model_ref)
 
         model = self._model
 

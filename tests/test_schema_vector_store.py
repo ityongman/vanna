@@ -564,6 +564,51 @@ class TestFAISSSchemaVectorStore:
     async def test_implements_interface(self):
         assert issubclass(FAISSSchemaVectorStore, SchemaVectorStore)
 
+    def test_embedding_model_path_preferred_over_name(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        """A local model path is loaded directly; no HuggingFace download."""
+
+        class FakeSentenceTransformer:
+            def __init__(self, model_ref):
+                self.model_ref = model_ref
+
+        monkeypatch.setattr(
+            "sentence_transformers.SentenceTransformer", FakeSentenceTransformer
+        )
+        store = FAISSSchemaVectorStore(
+            persist_dir="./schema_index",
+            embedding_model="BAAI/bge-large-en-v1.5",
+            embedding_model_path="/models/bge-local",
+        )
+
+        assert store._embedding_model_path == "/models/bge-local"
+        store._get_embed_fn()  # triggers lazy SentenceTransformer loading
+        loaded = store._model
+        assert isinstance(loaded, FakeSentenceTransformer)
+        assert loaded.model_ref == "/models/bge-local"
+
+    def test_embedding_model_name_used_without_path(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        """Without a path, the default model name is used."""
+
+        class FakeSentenceTransformer:
+            def __init__(self, model_ref):
+                self.model_ref = model_ref
+
+        monkeypatch.setattr(
+            "sentence_transformers.SentenceTransformer", FakeSentenceTransformer
+        )
+        store = FAISSSchemaVectorStore(
+            persist_dir="./schema_index",
+            embedding_model="BAAI/bge-large-en-v1.5",
+        )
+
+        assert store._embedding_model_path is None
+        store._get_embed_fn()  # triggers lazy SentenceTransformer loading
+        assert store._model.model_ref == "BAAI/bge-large-en-v1.5"
+
 
 # ---------------------------------------------------------------------------
 # Chroma backend tests (skipped when chromadb is unavailable)

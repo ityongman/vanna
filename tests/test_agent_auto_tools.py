@@ -106,6 +106,7 @@ def _make_basic_agent(
     agent_memory=None,
     schema_vector_store=None,
     vector_backend=None,
+    embedding_model_path=None,
 ):
     from vanna.agents import create_basic_agent
 
@@ -114,6 +115,7 @@ def _make_basic_agent(
         agent_memory=agent_memory,
         schema_vector_store=schema_vector_store,
         vector_backend=vector_backend,
+        embedding_model_path=embedding_model_path,
     )
 
 
@@ -134,6 +136,22 @@ async def test_vector_backend_derives_faiss_stores():
 
     assert isinstance(agent.agent_memory, FAISSAgentMemory)
     assert isinstance(agent.schema_vector_store, FAISSSchemaVectorStore)
+
+
+@pytest.mark.asyncio
+async def test_vector_backend_faiss_forwards_embedding_model_path():
+    """create_basic_agent(embedding_model_path=...) reaches the faiss store."""
+    pytest.importorskip("vanna.integrations.vector.faiss")
+    pytest.importorskip("faiss")
+
+    agent = _make_basic_agent(
+        vector_backend="faiss",
+        embedding_model_path="/models/bge-local",
+    )
+    from vanna.integrations.vector.faiss import FAISSSchemaVectorStore
+
+    assert isinstance(agent.schema_vector_store, FAISSSchemaVectorStore)
+    assert agent.schema_vector_store._embedding_model_path == "/models/bge-local"
 
 
 @pytest.mark.asyncio

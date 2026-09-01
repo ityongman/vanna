@@ -195,6 +195,7 @@ def _create_env_agent() -> Agent:
         config=AgentConfig(database=database),
         extra_tools=extra_tools,
         vector_backend=vector_backend,
+        embedding_model_path=os.getenv("EMBEDDING_MODEL_PATH") or None,
     )
 
 
