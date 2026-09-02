@@ -68,6 +68,13 @@ class IngestRequest(BaseModel):
             "autoLinkConfig.database_name when omitted"
         ),
     )
+    business_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "Business identifier for multi-business routing. When set, "
+            "database_name is resolved from the business configuration."
+        ),
+    )
 
 
 def _agent_database_name(agent) -> str:
@@ -265,7 +272,15 @@ def register_ddl_import_routes(app: FastAPI, agent) -> None:
                 detail="Unknown or already-consumed parse_id; parse the CSV again",
             )
         tables, relations = staged
-        database_name = request_body.database_name or _agent_database_name(agent)
+        # Resolve database_name: explicit > business_id > agent default
+        database_name = request_body.database_name
+        if not database_name and request_body.business_id:
+            businesses = getattr(getattr(agent, "config", None), "businesses", {})
+            business = businesses.get(request_body.business_id)
+            if business:
+                database_name = business.effective_database_name()
+        if not database_name:
+            database_name = _agent_database_name(agent)
         try:
             await store.ingest_schema(tables, relations, database_name)
         except Exception as e:

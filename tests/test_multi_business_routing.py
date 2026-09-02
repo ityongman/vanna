@@ -197,3 +197,24 @@ def test_agent_sql_runner_cache_works():
     runner2 = cache[business.id]
 
     assert runner1 is runner2
+
+
+# --- Task 5: DDL import business routing ---
+
+
+def test_ddl_ingest_request_accepts_business_id():
+    """IngestRequest should accept optional business_id."""
+    from vanna.servers.fastapi.ddl_import import IngestRequest
+
+    req = IngestRequest(parse_id="test", business_id="biz_a")
+    assert req.business_id == "biz_a"
+    assert req.database_name is None
+
+
+def test_ddl_ingest_request_backward_compatible():
+    """IngestRequest without business_id should work as before."""
+    from vanna.servers.fastapi.ddl_import import IngestRequest
+
+    req = IngestRequest(parse_id="test", database_name="my_db")
+    assert req.business_id is None
+    assert req.database_name == "my_db"
