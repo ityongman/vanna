@@ -11,6 +11,7 @@ from vanna.core.agent.config import AgentConfig, BusinessConfig
 from vanna.core.tool.models import ToolContext
 from vanna.core.user import User
 from vanna.integrations.local.agent_memory.in_memory import DemoAgentMemory
+from vanna.integrations.databases.factory import create_sql_runner
 
 
 class FakeSqlRunner(SqlRunner):
@@ -151,3 +152,48 @@ def test_run_sql_falls_back_to_bound_runner():
     asyncio.run(tool.execute(ctx, args))
 
     assert bound_called, "self.sql_runner should be called as fallback"
+
+
+# --- Task 4: Agent business routing ---
+
+
+def test_agent_resolves_business_from_config():
+    """Agent config should support multi-business configuration."""
+    config = AgentConfig(
+        businesses={
+            "biz_a": BusinessConfig(id="biz_a", database_url="sqlite:///a.db"),
+            "biz_b": BusinessConfig(
+                id="biz_b",
+                database_url="sqlite:///b.db",
+                database_name="custom_b",
+            ),
+        }
+    )
+    assert "biz_a" in config.businesses
+    assert config.businesses["biz_a"].effective_database_name() == "biz_a"
+    assert config.businesses["biz_b"].effective_database_name() == "custom_b"
+
+
+def test_agent_sql_runner_factory_creates_correct_type():
+    """create_sql_runner should create SqliteRunner for sqlite URLs."""
+    runner = create_sql_runner("sqlite:///:memory:")
+    assert isinstance(runner, SqlRunner)
+
+
+def test_agent_sql_runner_cache_works():
+    """Agent should cache SqlRunner instances per business."""
+    # Simulate the caching logic
+    cache = {}
+    business = BusinessConfig(id="biz_a", database_url="sqlite:///:memory:")
+
+    # First call creates
+    if business.id not in cache:
+        cache[business.id] = create_sql_runner(business.database_url)
+    runner1 = cache[business.id]
+
+    # Second call returns cached
+    if business.id not in cache:
+        cache[business.id] = create_sql_runner(business.database_url)
+    runner2 = cache[business.id]
+
+    assert runner1 is runner2

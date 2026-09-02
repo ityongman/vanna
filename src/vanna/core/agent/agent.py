@@ -7,7 +7,7 @@ between LLM services, tools, and conversation storage.
 
 import traceback
 import uuid
-from typing import TYPE_CHECKING, AsyncGenerator, List, Optional
+from typing import TYPE_CHECKING, AsyncGenerator, Dict, List, Optional
 
 from vanna.components import (
     UiComponent,
@@ -169,6 +169,7 @@ class Agent:
             sql_runner = create_sql_runner(config.database.url)
         self.sql_runner = sql_runner
         self.extra_tools = list(extra_tools)
+        self._business_sql_runners: Dict[str, SqlRunner] = {}
 
         # Wire audit logger into tool registry
         if self.audit_logger and self.config.audit_config.enabled:
@@ -232,6 +233,17 @@ class Agent:
             self.tool_registry.register(tool)
         except ValueError:
             logger.debug("Tool '%s' already registered; keeping existing", tool.name)
+
+    def _get_or_create_sql_runner(self, business: "BusinessConfig") -> SqlRunner:
+        """Get or create a cached SqlRunner for a business configuration."""
+        if business.id not in self._business_sql_runners:
+            from vanna.integrations.databases.factory import create_sql_runner
+
+            self._business_sql_runners[business.id] = create_sql_runner(
+                business.database_url
+            )
+            logger.info("Created SqlRunner for business '%s'", business.id)
+        return self._business_sql_runners[business.id]
 
     async def send_message(
         self,
@@ -480,16 +492,34 @@ class Agent:
         )
 
         context_metadata: dict = {}
-        if self.schema_vector_store is not None:
+        context_sql_runner = None
+
+        # Business routing: resolve sql_runner and autolink_database_name
+        # from request metadata business_id.
+        business_id = request_context.metadata.get("business_id")
+        if business_id and business_id in self.config.businesses:
+            business = self.config.businesses[business_id]
+            context_sql_runner = self._get_or_create_sql_runner(business)
+            context_metadata["autolink_database_name"] = (
+                business.effective_database_name()
+            )
+            logger.info(
+                "Business routing: business_id=%s, database_name=%s",
+                business_id,
+                business.effective_database_name(),
+            )
+        elif self.schema_vector_store is not None:
             context_metadata["autolink_database_name"] = (
                 self.config.autolink_config.database_name
             )
+
         context = ToolContext(
             user=user,
             conversation_id=conversation_id,
             request_id=request_id,
             agent_memory=self.agent_memory,
             schema_vector_store=self.schema_vector_store,
+            sql_runner=context_sql_runner,
             observability_provider=self.observability_provider,
             metadata=context_metadata,
         )
