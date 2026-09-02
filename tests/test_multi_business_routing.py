@@ -82,3 +82,72 @@ def test_tool_context_with_sql_runner():
         sql_runner=runner,
     )
     assert ctx.sql_runner is runner
+
+
+# --- Task 3: RunSqlTool prefers context.sql_runner ---
+
+
+def test_run_sql_prefers_context_sql_runner():
+    """RunSqlTool should use context.sql_runner when available."""
+    from vanna.tools.run_sql import RunSqlTool
+
+    bound_runner = FakeSqlRunner()
+    context_runner = FakeSqlRunner()
+
+    # Track which runner was called
+    bound_called = False
+    context_called = False
+
+    async def bound_run_sql(args, context):
+        nonlocal bound_called
+        bound_called = True
+        return pd.DataFrame()
+
+    async def context_run_sql(args, context):
+        nonlocal context_called
+        context_called = True
+        return pd.DataFrame()
+
+    bound_runner.run_sql = bound_run_sql
+    context_runner.run_sql = context_run_sql
+
+    tool = RunSqlTool(sql_runner=bound_runner)
+    ctx = ToolContext(
+        user=User(id="u1", email="u1@example.com"),
+        conversation_id="c1",
+        request_id="r1",
+        agent_memory=DemoAgentMemory(),
+        sql_runner=context_runner,
+    )
+    args = RunSqlToolArgs(sql="SELECT 1")
+    asyncio.run(tool.execute(ctx, args))
+
+    assert context_called, "context.sql_runner should be called"
+    assert not bound_called, "self.sql_runner should NOT be called"
+
+
+def test_run_sql_falls_back_to_bound_runner():
+    """RunSqlTool should use self.sql_runner when context.sql_runner is None."""
+    from vanna.tools.run_sql import RunSqlTool
+
+    bound_runner = FakeSqlRunner()
+    bound_called = False
+
+    async def bound_run_sql(args, context):
+        nonlocal bound_called
+        bound_called = True
+        return pd.DataFrame()
+
+    bound_runner.run_sql = bound_run_sql
+
+    tool = RunSqlTool(sql_runner=bound_runner)
+    ctx = ToolContext(
+        user=User(id="u1", email="u1@example.com"),
+        conversation_id="c1",
+        request_id="r1",
+        agent_memory=DemoAgentMemory(),
+    )
+    args = RunSqlToolArgs(sql="SELECT 1")
+    asyncio.run(tool.execute(ctx, args))
+
+    assert bound_called, "self.sql_runner should be called as fallback"

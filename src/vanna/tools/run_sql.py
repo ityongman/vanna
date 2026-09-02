@@ -56,8 +56,9 @@ class RunSqlTool(Tool[RunSqlToolArgs]):
     async def execute(self, context: ToolContext, args: RunSqlToolArgs) -> ToolResult:
         """Execute a SQL query using the injected SqlRunner."""
         try:
-            # Use the injected SqlRunner to execute the query
-            df = await self.sql_runner.run_sql(args, context)
+            # Prefer per-request sql_runner (business routing) over bound runner
+            runner = context.sql_runner or self.sql_runner
+            df = await runner.run_sql(args, context)
 
             # Determine query type
             query_type = args.sql.strip().upper().split()[0]
