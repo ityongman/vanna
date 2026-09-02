@@ -4,7 +4,7 @@ Agent configuration.
 This module contains configuration models that control agent behavior.
 """
 
-from typing import Optional
+from typing import Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -19,6 +19,31 @@ class DatabaseConfig(BaseModel):
     """
 
     url: str = Field(description="Database URL, e.g. sqlite:///Chinook.sqlite")
+
+
+class BusinessConfig(BaseModel):
+    """Configuration for a single business's storage.
+
+    Bundles a relational database (for querying business data) with a
+    schema vector store namespace (for table/column embeddings). Each
+    business gets its own database connection and schema index.
+    """
+
+    id: str = Field(description="Business identifier, e.g. 'business_a'")
+    database_url: str = Field(
+        description="Business relational database URL, e.g. mysql://user:pwd@host/db"
+    )
+    database_name: str = Field(
+        default="",
+        description=(
+            "Schema vector store namespace. Defaults to id when empty. "
+            "Used by DDL import and AutoLink schema retrieval."
+        ),
+    )
+
+    def effective_database_name(self) -> str:
+        """Return the schema namespace (falls back to id)."""
+        return self.database_name or self.id
 
 
 class AuditConfig(BaseModel):
@@ -61,6 +86,14 @@ class AgentConfig(BaseModel):
         default=None,
         description="Target database; when set, a SqlRunner is derived from the "
         "URL scheme and run_sql/visualize_data tools are auto-registered",
+    )
+    businesses: Dict[str, BusinessConfig] = Field(
+        default_factory=dict,
+        description=(
+            "Multi-business configurations keyed by business_id. "
+            "When set, requests with a matching business_id metadata "
+            "will route to the corresponding database and schema namespace."
+        ),
     )
     auto_register_tools: bool = Field(
         default=True,
