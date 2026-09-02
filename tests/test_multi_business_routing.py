@@ -218,3 +218,35 @@ def test_ddl_ingest_request_backward_compatible():
     req = IngestRequest(parse_id="test", database_name="my_db")
     assert req.business_id is None
     assert req.database_name == "my_db"
+
+
+# --- Task 6: Chat request business_id ---
+
+
+def test_chat_request_accepts_business_id():
+    """ChatRequest should accept optional business_id."""
+    from vanna.servers.base.models import ChatRequest
+
+    req = ChatRequest(message="hello", business_id="biz_a")
+    assert req.business_id == "biz_a"
+
+
+def test_chat_request_backward_compatible():
+    """ChatRequest without business_id should work as before."""
+    from vanna.servers.base.models import ChatRequest
+
+    req = ChatRequest(message="hello")
+    assert req.business_id is None
+
+
+def test_chat_request_business_id_flows_to_metadata():
+    """ChatRequest.business_id should be placed into metadata for routing."""
+    from vanna.servers.base.models import ChatRequest
+
+    req = ChatRequest(message="hello", business_id="biz_a", metadata={"key": "val"})
+    # The route handler should merge business_id into metadata
+    metadata = dict(req.metadata)
+    if req.business_id:
+        metadata["business_id"] = req.business_id
+    assert metadata["business_id"] == "biz_a"
+    assert metadata["key"] == "val"

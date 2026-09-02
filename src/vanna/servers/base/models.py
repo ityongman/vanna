@@ -28,6 +28,13 @@ class ChatRequest(BaseModel):
     metadata: Dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata"
     )
+    business_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "Business identifier for multi-business routing. "
+            "Automatically merged into metadata for Agent routing."
+        ),
+    )
 
 
 class ChatStreamChunk(BaseModel):

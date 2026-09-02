@@ -46,12 +46,15 @@ def register_chat_routes(
     ) -> StreamingResponse:
         """Server-Sent Events endpoint for streaming chat."""
         # Extract request context for user resolution
+        metadata = dict(chat_request.metadata)
+        if chat_request.business_id:
+            metadata["business_id"] = chat_request.business_id
         chat_request.request_context = RequestContext(
             cookies=dict(http_request.cookies),
             headers=dict(http_request.headers),
             remote_addr=http_request.client.host if http_request.client else None,
             query_params=dict(http_request.query_params),
-            metadata=chat_request.metadata,
+            metadata=metadata,
         )
 
         async def generate() -> AsyncGenerator[str, None]:
@@ -169,12 +172,15 @@ def register_chat_routes(
     ) -> ChatResponse:
         """Polling endpoint for chat."""
         # Extract request context for user resolution
+        metadata = dict(chat_request.metadata)
+        if chat_request.business_id:
+            metadata["business_id"] = chat_request.business_id
         chat_request.request_context = RequestContext(
             cookies=dict(http_request.cookies),
             headers=dict(http_request.headers),
             remote_addr=http_request.client.host if http_request.client else None,
             query_params=dict(http_request.query_params),
-            metadata=chat_request.metadata,
+            metadata=metadata,
         )
 
         try:
