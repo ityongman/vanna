@@ -6,7 +6,7 @@ and user messages before LLM calls.
 """
 
 from abc import ABC
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 if TYPE_CHECKING:
     from ..user.models import User
@@ -31,7 +31,8 @@ class LlmContextEnhancer(ABC):
                 self,
                 system_prompt: str,
                 user_message: str,
-                user: User
+                user: User,
+                metadata: Optional[Dict[str, Any]] = None,
             ) -> str:
                 # Add relevant examples from memory based on user message
                 examples = await self.agent_memory.search_similar(user_message)
@@ -52,7 +53,11 @@ class LlmContextEnhancer(ABC):
     """
 
     async def enhance_system_prompt(
-        self, system_prompt: str, user_message: str, user: "User"
+        self,
+        system_prompt: str,
+        user_message: str,
+        user: "User",
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Enhance the system prompt with additional context.
 
@@ -63,6 +68,9 @@ class LlmContextEnhancer(ABC):
             system_prompt: The original system prompt
             user_message: The initial user message
             user: The user making the request
+            metadata: Optional per-request metadata (e.g. business routing
+                info such as ``autolink_database_name``); ``None`` when
+                not available. Implementations must treat it as read-only.
 
         Returns:
             Enhanced system prompt with additional context

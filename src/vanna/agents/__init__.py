@@ -5,10 +5,12 @@ This package contains agent implementations and utilities.
 """
 
 import logging
+from dataclasses import dataclass
 from typing import List, Optional
 
 from vanna.core import Agent, AgentConfig, Tool, ToolRegistry
 from vanna.core.llm.base import LlmService
+from vanna.core.storage import ConversationStore
 from vanna.core.user import User
 from vanna.core.user.request_context import RequestContext
 from vanna.core.user.resolver import UserResolver
@@ -55,6 +57,19 @@ class _DefaultUserResolver(UserResolver):
         )
 
 
+@dataclass
+class VectorStoreSettings:
+    """Resolved vector-store settings (from ``storage.project.vector_db``).
+
+    One declaration derives both stores: FAISSAgentMemory (agent memory)
+    and FAISSSchemaVectorStore (schema indices).
+    """
+
+    backend: Optional[str] = None
+    memory_index_path: Optional[str] = None
+    schema_persist_dir: Optional[str] = None
+
+
 def create_basic_agent(
     llm_service: LlmService,
     config: Optional[AgentConfig] = None,
@@ -64,8 +79,9 @@ def create_basic_agent(
     schema_vector_store: Optional[SchemaVectorStore] = None,
     sql_runner: Optional[SqlRunner] = None,
     extra_tools: Optional[List[Tool]] = None,
-    vector_backend: Optional[str] = None,
+    vector_store: Optional[VectorStoreSettings] = None,
     embedding_model_path: Optional[str] = None,
+    conversation_store: Optional[ConversationStore] = None,
 ) -> Agent:
     """Create a basic agent with sensible defaults for development.
 
@@ -83,16 +99,26 @@ def create_basic_agent(
         sql_runner: Optional SqlRunner for text-to-SQL; when omitted it is
             derived from ``config.database`` (URL-scheme factory)
         extra_tools: Optional additional tools to register on the agent
-        vector_backend: Optional vector backend name (e.g. "faiss"); when set,
-            derives both agent_memory and schema_vector_store from the named
-            integration (only applied when those arguments are None)
+        vector_store: Optional resolved vector-store settings; only
+            backend="faiss" is wired here, any other value logs a warning
+            and falls back to the defaults
         embedding_model_path: Optional local path to a downloaded
             SentenceTransformer model directory; forwarded to the derived
             FAISSSchemaVectorStore (only applied when currently used)
+        conversation_store: Optional conversation store; when omitted the
+            Agent falls back to SQLiteConversationStore at
+            ./data/db/conversations.db
 
     Returns:
         Configured Agent instance
     """
+    backend = vector_store.backend if vector_store else None
+    if backend and backend != "faiss":
+        logger.warning(
+            "VECTOR_BACKEND %r is not supported (only 'faiss' is wired in "
+            "create_basic_agent); falling back to default stores",
+            backend,
+        )
     if config is None:
         config = AgentConfig(
             stream_responses=True,
@@ -105,25 +131,28 @@ def create_basic_agent(
     if user_resolver is None:
         user_resolver = _DefaultUserResolver()
 
-    # vector_backend: one declaration derives both stores ("faiss").
+    # vector_store: one declaration derives both stores ("faiss").
     if agent_memory is None:
-        if vector_backend == "faiss":
+        if backend == "faiss":
             try:
                 from vanna.integrations.vector.faiss import FAISSAgentMemory
 
-                agent_memory = FAISSAgentMemory()
+                agent_memory = FAISSAgentMemory(
+                    index_path=vector_store.memory_index_path
+                )
             except ImportError:
                 agent_memory = _default_agent_memory()
         else:
             agent_memory = _default_agent_memory()
 
-    if schema_vector_store is None and vector_backend == "faiss":
+    if schema_vector_store is None and backend == "faiss":
         try:
             from vanna.integrations.vector.faiss import FAISSSchemaVectorStore
 
-            schema_vector_store = FAISSSchemaVectorStore(
-                embedding_model_path=embedding_model_path
-            )
+            kwargs: dict = {"embedding_model_path": embedding_model_path}
+            if vector_store.schema_persist_dir:
+                kwargs["persist_dir"] = vector_store.schema_persist_dir
+            schema_vector_store = FAISSSchemaVectorStore(**kwargs)
         except ImportError:
             logger.info("faiss extras unavailable; schema_vector_store not derived")
 
@@ -136,6 +165,7 @@ def create_basic_agent(
         schema_vector_store=schema_vector_store,
         sql_runner=sql_runner,
         extra_tools=extra_tools or [],
+        conversation_store=conversation_store,
     )
 
 

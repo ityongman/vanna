@@ -14,6 +14,7 @@ export interface ChatRequest {
   conversation_id?: string;
   user_id?: string;
   request_id?: string;
+  business_id?: string;
   metadata?: Record<string, any>;
 }
 

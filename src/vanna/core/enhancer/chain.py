@@ -6,7 +6,7 @@ Enables compositions such as
 the system prompt flows through each enhancer in order.
 """
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from .base import LlmContextEnhancer
 
@@ -28,12 +28,16 @@ class LlmContextEnhancerChain(LlmContextEnhancer):
         self.enhancers = [e for e in enhancers if e is not None]
 
     async def enhance_system_prompt(
-        self, system_prompt: str, user_message: str, user: "User"
+        self,
+        system_prompt: str,
+        user_message: str,
+        user: "User",
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Run the system prompt through every enhancer in order."""
         for enhancer in self.enhancers:
             system_prompt = await enhancer.enhance_system_prompt(
-                system_prompt, user_message, user
+                system_prompt, user_message, user, metadata
             )
         return system_prompt
 

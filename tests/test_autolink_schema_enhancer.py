@@ -281,7 +281,9 @@ class TestEnhancerChainAndAgentWiring:
     @pytest.mark.asyncio
     async def test_chain_applies_both_enhancers(self):
         class SuffixEnhancer(AutoLinkSchemaEnhancer):
-            async def enhance_system_prompt(self, system_prompt, user_message, user):
+            async def enhance_system_prompt(
+                self, system_prompt, user_message, user, metadata=None
+            ):
                 return system_prompt + "\n[suffix]"
 
         store = FakeSchemaVectorStore(search_results=[result(column("t", "c"))])

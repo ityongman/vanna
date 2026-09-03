@@ -8,7 +8,7 @@ import io
 import os
 import tempfile
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse
@@ -61,32 +61,33 @@ def _diff_unparsed_tables(csv_text: str, tables: List[SchemaTable]) -> List[str]
 
 class IngestRequest(BaseModel):
     parse_id: str = Field(description="parse_id returned by /ddl/parse")
-    database_name: Optional[str] = Field(
-        default=None,
+    business_id: str = Field(
         description=(
-            "Vector store namespace; defaults to the agent's "
-            "autoLinkConfig.database_name when omitted"
-        ),
-    )
-    business_id: Optional[str] = Field(
-        default=None,
-        description=(
-            "Business identifier for multi-business routing. When set, "
-            "database_name is resolved from the business configuration."
+            "Business identifier; the namespace is resolved from the "
+            "business configuration (no fallback routing)"
         ),
     )
 
 
-def _agent_database_name(agent) -> str:
-    """Namespace used by the agent's AutoLink configuration.
+def _resolve_business_namespace(agent, business_id: str) -> str:
+    """Resolve the schema namespace for a business id.
 
-    Falls back to "default" for agents without that configuration (e.g. the
-    FakeAgent used in tests).
+    Raises HTTPException 400 when the business is unknown (routing has no
+    fallback: a missing/unknown business must never write to another
+    business's namespace).
     """
-    try:
-        return agent.config.autolink_config.database_name
-    except Exception:
-        return "default"
+    businesses = getattr(getattr(agent, "config", None), "businesses", {}) or {}
+    business = businesses.get(business_id)
+    if business is None:
+        available = ", ".join(sorted(businesses)) or "none"
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"business_id '{business_id}' not found or disabled; "
+                f"available: {available}"
+            ),
+        )
+    return business.effective_database_name()
 
 _INDEX_HTML = """<!DOCTYPE html>
 <html lang="zh-CN">
@@ -115,11 +116,11 @@ details { margin: .25rem 0; }
 <body>
 <h1>DDL Schema 导入</h1>
 <p class="note">上传 DDL.csv 解析预览，确认后写入当前服务的 schema 向量库。
-写入的 database_name 需与 AutoLinkConfig.database_name 一致，入库存后 AutoLink 检索即刻生效。</p>
+必须选择目标业务，namespace 由业务配置解析（无兜底路由），写入后 AutoLink 检索即刻生效。</p>
 
 <div class="row">
   <input type="file" id="ddl-file" accept=".csv">
-  <label>database_name <input type="text" id="database-name" value="__AGENT_DATABASE_NAME__"></label>
+  <label>业务 <select id="business-select">__BUSINESS_OPTIONS__</select></label>
   <button id="parse-btn">解析</button>
 </div>
 
@@ -134,9 +135,15 @@ details { margin: .25rem 0; }
 <script>
 let parseId = null;
 const input = document.getElementById("ddl-file");
-const dbName = document.getElementById("database-name");
+const businessSelect = document.getElementById("business-select");
 const preview = document.getElementById("preview");
 const result = document.getElementById("result");
+
+// 当前选中业务的 namespace（由业务配置解析，页面不可编辑）
+function currentNamespace() {
+  const opt = businessSelect.selectedOptions[0];
+  return opt ? (opt.dataset.ns || opt.value) : "";
+}
 
 function statsHtml(d) {
   return '<div class="stats">'
@@ -168,6 +175,7 @@ function showResult(cls, text) {
 
 document.getElementById("parse-btn").addEventListener("click", async () => {
   if (!input.files.length) { showResult("err", "请先选择 DDL.csv 文件"); return; }
+  if (!businessSelect.value) { showResult("err", "请先选择目标业务"); return; }
   const form = new FormData();
   form.append("file", input.files[0]);
   showResult("ok", "解析中…");
@@ -176,10 +184,10 @@ document.getElementById("parse-btn").addEventListener("click", async () => {
     const data = await resp.json();
     if (!resp.ok) { showResult("err", data.detail || ("parse failed: " + resp.status)); return; }
     parseId = data.parse_id;
-    dbName.value = data.database_name;  // 服务端 AutoLink namespace 为准
     preview.innerHTML = statsHtml(data) + warningsHtml(data.warnings) + rowsHtml(data.tables);
     document.getElementById("ingest-row").style.display = "";
-    showResult("ok", "解析成功，请确认后写入向量库（当前 namespace：" + dbName.value + "，重复导入同名 namespace 会覆盖旧索引）");
+    showResult("ok", "解析成功，请确认后写入向量库（业务：" + businessSelect.value
+      + "，namespace：" + currentNamespace() + "，重复导入同名 namespace 会覆盖旧索引）");
   } catch (e) {
     showResult("err", "解析请求失败：" + e);
   }
@@ -187,18 +195,22 @@ document.getElementById("parse-btn").addEventListener("click", async () => {
 
 document.getElementById("ingest-btn").addEventListener("click", async () => {
   if (!parseId) { showResult("err", "请先解析 DDL.csv"); return; }
+  if (!businessSelect.value) { showResult("err", "请先选择目标业务"); return; }
   showResult("ok", "写入中…");
+  // namespace 由服务端按业务配置解析（无兜底路由）
+  const payload = { parse_id: parseId, business_id: businessSelect.value };
   try {
     const resp = await fetch("/api/vanna/v1/ddl/ingest", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ parse_id: parseId, database_name: dbName.value }),
+      body: JSON.stringify(payload),
     });
     const data = await resp.json();
     if (!resp.ok) { showResult("err", data.detail || ("ingest failed: " + resp.status)); return; }
     parseId = null;
     showResult("ok", "写入成功：" + data.tables_count + " 张表 / " + data.columns_count
-      + " 列 / " + data.relations_count + " 关系 -> namespace [" + data.database_name + "]");
+      + " 列 / " + data.relations_count + " 关系 -> 业务 [" + businessSelect.value
+      + "] namespace [" + data.database_name + "]");
   } catch (e) {
     showResult("err", "写入请求失败：" + e);
   }
@@ -209,14 +221,31 @@ document.getElementById("ingest-btn").addEventListener("click", async () => {
 """
 
 
+def _business_options_html(agent) -> str:
+    """Build <option> entries for the business selector from agent config.
+
+    Only loaded (enabled) businesses appear; there is no "no routing"
+    option — every ingest must target exactly one business.
+    """
+    businesses = getattr(getattr(agent, "config", None), "businesses", None) or {}
+    if not businesses:
+        return '<option value="">（无可用业务）</option>'
+    return "".join(
+        (
+            f'<option value="{business_id}" '
+            f'data-ns="{business.effective_database_name()}">'
+            f"{business_id} ({business.effective_database_name()})</option>"
+        )
+        for business_id, business in businesses.items()
+    )
+
+
 def register_ddl_import_routes(app: FastAPI, agent) -> None:
     """Register the DDL import page and API routes."""
 
     @app.get("/ddl-import", response_class=HTMLResponse)
     async def ddl_import_page() -> str:
-        return _INDEX_HTML.replace(
-            "__AGENT_DATABASE_NAME__", _agent_database_name(agent)
-        )
+        return _INDEX_HTML.replace("__BUSINESS_OPTIONS__", _business_options_html(agent))
 
     @app.post("/api/vanna/v1/ddl/parse")
     async def ddl_parse(file: UploadFile = File(...)) -> Dict[str, Any]:
@@ -249,7 +278,6 @@ def register_ddl_import_routes(app: FastAPI, agent) -> None:
         preview.update(
             {
                 "parse_id": parse_id,
-                "database_name": _agent_database_name(agent),
                 "warnings": _diff_unparsed_tables(text, tables),
             }
         )
@@ -263,7 +291,8 @@ def register_ddl_import_routes(app: FastAPI, agent) -> None:
             raise HTTPException(
                 status_code=503,
                 detail="Current service has no schema vector store configured; "
-                "start with VECTOR_BACKEND=faiss (or inject schema_vector_store) to ingest",
+                "configure storage.project.vector_db with backend 'faiss' "
+                "(or inject schema_vector_store) to ingest",
             )
         staged = _PENDING_PARSES.pop(request_body.parse_id, None)
         if staged is None:
@@ -272,15 +301,8 @@ def register_ddl_import_routes(app: FastAPI, agent) -> None:
                 detail="Unknown or already-consumed parse_id; parse the CSV again",
             )
         tables, relations = staged
-        # Resolve database_name: explicit > business_id > agent default
-        database_name = request_body.database_name
-        if not database_name and request_body.business_id:
-            businesses = getattr(getattr(agent, "config", None), "businesses", {})
-            business = businesses.get(request_body.business_id)
-            if business:
-                database_name = business.effective_database_name()
-        if not database_name:
-            database_name = _agent_database_name(agent)
+        # Namespace comes from the business configuration (no fallback).
+        database_name = _resolve_business_namespace(agent, request_body.business_id)
         try:
             await store.ingest_schema(tables, relations, database_name)
         except Exception as e:

@@ -224,14 +224,93 @@ VS Code 左侧 "Run and Debug" → "Breakpoints" 面板 → 勾选 "Raised Excep
 
 ---
 
-## 九、.env 配置项（服务端 Agent 自动装配）
+## 九、统一 JSON 配置（config/app.json，服务端 Agent 自动装配）
 
-`python -m vanna.servers` 启动时会自动加载 `.env`（`python-dotenv` 未安装时打印警告并跳过，见 `server_runner._load_dotenv_if_present()`）。以下配置项控制服务端 Agent 的工具自动装配：
+`python -m vanna.servers` 启动时从单一 JSON 文件读取全部配置（默认路径 `config/app.json`，可用 `APP_CONFIG_PATH` 环境变量覆盖；文件缺失时使用内置默认值并打印 info 日志，见 `server_runner._load_app_config()`）。
 
-| 环境变量 | 说明 | 示例 |
-|---|---|---|
-| `DATABASE_URL` | 映射为 `AgentConfig.database`；`Agent.__init__` 经 `create_sql_runner(url)`（`vanna.integrations.databases.factory`）按 scheme 派生 `SqlRunner` 并自动注册 `run_sql` + `visualize_data`。支持 10 种 scheme：sqlite / duckdb / mysql / postgresql / postgres / mssql / oracle / clickhouse / hive / presto；BigQuery / Snowflake / Databricks 需代码显式传入 runner | `DATABASE_URL=sqlite:///Chinook.sqlite` |
-| `EXTRA_TOOLS` | 逗号分隔的附加工具名。内置目录 7 个：`list_files` / `read_file` / `write_file` / `edit_file` / `search_files` / `run_python_file` / `pip_install`；出现未知名时抛 `ValueError` 并列出可用名（`_TOOL_CATALOG`，server_runner.py L26-L34） | `EXTRA_TOOLS=list_files,read_file` |
-| `VECTOR_BACKEND` | 设为 `faiss` 时同时派生 `FAISSAgentMemory` 与 `FAISSSchemaVectorStore`；faiss 依赖缺失（ImportError）时 agent memory 回退默认实现、schema store 置 None（不报错） | `VECTOR_BACKEND=faiss` |
+配置分四节：`llm`（LLM 服务）、`agent`（Agent 行为参数）、`storage`（存储介质）、`tools`（工具装配）。单实例槽位（llm / conversation_db / vector_db）用 `active` 从多套 `instances` 中选择唯一生效实例，未选中的是预留配置（仍做结构校验，切换只需改 `active`）；多实例集合（businesses）用 `enabled` 过滤（缺省 true），**没有兜底业务**——请求必须携带能匹配到的 `business_id`，否则直接报错。
 
-断点参考：`src/vanna/servers/cli/server_runner.py` → `_create_env_agent()`（L113-L198）。
+```jsonc
+{
+  "llm": {
+    "active": "innolight",
+    "instances": {
+      "innolight": {
+        "type": "openai",
+        "api_key": "sk-...",
+        "base_url": "https://aihub.innolight.com:50443/v1",
+        "model": "Qwen/Qwen3.8-27B-FP8"
+      },
+      "local_ollama": { "type": "ollama", "host": "http://localhost:11434", "model": "qwen3:32b" }
+    }
+  },
+  "agent": {
+    "max_tool_iterations": 10,
+    "stream_responses": true,
+    "include_thinking_indicators": true,
+    "temperature": 0.7,
+    "max_tokens": null
+  },
+  "storage": {
+    "project": {
+      "conversation_db": {
+        "active": "local_sqlite",
+        "instances": {
+          "local_sqlite": { "url": "sqlite:///data/db/conversations.db" },
+          "team_pg": { "url": "postgresql://user:pwd@host/conversations" }
+        }
+      },
+      "vector_db": {
+        "active": "faiss_local",
+        "instances": {
+          "faiss_local": { "backend": "faiss" },
+          "qdrant_server": { "backend": "qdrant", "url": "http://localhost:6333" }
+        }
+      }
+    },
+    "businesses": [
+      {
+        "id": "equipment_decay",
+        "enabled": true,
+        "database": { "url": "sqlite:///data/db/equipment_decay.db" },
+        "schema_vector": {
+          "namespace": "equipment_decay",
+          "backend": null,
+          "embedding_model_path": "E:/workspace/models/bge-large-en-v1.5"
+        }
+      },
+      {
+        "id": "biz_b",
+        "enabled": false,
+        "database": { "url": "mysql://user:pwd@host/b" },
+        "schema_vector": { "namespace": "biz_b", "backend": "qdrant_server" }
+      }
+    ]
+  },
+  "tools": { "extra": ["run_python_file"] }
+}
+```
+
+### 配置项说明
+
+| 配置项 | 说明 |
+|---|---|
+| `llm` | 单实例槽位：`active` 指向 `instances` 中的实例。当前仅实现 `type: "openai"`（OpenAI 兼容，api_key / base_url / model）；active 指向其他 type 时启动即报错。整节缺失时回退 mock LLM（warn 日志） |
+| `agent` | Agent 行为参数，直接映射 `AgentConfig` 字段（pydantic 校验，非法值启动报错）。全部可省略 |
+| `storage.project.conversation_db` | 1.1 项目自身会话数据库（关系库）。active 实例当前仅支持 sqlite，其他 scheme 启动即报错；整节缺失默认 `sqlite:///data/db/conversations.db`。预留实例不做 scheme 检查 |
+| `storage.project.vector_db` | 1.2 项目自身向量库（LLM 分析结果 memory + schema 索引默认后端）。active 实例仅支持 `faiss`；缺失时 memory 回退默认实现、schema store 置 None |
+| `storage.businesses[]` | 2.x 三方业务存储集合：`database.url` 为业务关系库（SqlRunner 按 scheme 派生，支持 sqlite/duckdb/mysql/postgresql/mssql/oracle/clickhouse/hive/presto 等）；`schema_vector.namespace` 为表字段向量库 namespace；`schema_vector.backend` 为 null 时继承项目 vector_db，非 null 必须是 `vector_db.instances` 中已声明的 key |
+| `storage.businesses[].enabled` | 缺省 true；false 的业务不加载（无 SqlRunner、DDL 页不显示）但结构照常校验。**至少一个 enabled，否则启动报错** |
+| `schema_vector.embedding_model_path` | 本地 SentenceTransformer 模型目录（FAISSSchemaVectorStore）；多业务声明不一致时取第一个并 warn |
+| `tools.extra` | 附加工具名数组。内置目录 7 个：`list_files` / `read_file` / `write_file` / `edit_file` / `search_files` / `run_python_file` / `pip_install`；出现未知名时抛 `ValueError` |
+
+### 路由规则（无兜底）
+
+- 聊天请求必须携带 `business_id`（ChatRequest 字段；webcomponent 通过 `<chatbot-chat business-id="...">` 属性设置），缺失报 "business_id is required"，未匹配报 "not found or disabled"；
+- SqlRunner 按业务惰性创建并缓存（`Agent._business_sql_runners[business_id]`），首次请求该业务时经 `create_sql_runner(database.url)` 派生，之后复用；`run_sql` 工具在配置了 businesses 时即注册，执行时优先取请求级 `ToolContext.sql_runner`；
+- DDL 导入页业务下拉框必选，namespace 由业务配置解析（未知业务返回 400，不写入任何库）；
+- disabled 业务不出现在任何路由与页面中。
+
+注意：`config/app.json` 已加入 `.gitignore`（含密钥，不入库）。未知顶层 key 会打印 warn 日志并被忽略，不会中断启动。
+
+断点参考：`src/vanna/servers/cli/server_runner.py` → `_create_config_agent()` / `_load_businesses()` / `_resolve_active_instance()`；路由判断在 `src/vanna/core/agent/agent.py` → `_send_message()` 的 business routing 段。

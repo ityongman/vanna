@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from vanna.capabilities.schema_vector_store.base import SchemaVectorStore
+from vanna.core.agent.config import BusinessConfig
 from vanna.servers.fastapi.ddl_import import register_ddl_import_routes
 
 
@@ -30,13 +31,19 @@ class FakeStore(SchemaVectorStore):
         return []
 
 
+def _business(business_id="biz_a", namespace="ns_a"):
+    return BusinessConfig(
+        id=business_id,
+        database={"url": "sqlite:///a.db"},
+        schema_vector={"namespace": namespace},
+    )
+
+
 class FakeAgent:
-    def __init__(self, schema_vector_store=None, autolink_database_name="default"):
+    def __init__(self, schema_vector_store=None, businesses=None):
         self.schema_vector_store = schema_vector_store
         self.config = SimpleNamespace(
-            autolink_config=SimpleNamespace(
-                database_name=autolink_database_name
-            )
+            businesses=businesses if businesses is not None else {"biz_a": _business()}
         )
 
 
@@ -50,7 +57,7 @@ def test_page_served():
     response = make_client().get("/ddl-import")
     assert response.status_code == 200
     assert "DDL" in response.text
-    assert "database_name" in response.text
+    assert "business-select" in response.text
 
 
 GOOD_CSV = (
@@ -78,7 +85,6 @@ def test_parse_success_returns_preview():
     assert data["tables_count"] == 2
     assert data["columns_count"] == 4  # orders: id, customer_id; customers: id, name
     assert data["relations_count"] == 1
-    assert data["database_name"] == "default"
     assert data["parse_id"]
     assert data["warnings"] == []
     assert {t["table_name"] for t in data["tables"]} == {"orders", "customers"}
@@ -145,7 +151,7 @@ def test_page_contains_interaction_elements():
     html = make_client().get("/ddl-import").text
     for marker in (
         "id=\"ddl-file\"",
-        "id=\"database-name\"",
+        "id=\"business-select\"",
         "id=\"parse-btn\"",
         "id=\"ingest-btn\"",
         "id=\"preview\"",
@@ -164,24 +170,49 @@ def test_ingest_success_writes_to_store():
     parse_id, _ = _parse_then(client)
     response = client.post(
         "/api/vanna/v1/ddl/ingest",
-        json={"parse_id": parse_id, "database_name": "chinook"},
+        json={"parse_id": parse_id, "business_id": "biz_a"},
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["database_name"] == "chinook"
+    assert data["database_name"] == "ns_a"
     assert data["tables_count"] == 2
     assert data["relations_count"] == 1
     assert len(store.ingested) == 1
     ingested = store.ingested[0]
-    assert ingested["database_name"] == "chinook"
+    assert ingested["database_name"] == "ns_a"
     assert {t.table_name for t in ingested["tables"]} == {"orders", "customers"}
+
+
+def test_ingest_unknown_business_returns_400():
+    """未知业务必须拒绝写入（无兜底路由）。"""
+    store = FakeStore()
+    client = make_client(FakeAgent(schema_vector_store=store))
+    parse_id, _ = _parse_then(client)
+    response = client.post(
+        "/api/vanna/v1/ddl/ingest",
+        json={"parse_id": parse_id, "business_id": "nope"},
+    )
+    assert response.status_code == 400
+    assert "not found or disabled" in response.json()["detail"]
+    assert store.ingested == []  # nothing was written
+
+
+def test_ingest_missing_business_id_is_rejected():
+    """business_id 缺失时请求体校验失败（必填）。"""
+    client = make_client()
+    parse_id, _ = _parse_then(client)
+    response = client.post(
+        "/api/vanna/v1/ddl/ingest",
+        json={"parse_id": parse_id},
+    )
+    assert response.status_code == 422
 
 
 def test_ingest_unknown_parse_id_returns_400():
     client = make_client()
     response = client.post(
         "/api/vanna/v1/ddl/ingest",
-        json={"parse_id": "nope", "database_name": "default"},
+        json={"parse_id": "nope", "business_id": "biz_a"},
     )
     assert response.status_code == 400
 
@@ -191,7 +222,7 @@ def test_ingest_without_store_returns_503():
     parse_id, _ = _parse_then(client)
     response = client.post(
         "/api/vanna/v1/ddl/ingest",
-        json={"parse_id": parse_id, "database_name": "default"},
+        json={"parse_id": parse_id, "business_id": "biz_a"},
     )
     assert response.status_code == 503
     assert "vector" in response.json()["detail"].lower()
@@ -203,47 +234,38 @@ def test_ingest_consumes_parse_id():
     parse_id, _ = _parse_then(client)
     assert client.post(
         "/api/vanna/v1/ddl/ingest",
-        json={"parse_id": parse_id, "database_name": "default"},
+        json={"parse_id": parse_id, "business_id": "biz_a"},
     ).status_code == 200
     second = client.post(
         "/api/vanna/v1/ddl/ingest",
-        json={"parse_id": parse_id, "database_name": "default"},
+        json={"parse_id": parse_id, "business_id": "biz_a"},
     )
     assert second.status_code == 400  # already consumed
 
 
-def test_parse_preview_reports_agent_autolink_namespace():
-    """parse 响应里的 database_name 必须来自 agent 的 AutoLink 配置。"""
-    client = make_client(FakeAgent(FakeStore(), autolink_database_name="equipment_decay"))
-    response = client.post(
-        "/api/vanna/v1/ddl/parse",
-        files={"file": ("DDL.csv", io.BytesIO(GOOD_CSV.encode("utf-8")), "text/csv")},
-    )
-    assert response.status_code == 200
-    assert response.json()["database_name"] == "equipment_decay"
-
-
-def test_ingest_without_body_namespace_uses_agent_default():
-    """ingest 请求体不带 database_name 时，写入 agent 的 AutoLink namespace。"""
-    store = FakeStore()
-    client = make_client(FakeAgent(store, autolink_database_name="equipment_decay"))
-    parse_id, _ = _parse_then(client)
-    response = client.post(
-        "/api/vanna/v1/ddl/ingest",
-        json={"parse_id": parse_id},
-    )
-    assert response.status_code == 200
-    assert response.json()["database_name"] == "equipment_decay"
-    assert store.ingested[0]["database_name"] == "equipment_decay"
-
-
-def test_page_default_namespace_follows_agent_config():
-    """页面输入框默认值应为 agent 的 AutoLink namespace。"""
+def test_page_lists_businesses_with_namespaces():
+    """页面下拉框应列出可用业务及其 namespace。"""
     html = make_client(
-        FakeAgent(FakeStore(), autolink_database_name="equipment_decay")
+        FakeAgent(
+            FakeStore(),
+            businesses={
+                "biz_a": _business("biz_a", "ns_a"),
+                "biz_b": _business("biz_b", "ns_b"),
+            },
+        )
     ).get("/ddl-import").text
-    assert 'value="equipment_decay"' in html
-    assert "__AGENT_DATABASE_NAME__" not in html
+    assert 'value="biz_a"' in html
+    assert 'data-ns="ns_a"' in html
+    assert 'value="biz_b"' in html
+    assert 'data-ns="ns_b"' in html
+    assert "默认（不路由）" not in html
+
+
+def test_page_without_businesses_shows_placeholder():
+    html = make_client(
+        FakeAgent(FakeStore(), businesses={})
+    ).get("/ddl-import").text
+    assert "无可用业务" in html
 
 
 def test_page_served_via_vanna_server():

@@ -108,20 +108,20 @@ def _make_basic_agent(
     vector_backend=None,
     embedding_model_path=None,
 ):
-    from vanna.agents import create_basic_agent
+    from vanna.agents import VectorStoreSettings, create_basic_agent
 
     return create_basic_agent(
         llm_service=MagicMock(),
         agent_memory=agent_memory,
         schema_vector_store=schema_vector_store,
-        vector_backend=vector_backend,
+        vector_store=VectorStoreSettings(backend=vector_backend),
         embedding_model_path=embedding_model_path,
     )
 
 
 @pytest.mark.asyncio
-async def test_vector_backend_derives_faiss_stores():
-    """create_basic_agent(vector_backend='faiss') derives both stores."""
+async def test_vector_store_faiss_derives_both_stores():
+    """create_basic_agent(vector_store={'backend': 'faiss'}) derives both stores."""
     faiss_memory = pytest.importorskip("vanna.integrations.vector.faiss")
     faiss_memory  # noqa: B018 - imported for its conditioning effect
     # The module can be present while the faiss runtime package is not;
@@ -139,7 +139,7 @@ async def test_vector_backend_derives_faiss_stores():
 
 
 @pytest.mark.asyncio
-async def test_vector_backend_faiss_forwards_embedding_model_path():
+async def test_vector_store_faiss_forwards_embedding_model_path():
     """create_basic_agent(embedding_model_path=...) reaches the faiss store."""
     pytest.importorskip("vanna.integrations.vector.faiss")
     pytest.importorskip("faiss")
@@ -155,8 +155,8 @@ async def test_vector_backend_faiss_forwards_embedding_model_path():
 
 
 @pytest.mark.asyncio
-async def test_vector_backend_unknown_falls_back_to_default():
-    """Unknown vector_backend: agent_memory is the default implementation."""
+async def test_vector_store_unknown_backend_falls_back_to_default():
+    """Unknown vector backend: agent_memory is the default implementation."""
     agent = _make_basic_agent(vector_backend="mysql")
     default = _make_basic_agent()
 
@@ -167,8 +167,8 @@ async def test_vector_backend_unknown_falls_back_to_default():
 
 
 @pytest.mark.asyncio
-async def test_vector_backend_none_keeps_defaults():
-    """vector_backend=None must behave exactly like before (default memory)."""
+async def test_vector_store_none_keeps_defaults():
+    """vector_store=None must behave exactly like before (default memory)."""
     default = _make_basic_agent()
     explicit_none = _make_basic_agent(vector_backend=None)
 

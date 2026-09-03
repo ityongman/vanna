@@ -2,7 +2,7 @@
 HTML templates for the chatbot servers.
 """
 
-from typing import Optional
+from typing import List, Optional
 
 
 def get_chatbot_component_script(
@@ -39,19 +39,49 @@ def get_index_html(
     static_path: str = "/static",
     cdn_url: str = "https://img.vanna.ai/chatbot-components.js",
     api_base_url: str = "",
+    businesses: Optional[List[str]] = None,
 ) -> str:
     """Generate index HTML with configurable component loading.
 
     Args:
         dev_mode: If True, load components from local static files
         static_path: Path to static assets in dev mode
-        cdn_url: CDN URL for production components
+        cdn_url: CDN URL for production
         api_base_url: Base URL for API endpoints
+        businesses: Enabled business IDs for multi-business routing.
+            Rendered as a selector on the login form; the selected value
+            is forwarded to the chatbot-chat component's business-id
+            property so chat requests carry business_id.
 
     Returns:
         Complete HTML page as string
     """
     component_script = get_chatbot_component_script(dev_mode, static_path, cdn_url)
+
+    business_options = "".join(
+        f'<option value="{bid}">{bid}</option>' for bid in (businesses or [])
+    )
+    # Single business: pre-selected, no placeholder row.
+    # Multiple: placeholder forces an explicit choice (no default route).
+    business_placeholder = (
+        "" if len(businesses or []) == 1 else '<option value="">Select a business...</option>'
+    )
+    business_selector = (
+        f"""
+            <div class="mb-5">
+                <label for="businessInput" class="block mb-2 text-sm font-medium text-chatbot-navy">Business</label>
+                <select
+                    id="businessInput"
+                    class="w-full px-4 py-3 text-sm border border-chatbot-teal/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-chatbot-teal focus:border-transparent bg-white"
+                >
+                    {business_placeholder}
+                    {business_options}
+                </select>
+            </div>
+        """
+        if businesses
+        else ""
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -169,7 +199,7 @@ def get_index_html(
                     <option value="user@example.com">user@example.com</option>
                 </select>
             </div>
-
+{business_selector}
             <button id="loginButton" class="w-full px-4 py-3 bg-chatbot-teal text-white text-sm font-medium rounded-lg hover:bg-chatbot-navy focus:outline-none focus:ring-2 focus:ring-chatbot-teal focus:ring-offset-2 transition disabled:bg-gray-400 disabled:cursor-not-allowed">
                 Continue
             </button>
@@ -240,6 +270,18 @@ def get_index_html(
         // Login/Logout
         document.addEventListener('DOMContentLoaded', () => {{
             const email = getCookie('chatbot_email');
+            const businessSelect = document.getElementById('businessInput');
+            const hasBusinessSelector = !!businessSelect;
+
+            // Sync the selected business to the chatbot-chat component so
+            // every chat request carries business_id (multi-business
+            // routing has no default fallback on the server side).
+            const applyBusinessId = () => {{
+                const chat = document.querySelector('chatbot-chat');
+                if (chat && businessSelect) {{
+                    chat.businessId = businessSelect.value;
+                }}
+            }};
 
             // Check if already logged in
             if (email) {{
@@ -247,6 +289,7 @@ def get_index_html(
                 loggedInStatus.classList.remove('hidden');
                 chatSections.classList.remove('hidden');
                 loggedInEmail.textContent = email;
+                applyBusinessId();
             }}
 
             // Login button
@@ -256,12 +299,22 @@ def get_index_html(
                     alert('Please select an email address');
                     return;
                 }}
+                if (hasBusinessSelector && !businessSelect.value) {{
+                    alert('Please select a business');
+                    return;
+                }}
                 setCookie('chatbot_email', email);
                 loginContainer.classList.add('hidden');
                 loggedInStatus.classList.remove('hidden');
                 chatSections.classList.remove('hidden');
                 loggedInEmail.textContent = email;
+                applyBusinessId();
             }});
+
+            // Keep component in sync when the selection changes later
+            if (businessSelect) {{
+                businessSelect.addEventListener('change', applyBusinessId);
+            }}
 
             // Logout button
             logoutButton.addEventListener('click', () => {{

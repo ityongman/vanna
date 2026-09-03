@@ -38,6 +38,7 @@ def register_chat_routes(
             static_path=config.get("static_folder", "/static"),
             cdn_url=cdn_url,
             api_base_url=api_base_url,
+            businesses=config.get("businesses"),
         )
 
     @app.post("/api/vanna/v2/chat_sse")
@@ -96,8 +97,12 @@ def register_chat_routes(
                 try:
                     data = await websocket.receive_json()
 
-                    # Extract request context for user resolution
-                    metadata = data.get("metadata", {})
+                    # Extract request context for user resolution; merge
+                    # the top-level business_id into metadata for
+                    # multi-business routing (same as the SSE endpoint).
+                    metadata = dict(data.get("metadata") or {})
+                    if data.get("business_id"):
+                        metadata["business_id"] = data["business_id"]
                     data["request_context"] = RequestContext(
                         cookies=dict(websocket.cookies),
                         headers=dict(websocket.headers),

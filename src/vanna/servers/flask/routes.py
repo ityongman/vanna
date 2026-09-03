@@ -38,6 +38,7 @@ def register_chat_routes(
             static_path=config.get("static_folder", "/static"),
             cdn_url=cdn_url,
             api_base_url=api_base_url,
+            businesses=config.get("businesses"),
         )
 
     @app.route("/api/vanna/v2/chat_sse", methods=["POST"])
@@ -48,12 +49,19 @@ def register_chat_routes(
             if not data:
                 return jsonify({"error": "JSON body required"}), 400
 
-            # Extract request context for user resolution
+            # Extract request context for user resolution; merge the
+            # top-level business_id into metadata so multi-business
+            # routing works on the Flask server too (the agent reads
+            # request_context.metadata["business_id"]).
+            metadata = dict(data.get("metadata") or {})
+            if data.get("business_id"):
+                metadata["business_id"] = data["business_id"]
             data["request_context"] = RequestContext(
                 cookies=dict(request.cookies),
                 headers=dict(request.headers),
                 remote_addr=request.remote_addr,
                 query_params=dict(request.args),
+                metadata=metadata,
             )
 
             chat_request = ChatRequest(**data)
@@ -112,12 +120,18 @@ def register_chat_routes(
             if not data:
                 return jsonify({"error": "JSON body required"}), 400
 
-            # Extract request context for user resolution
+            # Extract request context for user resolution; merge the
+            # top-level business_id into metadata for multi-business
+            # routing (same as the SSE endpoint above).
+            metadata = dict(data.get("metadata") or {})
+            if data.get("business_id"):
+                metadata["business_id"] = data["business_id"]
             data["request_context"] = RequestContext(
                 cookies=dict(request.cookies),
                 headers=dict(request.headers),
                 remote_addr=request.remote_addr,
                 query_params=dict(request.args),
+                metadata=metadata,
             )
 
             chat_request = ChatRequest(**data)

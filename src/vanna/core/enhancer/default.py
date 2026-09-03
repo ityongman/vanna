@@ -5,7 +5,7 @@ This implementation enriches the system prompt with relevant memories
 based on the user's initial message.
 """
 
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from .base import LlmContextEnhancer
 
 if TYPE_CHECKING:
@@ -39,7 +39,11 @@ class DefaultLlmContextEnhancer(LlmContextEnhancer):
         self.agent_memory = agent_memory
 
     async def enhance_system_prompt(
-        self, system_prompt: str, user_message: str, user: "User"
+        self,
+        system_prompt: str,
+        user_message: str,
+        user: "User",
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Enhance system prompt with relevant memories.
 
@@ -50,6 +54,7 @@ class DefaultLlmContextEnhancer(LlmContextEnhancer):
             system_prompt: The original system prompt
             user_message: The initial user message
             user: The user making the request
+            metadata: Optional per-request metadata (unused by this enhancer)
 
         Returns:
             Enhanced system prompt with relevant examples from memory

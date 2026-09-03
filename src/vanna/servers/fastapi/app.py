@@ -139,24 +139,8 @@ class VannaFastAPIServer:
         host = run_kwargs.get("host", "0.0.0.0")
         log_level = run_kwargs.get("log_level", "info")
 
-        # Check if we're specifically in Google Colab for port forwarding
-        in_colab = "google.colab" in sys.modules
-
-        if in_colab:
-            try:
-                from google.colab import output
-
-                output.serve_kernel_port_as_window(port)
-                from google.colab.output import eval_js
-
-                print("Your app is running at:")
-                print(eval_js(f"google.colab.kernel.proxyPort({port})"))
-            except Exception as e:
-                print(f"Warning: Could not set up Colab port forwarding: {e}")
-                print(f"Your app is running at: http://localhost:{port}")
-        else:
-            print("Your app is running at:")
-            print(f"http://localhost:{port}")
+        print("Your app is running at:")
+        print(f"http://localhost:{port}")
 
         if in_async_env:
             # In Jupyter/Colab, create config with loop="asyncio" and use asyncio.run()

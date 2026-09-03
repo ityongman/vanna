@@ -129,7 +129,11 @@ class TrackingEnhancer(LlmContextEnhancer):
         self.enhance_user_messages_calls = []
 
     async def enhance_system_prompt(
-        self, system_prompt: str, user_message: str, user: User
+        self,
+        system_prompt: str,
+        user_message: str,
+        user: User,
+        metadata=None,
     ) -> str:
         """Track call and add a marker to the system prompt."""
         self.enhance_system_prompt_calls.append(
@@ -137,6 +141,7 @@ class TrackingEnhancer(LlmContextEnhancer):
                 "system_prompt": system_prompt,
                 "user_message": user_message,
                 "user_id": user.id,
+                "metadata": metadata,
             }
         )
         return system_prompt + "\n\n[ENHANCED_SYSTEM_PROMPT]"

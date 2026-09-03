@@ -1,0 +1,104 @@
+{
+  "_comment": [
+    "app.json 示例文件：复制为 config/app.json 后按需修改（app.json 已被 .gitignore 忽略，不入库）。",
+    "结构分四节：llm（LLM 服务）、agent（Agent 行为参数）、storage（存储介质）、tools（工具装配）。",
+    "单实例槽位（llm / conversation_db / vector_db）：active 从 instances 中选择唯一生效实例，",
+    "  未选中的是预留配置（仍做结构校验，切换只需改 active 一处）。",
+    "多实例集合（storage.businesses）：enabled 过滤（缺省 true），disabled 条目不加载但照常校验。",
+    "路由规则：没有兜底业务，聊天请求必须携带能匹配到的 business_id，否则直接报错。",
+    "schema_vector.backend：null 继承 storage.project.vector_db 的 active 实例；",
+    "  非 null 必须是 vector_db.instances 中已声明的 key。"
+  ],
+
+  "llm": {
+    "active": "innolight",
+    "instances": {
+      "innolight": {
+        "type": "openai",
+        "api_key": "sk-xxxxxxxxxxxxxxxxxxxx",
+        "base_url": "https://aihub.innolight.com:50443/v1",
+        "model": "Qwen/Qwen3.8-27B-FP8"
+      },
+      "local_ollama": {
+        "type": "ollama",
+        "host": "http://localhost:11434",
+        "model": "qwen3:32b",
+        "_note": "预留示例：当前仅实现 type=openai，切换前需先实现对应 LlmService，否则启动报错"
+      }
+    }
+  },
+
+  "agent": {
+    "max_tool_iterations": 10,
+    "stream_responses": true,
+    "include_thinking_indicators": true,
+    "temperature": 0.7,
+    "max_tokens": null
+  },
+
+  "storage": {
+    "project": {
+      "conversation_db": {
+        "active": "local_sqlite",
+        "instances": {
+          "local_sqlite": {
+            "url": "sqlite:///data/db/conversations.db"
+          },
+          "team_pg": {
+            "url": "postgresql://user:password@host:5432/conversations",
+            "_note": "预留示例：当前仅实现 sqlite，postgresql 支持落地后改 active 即可切换"
+          }
+        }
+      },
+      "vector_db": {
+        "active": "faiss_local",
+        "instances": {
+          "faiss_local": {
+            "backend": "faiss",
+            "memory_index_path": "./data/vector_db/memory",
+            "schema_persist_dir": "./data/vector_db"
+          },
+          "qdrant_server": {
+            "backend": "qdrant",
+            "url": "http://localhost:6333",
+            "_note": "预留示例：当前仅实现 faiss；businesses.schema_vector.backend 可引用此 key"
+          }
+        }
+      }
+    },
+
+    "businesses": [
+      {
+        "id": "equipment_decay",
+        "enabled": true,
+        "database": {
+          "url": "sqlite:///data/db/equipment_decay.db",
+          "_note": "业务关系库；SqlRunner 按 URL scheme 派生，支持 sqlite/mysql/postgresql/mssql/oracle/clickhouse/hive/presto 等"
+        },
+        "schema_vector": {
+          "namespace": "equipment_decay",
+          "backend": null,
+          "embedding_model_path": "E:/workspace/models/bge-large-en-v1.5",
+          "_note": "backend=null 继承项目 vector_db 的 active 实例（共用向量库，按 namespace 隔离索引）"
+        }
+      },
+      {
+        "id": "biz_b",
+        "enabled": false,
+        "database": {
+          "url": "mysql://user:password@host:3306/biz_b"
+        },
+        "schema_vector": {
+          "namespace": "biz_b",
+          "backend": "qdrant_server",
+          "_note": "显式引用独立向量库实例（需该实例 backend 已实现）；enabled=false 为预留，不加载"
+        }
+      }
+    ]
+  },
+
+  "tools": {
+    "extra": ["run_python_file"],
+    "_note": "可选工具：list_files / read_file / write_file / edit_file / search_files / run_python_file / pip_install"
+  }
+}

@@ -21,29 +21,62 @@ class DatabaseConfig(BaseModel):
     url: str = Field(description="Database URL, e.g. sqlite:///Chinook.sqlite")
 
 
+class SchemaVectorConfig(BaseModel):
+    """Schema vector store configuration for a business.
+
+    ``backend`` selects the vector store instance: ``None`` inherits the
+    project-level vector_db (shared store, namespaced indices); a non-null
+    value references a dedicated instance declared by the server config.
+    """
+
+    namespace: str = Field(
+        description=(
+            "Vector store namespace for this business; DDL import and "
+            "AutoLink schema retrieval both use it"
+        ),
+    )
+    backend: Optional[str] = Field(
+        default=None,
+        description=(
+            "Vector backend instance key; None inherits the project-level "
+            "active vector_db instance"
+        ),
+    )
+    embedding_model_path: Optional[str] = Field(
+        default=None,
+        description=(
+            "Local path to a downloaded SentenceTransformer model directory; "
+            "only applied by FAISS-backed stores"
+        ),
+    )
+
+
 class BusinessConfig(BaseModel):
     """Configuration for a single business's storage.
 
     Bundles a relational database (for querying business data) with a
     schema vector store namespace (for table/column embeddings). Each
     business gets its own database connection and schema index.
+
+    ``enabled`` defaults to True; disabled entries are validated but not
+    loaded (no SqlRunner, hidden from the DDL import page).
     """
 
     id: str = Field(description="Business identifier, e.g. 'business_a'")
-    database_url: str = Field(
-        description="Business relational database URL, e.g. mysql://user:pwd@host/db"
+    enabled: bool = Field(
+        default=True,
+        description="Whether this business is loaded; disabled entries are reserved",
     )
-    database_name: str = Field(
-        default="",
-        description=(
-            "Schema vector store namespace. Defaults to id when empty. "
-            "Used by DDL import and AutoLink schema retrieval."
-        ),
+    database: DatabaseConfig = Field(
+        description="Business relational database, e.g. mysql://user:pwd@host/db",
+    )
+    schema_vector: SchemaVectorConfig = Field(
+        description="Schema vector store configuration (namespace/backend/embedding)",
     )
 
     def effective_database_name(self) -> str:
-        """Return the schema namespace (falls back to id)."""
-        return self.database_name or self.id
+        """Return the schema namespace used for retrieval and DDL import."""
+        return self.schema_vector.namespace
 
 
 class AuditConfig(BaseModel):
@@ -91,8 +124,8 @@ class AgentConfig(BaseModel):
         default_factory=dict,
         description=(
             "Multi-business configurations keyed by business_id. "
-            "When set, requests with a matching business_id metadata "
-            "will route to the corresponding database and schema namespace."
+            "When set, requests must carry a matching business_id in "
+            "metadata; unmatched requests are rejected (no fallback routing)."
         ),
     )
     auto_register_tools: bool = Field(

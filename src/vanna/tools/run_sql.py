@@ -20,15 +20,17 @@ class RunSqlTool(Tool[RunSqlToolArgs]):
 
     def __init__(
         self,
-        sql_runner: SqlRunner,
+        sql_runner: Optional[SqlRunner] = None,
         file_system: Optional[FileSystem] = None,
         custom_tool_name: Optional[str] = None,
         custom_tool_description: Optional[str] = None,
     ):
-        """Initialize the tool with a SqlRunner implementation.
+        """Initialize the tool with an optional SqlRunner implementation.
 
         Args:
-            sql_runner: SqlRunner implementation that handles actual query execution
+            sql_runner: Optional bound SqlRunner; per-request context.sql_runner
+                (business routing) takes precedence at execution time. When both
+                are None the tool reports a configuration error.
             file_system: FileSystem implementation for saving results (defaults to LocalFileSystem)
             custom_tool_name: Optional custom name for the tool (overrides default "run_sql")
             custom_tool_description: Optional custom description for the tool (overrides default description)
@@ -56,8 +58,22 @@ class RunSqlTool(Tool[RunSqlToolArgs]):
     async def execute(self, context: ToolContext, args: RunSqlToolArgs) -> ToolResult:
         """Execute a SQL query using the injected SqlRunner."""
         try:
-            # Prefer per-request sql_runner (business routing) over bound runner
+            # SqlRunner 解析优先级（三层防线，每层语义清晰）：
+            # 1. context.sql_runner —— 请求级路由（多业务模式）：
+            #    Agent._send_message 按 business_id 惰性创建并注入
+            #    （_get_or_create_sql_runner + ToolContext）。
+            #    business_id 缺失/未匹配在进入工具前已被拦截报错，
+            #    因此多业务请求走到这里时 context.sql_runner 必然有效。
+            # 2. self.sql_runner —— 构造绑定（SDK 单库模式）：
+            #    Agent.__init__ 从 config.database 派生的全局兜底。
+            #    server 多业务启动时为 None（设计使然，非 bug）。
+            # 3. 双 None —— 报配置错误，绝不静默执行。
             runner = context.sql_runner or self.sql_runner
+            if runner is None:
+                raise ValueError(
+                    "run_sql: no SqlRunner available; the request carried no "
+                    "business_id or the agent was built without a database"
+                )
             df = await runner.run_sql(args, context)
 
             # Determine query type

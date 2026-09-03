@@ -13,7 +13,7 @@ never blocking the conversation.
 """
 
 import logging
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from ..agent.autolink_config import AutoLinkConfig
 from .base import LlmContextEnhancer
@@ -77,16 +77,26 @@ class AutoLinkSchemaEnhancer(LlmContextEnhancer):
         self.config = config if config is not None else AutoLinkConfig()
 
     async def enhance_system_prompt(
-        self, system_prompt: str, user_message: str, user: "User"
+        self,
+        system_prompt: str,
+        user_message: str,
+        user: "User",
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
-        """Enhance the system prompt with schema context for the question."""
+        """Enhance the system prompt with schema context for the question.
+
+        ``metadata["autolink_database_name"]`` (set by business routing)
+        overrides ``config.database_name`` for this call only, so the
+        schema retrieval hits the same namespace the DDL import wrote to.
+        """
         if self.schema_vector_store is None:
             return system_prompt
         if not user_message or not user_message.strip():
             return system_prompt
 
+        override = (metadata or {}).get("autolink_database_name")
         try:
-            section = await self._build_schema_section(user_message)
+            section = await self._build_schema_section(user_message, override)
         except Exception as e:  # noqa: BLE001 - degrade, never block
             logger.warning(
                 f"AutoLink schema enhancement failed, using original prompt: {e}"
@@ -103,11 +113,14 @@ class AutoLinkSchemaEnhancer(LlmContextEnhancer):
         """User messages are not modified by schema enhancement."""
         return messages
 
-    async def _build_schema_section(self, user_message: str) -> str:
+    async def _build_schema_section(
+        self, user_message: str, database_name_override: Optional[str] = None
+    ) -> str:
         """Retrieve relevant columns and format the prompt section."""
+        database_name = database_name_override or self.config.database_name
         results = await self.schema_vector_store.search(
             query=user_message,
-            database_name=self.config.database_name,
+            database_name=database_name,
             top_k=self.config.top_k,
         )
         if not results:
@@ -121,23 +134,28 @@ class AutoLinkSchemaEnhancer(LlmContextEnhancer):
         relations: List[SchemaRelation] = []
         inferred: List[SchemaRelation] = []
         if self.config.include_relations:
-            relations, inferred = await self._complete_key_columns(columns)
+            relations, inferred = await self._complete_key_columns(
+                columns, database_name_override
+            )
 
         return self._format_section(columns, relations, inferred)
 
     async def _complete_key_columns(
-        self, columns: Dict[Tuple[str, str], "SchemaColumn"]
+        self,
+        columns: Dict[Tuple[str, str], "SchemaColumn"],
+        database_name_override: Optional[str] = None,
     ) -> Tuple[List[SchemaRelation], List[SchemaRelation]]:
         """Key-column completion (AutoLink add_id semantics).
 
         PK/FK relations take priority: both sides of every relation touching
         the retrieved tables are completed via ``get_column_by_name``. Only
-        when the store returns no relations at all does the *id/*name/*code
+        when the store returns no relations at all does the ``*id/*name/*code``
         heuristic run. Returns ``(relations, inferred_relations)``.
         """
+        database_name = database_name_override or self.config.database_name
         table_names = sorted({table for table, _name in columns})
         relations = await self.schema_vector_store.get_relations(
-            table_names, self.config.database_name
+            table_names, database_name
         )
 
         if relations:
@@ -149,7 +167,7 @@ class AutoLinkSchemaEnhancer(LlmContextEnhancer):
                     if (table_name, column_name) in columns:
                         continue
                     column = await self.schema_vector_store.get_column_by_name(
-                        column_name, table_name, self.config.database_name
+                        column_name, table_name, database_name
                     )
                     if column is not None:
                         columns[(table_name, column_name)] = column
@@ -166,7 +184,7 @@ class AutoLinkSchemaEnhancer(LlmContextEnhancer):
                 continue
             for candidate_table in _plural_candidates(base):
                 ref = await self.schema_vector_store.get_column_by_name(
-                    "id", candidate_table, self.config.database_name
+                    "id", candidate_table, database_name
                 )
                 if ref is None:
                     continue

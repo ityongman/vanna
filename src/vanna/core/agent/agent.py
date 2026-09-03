@@ -163,12 +163,18 @@ class Agent:
 
         # Resolve the SQL runner: explicit instance wins (test mocks), else
         # derive from config.database via the URL-scheme factory.
+        # 注意：这是 SDK 单库路径（构造绑定的全局兜底 runner）。
+        # server 多业务启动只传 businesses 不传 database，这里保持
+        # sql_runner=None——真正的 runner 由请求按 business_id 惰性
+        # 创建（见 _get_or_create_sql_runner 与 _send_message），
+        # 执行时经 ToolContext.sql_runner 优先消费（见 RunSqlTool.execute）。
         if sql_runner is None and config.database is not None:
             from vanna.integrations.databases.factory import create_sql_runner
 
             sql_runner = create_sql_runner(config.database.url)
         self.sql_runner = sql_runner
         self.extra_tools = list(extra_tools)
+        # 业务路由的 runner 缓存：business_id -> SqlRunner（首次请求创建后复用）
         self._business_sql_runners: Dict[str, SqlRunner] = {}
 
         # Wire audit logger into tool registry
@@ -210,12 +216,20 @@ class Agent:
 
             self._register_if_absent(ExploreSchemaLinksTool())
 
-        # Category 2: database tools (text-to-SQL).
-        if self.sql_runner is not None:
+        # Category 2: database tools (text-to-SQL). Register when a bound
+        # runner exists OR businesses are configured (per-request routing
+        # supplies the runner via ToolContext.sql_runner).
+        # 注意：工具注册与 runner 绑定是解耦的——多业务模式下这里
+        # RunSqlTool(sql_runner=None) 也会注册（注册只是声明"有此能力"，
+        # 供 LLM 生成 tool_call 用），执行时才通过请求级
+        # ToolContext.sql_runner（按 business_id 路由）或构造绑定的
+        # 兜底 runner 解析，详见 RunSqlTool.execute 的优先级注释。
+        if self.sql_runner is not None or self.config.businesses:
             from vanna.tools.run_sql import RunSqlTool
             from vanna.tools.visualize_data import VisualizeDataTool
 
             self._register_if_absent(RunSqlTool(sql_runner=self.sql_runner))
+            # VisualizeDataTool 是 text-to-SQL 能力链的配套工具，用于可视化查询结果
             self._register_if_absent(VisualizeDataTool())
         else:
             logger.warning(
@@ -235,12 +249,17 @@ class Agent:
             logger.debug("Tool '%s' already registered; keeping existing", tool.name)
 
     def _get_or_create_sql_runner(self, business: "BusinessConfig") -> SqlRunner:
-        """Get or create a cached SqlRunner for a business configuration."""
+        """Get or create a cached SqlRunner for a business configuration.
+
+        多业务模式的 runner 创建入口：首次请求该 business 时按
+        database.url 派生并缓存，后续复用；创建结果注入请求级
+        ToolContext.sql_runner，供 RunSqlTool 执行时消费。
+        """
         if business.id not in self._business_sql_runners:
             from vanna.integrations.databases.factory import create_sql_runner
 
             self._business_sql_runners[business.id] = create_sql_runner(
-                business.database_url
+                business.database.url
             )
             logger.info("Created SqlRunner for business '%s'", business.id)
         return self._business_sql_runners[business.id]
@@ -277,8 +296,15 @@ class Agent:
                 exc_info=True,
             )
 
-            # Yield error component to UI (simple, user-friendly message)
-            error_description = "An unexpected error occurred while processing your message. Please try again."
+            # Yield error component to UI. ValueError carries intentional
+            # routing/validation messages; other errors stay generic.
+            if isinstance(e, ValueError):
+                error_description = str(e)
+            else:
+                error_description = (
+                    "An unexpected error occurred while processing your "
+                    "message. Please try again."
+                )
             if conversation_id:
                 error_description += f"\n\nConversation ID: {conversation_id}"
 
@@ -495,10 +521,22 @@ class Agent:
         context_sql_runner = None
 
         # Business routing: resolve sql_runner and autolink_database_name
-        # from request metadata business_id.
+        # from request metadata business_id. When businesses are configured
+        # there is no fallback route — a missing or unknown business_id is
+        # an error (fail fast instead of querying the wrong database).
         business_id = request_context.metadata.get("business_id")
-        if business_id and business_id in self.config.businesses:
-            business = self.config.businesses[business_id]
+        if self.config.businesses:
+            if not business_id:
+                raise ValueError(
+                    "business_id is required: this agent routes requests by "
+                    "business; set business_id in the chat request"
+                )
+            business = self.config.businesses.get(business_id)
+            if business is None:
+                raise ValueError(
+                    f"business_id '{business_id}' not found or disabled; "
+                    f"available: {', '.join(sorted(self.config.businesses))}"
+                )
             context_sql_runner = self._get_or_create_sql_runner(business)
             context_metadata["autolink_database_name"] = (
                 business.effective_database_name()
@@ -543,10 +581,12 @@ class Agent:
             user, tool_schemas
         )
 
-        # Enhance system prompt with LLM context enhancer
+        # Enhance system prompt with LLM context enhancer. metadata carries
+        # the per-request autolink_database_name (business routing) so schema
+        # retrieval hits the same namespace that DDL import wrote to.
         if self.llm_context_enhancer and system_prompt is not None:
             system_prompt = await self.llm_context_enhancer.enhance_system_prompt(
-                system_prompt, message, user
+                system_prompt, message, user, metadata=context_metadata
             )
 
         # Build LLM request

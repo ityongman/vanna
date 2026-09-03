@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { chatbotDesignTokens } from '../styles/chatbot-design-tokens.js';
-import { ChatbotApiClient, ChatStreamChunk } from '../services/api-client.js';
+import { ChatbotApiClient, ChatRequest, ChatStreamChunk } from '../services/api-client.js';
 import { ComponentManager, RichComponent } from './rich-component-system.js';
 import './chatbot-status-bar.js';
 import './chatbot-progress-tracker.js';
@@ -717,6 +717,7 @@ export class ChatbotChat extends LitElement {
   @property({ attribute: 'sse-endpoint' }) sseEndpoint = '/api/vanna/v2/chat_sse';
   @property({ attribute: 'ws-endpoint' }) wsEndpoint = '/api/vanna/v2/chat_websocket';
   @property({ attribute: 'poll-endpoint' }) pollEndpoint = '/api/vanna/v2/chat_poll';
+  @property({ attribute: 'business-id' }) businessId = '';
   @property() subtitle = '';
   @property() startingState: 'normal' | 'maximized' | 'minimized' = 'normal';
 
@@ -946,12 +947,15 @@ export class ChatbotChat extends LitElement {
 
     try {
       // Create the request
-      const request = {
+      const request: ChatRequest = {
         message: messageText,
         conversation_id: this.conversationId,
         request_id: this.generateId(),
         metadata: {}
       };
+      if (this.businessId) {
+        request.business_id = this.businessId;
+      }
 
       // Stream the response
       await this.handleStreamingResponse(request);
