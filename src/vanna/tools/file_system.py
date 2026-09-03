@@ -123,11 +123,13 @@ class FileSystem(ABC):
 class LocalFileSystem(FileSystem):
     """Local file system implementation with per-user isolation."""
 
-    def __init__(self, working_directory: str = "."):
+    def __init__(self, working_directory: str = "tmp"):
         """Initialize with a working directory.
 
         Args:
-            working_directory: Base directory where user-specific folders will be created
+            working_directory: Base directory where user-specific folders will be created.
+                Defaults to "tmp" — 工具链中间产物（如 query_results_*.csv）统一写入该目录，
+                与 data/ 下的重要数据隔离，且已被 .gitignore 忽略。
         """
         self.working_directory = Path(working_directory)
 

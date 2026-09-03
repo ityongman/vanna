@@ -30,6 +30,8 @@ conversations.db-shm
 # 项目运行时生成的文件
 data/db/
 data/vector_db/
+# 工具链中间产物（LocalFileSystem 默认 working_directory）
+tmp/
 
 # Frontend builds and dependencies
 frontends/**/node_modules/
@@ -39,3 +41,4 @@ frontends/**/package-lock.json
 frontends/**/.mypy_cache/
 
 .superpowers
+.vscode/
