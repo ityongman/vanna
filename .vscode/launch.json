@@ -45,121 +45,27 @@
             "justMyCode": false,
             "args": ["--framework", "flask", "--host", "0.0.0.0", "--port", "9000", "--dev"]
         },
-        {
-            "name": "Vanna FastAPI + mock_quickstart",
+                {
+            "name": "Vanna FastAPI + Vite HMR (worktree: multi-business-routing)",
             "type": "debugpy",
             "request": "launch",
             "module": "vanna.servers",
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {"PYTHONPATH": "${workspaceFolder}/src"},
+            "cwd": "d:/workspace/sourceWorkspace/vanna/.claude/worktrees/multi-business-routing",
+            "env": {"PYTHONPATH": "d:/workspace/sourceWorkspace/vanna/.claude/worktrees/multi-business-routing/src"},
             "justMyCode": false,
-            "args": ["--framework", "fastapi", "--host", "0.0.0.0", "--port", "9000", "--example", "mock_quickstart", "--dev"]
+            "args": ["--framework", "fastapi", "--host", "0.0.0.0", "--port", "9001", "--dev", "--static-folder", "http://localhost:5174"]
         },
         {
-            "name": "Vanna FastAPI + claude_sqlite",
+            "name": "Vanna FastAPI (worktree: multi-business-routing)",
             "type": "debugpy",
             "request": "launch",
             "module": "vanna.servers",
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {"PYTHONPATH": "${workspaceFolder}/src"},
+            "cwd": "d:/workspace/sourceWorkspace/vanna/.claude/worktrees/multi-business-routing",
+            "env": {"PYTHONPATH": "d:/workspace/sourceWorkspace/vanna/.claude/worktrees/multi-business-routing/src"},
             "justMyCode": false,
-            "args": ["--framework", "fastapi", "--host", "0.0.0.0", "--port", "9000", "--example", "claude_sqlite_example", "--dev"]
+            "args": ["--framework", "fastapi", "--host", "0.0.0.0", "--port", "9001", "--dev"]
         },
-        {
-            "name": "Vanna FastAPI + openai",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "vanna.servers",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {"PYTHONPATH": "${workspaceFolder}/src"},
-            "justMyCode": false,
-            "args": ["--framework", "fastapi", "--host", "0.0.0.0", "--port", "9000", "--example", "openai_quickstart", "--dev"]
-        },
-        {
-            "name": "Vanna FastAPI (custom static folder)",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "vanna.servers",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {"PYTHONPATH": "${workspaceFolder}/src"},
-            "justMyCode": false,
-            "args": ["--framework", "fastapi", "--host", "0.0.0.0", "--port", "9000", "--example", "mock_quickstart", "--dev", "--static-folder", "frontends/webcomponent/static"]
-        },
-        {
-            "name": "Run example: mock_quickstart",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "vanna.examples",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {"PYTHONPATH": "${workspaceFolder}/src"},
-            "justMyCode": false,
-            "args": ["mock_quickstart"]
-        },
-        {
-            "name": "Run example: openai_quickstart",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "vanna.examples",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {"PYTHONPATH": "${workspaceFolder}/src"},
-            "justMyCode": false,
-            "args": ["openai_quickstart"]
-        },
-        {
-            "name": "Run example: minimal_example",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "vanna.examples",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {"PYTHONPATH": "${workspaceFolder}/src"},
-            "justMyCode": false,
-            "args": ["minimal_example"]
-        },
-        {
-            "name": "Run example: evaluation_example",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "vanna.examples",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {"PYTHONPATH": "${workspaceFolder}/src"},
-            "justMyCode": false,
-            "args": ["evaluation_example"]
-        },
-        {
-            "name": "Run example: visualization_example",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "vanna.examples",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {"PYTHONPATH": "${workspaceFolder}/src"},
-            "justMyCode": false,
-            "args": ["visualization_example"]
-        },
-        {
-            "name": "Debug current file",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {"PYTHONPATH": "${workspaceFolder}/src"},
-            "justMyCode": false
-        },
-        {
-            "name": "Attach to remote debugpy (port 5678)",
-            "type": "debugpy",
-            "request": "attach",
-            "connect": { "host": "localhost", "port": 5678 },
-            "pathMappings": [{ "localRoot": "${workspaceFolder}", "remoteRoot": "." }]
-        }
     ]
 }
