@@ -38,3 +38,4 @@ frontends/**/.storybook-static/
 frontends/**/package-lock.json
 frontends/**/.mypy_cache/
 
+.superpowers
