@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 将现有两个孤立页面（主对话页 + DDL 导入页）整合为单一 React 应用，统一设计语言，新增会话历史与 Schema 管理，并按角色区分用户区/管理区。
+**Goal:** 将现有两个孤立页面（主对话页 + DDL 导入页）整合为单一 React 应用，统一设计语言，新增会话历史与 Schema 管理，并按角色区分用户区/管理区；全流程保留多业务路由维度（登录选业务 → 对话/DDL/Schema 按 `business_id` 路由）。
 
-**Architecture:** 新增 `frontends/web/`（React 19 + Vite + shadcn/ui + Tailwind），构建为纯静态文件由 FastAPI `StaticFiles` 托管（生产环境仅一个后端进程）。后端新增三条路由模块（auth / conversations / schema），并为 `SchemaVectorStore` 增加 `list_tables` / `remove_table` 两个可选能力。现有 chat SSE/WebSocket/Polling 与 DDL parse/ingest 接口不动。
+**Architecture:** 新增 `frontends/web/`（React 19 + Vite + shadcn/ui + Tailwind），构建为纯静态文件由 FastAPI `StaticFiles` 托管（生产环境仅一个后端进程）。后端新增三条路由模块（auth / conversations / schema），管理员邮箱从 `config/app.json` 的 `server.admin_emails` 读取（不再使用 `.env`），并为 `SchemaVectorStore` 增加 `list_tables` / `remove_table` 两个可选能力。schema 系 API 必填 `business_id`，命名空间从 `agent.config.businesses` 解析（无兜底，与 DDL ingest 行为一致）。现有 chat SSE/WebSocket/Polling 与 DDL parse/ingest 接口不动（DDL ingest 已要求 `business_id`）。
 
 **Tech Stack:** React 19、Vite、TypeScript、shadcn/ui、Tailwind CSS、React Router、FastAPI、SQLite、FAISS、pytest（asyncio）、TestClient。
 
@@ -17,12 +17,12 @@
 **后端（修改/新增）**
 - 新增 `src/vanna/core/user/cookie_email_resolver.py` — `CookieEmailUserResolver`（读 chat cookie）
 - 修改 `src/vanna/core/user/__init__.py` — 导出 `CookieEmailUserResolver`（修复坏 import）
-- 新增 `src/vanna/servers/fastapi/auth.py` — 管理员判定 + request context/resolve 辅助
-- 新增 `src/vanna/servers/fastapi/auth_routes.py` — `/api/auth/me`
+- 新增 `src/vanna/servers/fastapi/auth.py` — 管理员判定（app.json `server.admin_emails`）+ request context/resolve 辅助
+- 新增 `src/vanna/servers/fastapi/auth_routes.py` — `/api/auth/me`（含 `businesses`）
 - 新增 `src/vanna/servers/fastapi/conversation_routes.py` — 会话 REST
-- 新增 `src/vanna/servers/fastapi/schema_routes.py` — Schema 管理 REST
+- 新增 `src/vanna/servers/fastapi/schema_routes.py` — Schema 管理 REST（按 business_id 解析命名空间）
 - 修改 `src/vanna/servers/fastapi/app.py` — 注册新路由 + SPA 静态托管
-- 修改 `src/vanna/servers/cli/server_runner.py` — 装配 `CookieEmailUserResolver`
+- 修改 `src/vanna/servers/cli/server_runner.py` — 装配 `CookieEmailUserResolver`；解析 `server.admin_emails` 并注入 server_config
 - 修改 `src/vanna/capabilities/schema_vector_store/base.py` — 增加 `list_tables` / `remove_table` 可选方法
 - 修改 `src/vanna/integrations/vector/faiss/schema_vector_store.py` — 实现两个新方法
 - 新增 `tests/test_cookie_email_resolver.py`、`tests/test_auth_routes.py`、`tests/test_conversation_routes.py`、`tests/test_schema_routes.py`
@@ -30,10 +30,10 @@
 **前端（新增 `frontends/web/`）**
 - `package.json`、`vite.config.ts`、`tsconfig.json`、`index.html`（脚手架生成）
 - `src/main.tsx`、`src/App.tsx`（路由）、`src/index.css`（Tailwind + token）
-- `src/lib/api.ts`、`src/lib/auth.tsx`（AuthContext + 守卫）
+- `src/lib/api.ts`、`src/lib/auth.tsx`（AuthContext + 守卫 + 业务选择状态）
 - `src/app/chat/ChatPage.tsx`、`src/app/chat/ConversationSidebar.tsx`
-- `src/app/login/LoginPage.tsx`
-- `src/app/admin/AdminLayout.tsx`、`src/app/admin/DdlImportPage.tsx`、`src/app/admin/SchemaPage.tsx`
+- `src/app/login/LoginPage.tsx`（邮箱 + 业务选择）
+- `src/app/admin/AdminLayout.tsx`、`src/app/admin/DdlImportPage.tsx`（含目标业务选择）、`src/app/admin/SchemaPage.tsx`（业务切换器）
 
 ---
 
@@ -151,6 +151,8 @@ git commit -m "feat: add CookieEmailUserResolver for built-in web UI auth"
 
 ### Task 2: 认证辅助模块 + `/api/auth/me`
 
+> 管理员邮箱来自 `config/app.json` 的 `server.admin_emails`（数组），由 server_runner 解析后经 server_config 注入；**不读环境变量**。响应同时返回启用的 `businesses`（来自 `agent.config.businesses`），供登录页渲染业务选择器。
+
 **Files:**
 - Create: `src/vanna/servers/fastapi/auth.py`
 - Create: `src/vanna/servers/fastapi/auth_routes.py`
@@ -161,29 +163,29 @@ git commit -m "feat: add CookieEmailUserResolver for built-in web UI auth"
 创建 `tests/test_auth_routes.py`：
 
 ```python
-import os
-
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from vanna.core.user import CookieEmailUserResolver, User
+from vanna.core.user import CookieEmailUserResolver
 from vanna.servers.fastapi.auth_routes import register_auth_routes
 
 
 class FakeAgent:
-    def __init__(self, resolver):
-        self.user_resolver = resolver
+    def __init__(self, resolver=None, businesses=None):
+        self.user_resolver = resolver or CookieEmailUserResolver()
+        self.config = type("C", (), {"businesses": businesses or {}})()
 
 
-def make_client(resolver=None, monkeypatch=None):
+def make_client(admin_emails=("admin@corp.com",), businesses=None):
     app = FastAPI()
-    register_auth_routes(app, FakeAgent(resolver or CookieEmailUserResolver()))
+    register_auth_routes(
+        app, FakeAgent(businesses=businesses), admin_emails=list(admin_emails)
+    )
     return TestClient(app)
 
 
-def test_auth_me_returns_admin_for_whitelisted_email(monkeypatch):
-    monkeypatch.setenv("ADMIN_EMAILS", "admin@corp.com")
-    client = make_client()
+def test_auth_me_returns_admin_for_whitelisted_email():
+    client = make_client(admin_emails=["admin@corp.com"])
     client.cookies.set("chatbot_email", "admin@corp.com")
     resp = client.get("/api/auth/me")
     assert resp.status_code == 200
@@ -192,20 +194,24 @@ def test_auth_me_returns_admin_for_whitelisted_email(monkeypatch):
     assert body["is_admin"] is True
 
 
-def test_auth_me_returns_non_admin_for_other_email(monkeypatch):
-    monkeypatch.setenv("ADMIN_EMAILS", "admin@corp.com")
-    client = make_client()
+def test_auth_me_returns_non_admin_for_other_email():
+    client = make_client(admin_emails=["admin@corp.com"])
     client.cookies.set("chatbot_email", "user@corp.com")
     body = client.get("/api/auth/me").json()
     assert body["is_admin"] is False
 
 
-def test_auth_me_anonymous_when_no_cookie(monkeypatch):
-    monkeypatch.setenv("ADMIN_EMAILS", "admin@corp.com")
-    client = make_client()
+def test_auth_me_anonymous_when_no_cookie():
+    client = make_client(admin_emails=["admin@corp.com"])
     body = client.get("/api/auth/me").json()
     assert body["email"] is None
     assert body["is_admin"] is False
+
+
+def test_auth_me_exposes_enabled_businesses():
+    client = make_client(businesses={"biz_a": object(), "biz_b": object()})
+    body = client.get("/api/auth/me").json()
+    assert sorted(body["businesses"]) == ["biz_a", "biz_b"]
 ```
 
 - [ ] **Step 2: 运行测试确认失败**
@@ -220,7 +226,6 @@ Expected: FAIL — `ModuleNotFoundError: ... auth_routes`
 ```python
 """Auth helpers shared by the built-in FastAPI web UI routes."""
 
-import os
 from typing import List, Optional
 
 from fastapi import Request
@@ -228,14 +233,9 @@ from fastapi import Request
 from vanna.core.user import RequestContext, User
 
 
-def admin_emails() -> List[str]:
-    """Parse the ADMIN_EMAILS env var (comma-separated) into a list."""
-    raw = os.getenv("ADMIN_EMAILS", "")
-    return [e.strip() for e in raw.split(",") if e.strip()]
-
-
-def is_admin_email(email: Optional[str]) -> bool:
-    return bool(email and email in admin_emails())
+def is_admin_email(email: Optional[str], admin_emails: List[str]) -> bool:
+    """Check an email against the app.json ``server.admin_emails`` list."""
+    return bool(email and email in admin_emails)
 
 
 def build_request_context(http_request: Request) -> RequestContext:
@@ -258,37 +258,47 @@ async def resolve_user(agent, http_request: Request) -> User:
 ```python
 """FastAPI routes for the built-in web UI authentication."""
 
+from typing import List
+
 from fastapi import FastAPI, Request
 
 from .auth import is_admin_email, resolve_user
 
 
-def register_auth_routes(app: FastAPI, agent) -> None:
+def register_auth_routes(
+    app: FastAPI, agent, admin_emails: List[str] | None = None
+) -> None:
+    admin_emails = admin_emails or []
+
     @app.get("/api/auth/me")
     async def auth_me(http_request: Request):
         user = await resolve_user(agent, http_request)
+        businesses = list(getattr(agent.config, "businesses", {}) or {})
         return {
             "id": user.id,
             "email": user.email,
-            "is_admin": is_admin_email(user.email),
+            "is_admin": is_admin_email(user.email, admin_emails),
+            "businesses": businesses,
         }
 ```
 
 - [ ] **Step 5: 运行测试确认通过**
 
 Run: `pytest tests/test_auth_routes.py -v`
-Expected: 3 passed
+Expected: 4 passed
 
 - [ ] **Step 6: 提交**
 
 ```bash
 git add src/vanna/servers/fastapi/auth.py src/vanna/servers/fastapi/auth_routes.py tests/test_auth_routes.py
-git commit -m "feat: add /api/auth/me endpoint with ADMIN_EMAILS role check"
+git commit -m "feat: add /api/auth/me endpoint with app.json admin_emails role check"
 ```
 
 ---
 
 ### Task 3: 会话 REST 路由
+
+> 会话列表按用户过滤（现状）；`business_id` 已随 chat 请求存入会话 metadata，前端可据此时过滤/打标，本任务不改存储层。
 
 **Files:**
 - Create: `src/vanna/servers/fastapi/conversation_routes.py`
@@ -368,8 +378,6 @@ Expected: FAIL — `ModuleNotFoundError: ... conversation_routes`
 
 ```python
 """FastAPI routes exposing the conversation store for the web UI."""
-
-from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query, Request
 
@@ -457,22 +465,22 @@ async def make_store(tmp_path):
         table_name="orders",
         columns=[SchemaColumn(column_name="id", table_name="orders", data_type="INTEGER")],
     )
-    await store.ingest_schema([t1, t2], [], "db1")
+    await store.ingest_schema([t1, t2], [], "ns_a")
     return store
 
 
 async def test_list_tables(tmp_path):
     store = await make_store(tmp_path)
-    tables = await store.list_tables("db1")
+    tables = await store.list_tables("ns_a")
     names = {t.table_name for t in tables}
     assert names == {"users", "orders"}
 
 
 async def test_remove_table(tmp_path):
     store = await make_store(tmp_path)
-    removed = await store.remove_table("users", "db1")
+    removed = await store.remove_table("users", "ns_a")
     assert removed == 1
-    tables = await store.list_tables("db1")
+    tables = await store.list_tables("ns_a")
     assert [t.table_name for t in tables] == ["orders"]
 ```
 
@@ -486,11 +494,11 @@ Expected: FAIL — `AttributeError: 'FAISSSchemaVectorStore' object has no attri
 在 `src/vanna/capabilities/schema_vector_store/base.py` 的类末尾（`get_relations` 之后）增加两个具体方法（不 abstract，供不支持的后端继承）：
 
 ```python
-    async def list_tables(self, database_name: str) -> List[SchemaTable]:
-        """List tables currently indexed for a database (optional capability)."""
+    async def list_tables(self, namespace: str) -> List[SchemaTable]:
+        """List tables currently indexed for a namespace (optional capability)."""
         raise NotImplementedError("This backend does not support listing tables")
 
-    async def remove_table(self, table_name: str, database_name: str) -> int:
+    async def remove_table(self, table_name: str, namespace: str) -> int:
         """Remove a table (columns + relations); returns removed column count."""
         raise NotImplementedError("This backend does not support removing tables")
 ```
@@ -500,24 +508,24 @@ Expected: FAIL — `AttributeError: 'FAISSSchemaVectorStore' object has no attri
 在 `src/vanna/integrations/vector/faiss/schema_vector_store.py` 的 `get_relations` 之后、文件末尾追加：
 
 ```python
-    async def list_tables(self, database_name: str) -> List[SchemaTable]:
+    async def list_tables(self, namespace: str) -> List[SchemaTable]:
         """List tables by grouping persisted columns."""
-        self._load_database(database_name)
-        metadata = self._metadata.get(database_name) or {}
+        self._load_database(namespace)
+        metadata = self._metadata.get(namespace) or {}
         columns = [SchemaColumn(**c) for c in metadata.get("columns", [])]
         grouped: Dict[str, List[SchemaColumn]] = {}
         for col in columns:
             grouped.setdefault(col.table_name, []).append(col)
         return [
-            SchemaTable(table_name=name, database_name=database_name, columns=cols)
+            SchemaTable(table_name=name, database_name=namespace, columns=cols)
             for name, cols in grouped.items()
         ]
 
-    async def remove_table(self, table_name: str, database_name: str) -> int:
+    async def remove_table(self, table_name: str, namespace: str) -> int:
         """Remove a table's columns/relations and rebuild the index."""
-        self._load_database(database_name)
-        index = self._indexes.get(database_name)
-        metadata = self._metadata.get(database_name) or {}
+        self._load_database(namespace)
+        index = self._indexes.get(namespace)
+        metadata = self._metadata.get(namespace) or {}
         columns = [SchemaColumn(**c) for c in metadata.get("columns", [])]
         embedding_texts = metadata.get("embedding_texts", [])
         relations = [SchemaRelation(**r) for r in metadata.get("relations", [])]
@@ -541,17 +549,19 @@ Expected: FAIL — `AttributeError: 'FAISSSchemaVectorStore' object has no attri
                 )
                 new_index = faiss.IndexFlatL2(kept_vectors.shape[1])
                 new_index.add(kept_vectors)
-            self._indexes[database_name] = new_index
-            self._metadata[database_name] = {
+            self._indexes[namespace] = new_index
+            self._metadata[namespace] = {
                 "columns": [c.model_dump() for c in kept_cols],
                 "embedding_texts": kept_texts,
                 "relations": [r.model_dump() for r in kept_relations],
             }
-            self._persist_database(database_name)
+            self._persist_database(namespace)
 
         await asyncio.get_event_loop().run_in_executor(self._executor, _remove)
         return removed
 ```
+
+> 注：参数名统一为 `namespace`，对应业务配置中 `schema_vector.namespace`（即 `effective_database_name()` 的解析结果），避免与业务数据库 URL 混淆。
 
 - [ ] **Step 5: 运行测试确认通过**
 
@@ -569,6 +579,8 @@ git commit -m "feat: add list_tables/remove_table to schema vector store (FAISS)
 
 ### Task 5: Schema 管理 REST 路由
 
+> `business_id` 为**必填**查询参数；命名空间复用 `ddl_import.py` 的 `_resolve_business_namespace` 同款逻辑（`agent.config.businesses[business_id].effective_database_name()`），未知/禁用返回 400（无兜底）。**不再使用** `agent.config.autolink_config.database_name` 作默认值——多业务模式下不存在全局默认命名空间。
+
 **Files:**
 - Create: `src/vanna/servers/fastapi/schema_routes.py`
 - Test: `tests/test_schema_routes.py`
@@ -578,8 +590,6 @@ git commit -m "feat: add list_tables/remove_table to schema vector store (FAISS)
 创建 `tests/test_schema_routes.py`：
 
 ```python
-from types import SimpleNamespace
-
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -591,48 +601,77 @@ class FakeStore:
     def __init__(self):
         self.tables = ["equipment", "sensors"]
 
-    async def list_tables(self, database_name):
+    async def list_tables(self, namespace):
         return self.tables
 
-    async def remove_table(self, table_name, database_name):
+    async def remove_table(self, table_name, namespace):
         self.tables = [t for t in self.tables if t != table_name]
         return 1
+
+
+class FakeBusiness:
+    def __init__(self, namespace):
+        self._ns = namespace
+
+    def effective_database_name(self):
+        return self._ns
 
 
 class FakeAgent:
     def __init__(self):
         self.user_resolver = CookieEmailUserResolver()
         self.schema_vector_store = FakeStore()
-        self.config = SimpleNamespace(autolink_config=SimpleNamespace(database_name="db1"))
+        self.config = type(
+            "C", (), {"businesses": {"biz_a": FakeBusiness("ns_a")}}
+        )()
 
 
-def make_client(monkeypatch, admin="admin@corp.com"):
-    monkeypatch.setenv("ADMIN_EMAILS", admin)
+def make_client(admin_emails=("admin@corp.com",)):
     app = FastAPI()
-    register_schema_routes(app, FakeAgent())
+    register_schema_routes(app, FakeAgent(), admin_emails=list(admin_emails))
     return TestClient(app)
 
 
-def test_list_tables_requires_admin(monkeypatch):
-    client = make_client(monkeypatch)
+def test_list_tables_requires_admin():
+    client = make_client()
     client.cookies.set("chatbot_email", "user@corp.com")
-    assert client.get("/api/schema/tables").status_code == 403
+    resp = client.get("/api/schema/tables", params={"business_id": "biz_a"})
+    assert resp.status_code == 403
 
 
-def test_list_tables_as_admin(monkeypatch):
-    client = make_client(monkeypatch)
+def test_list_tables_requires_business_id():
+    client = make_client()
     client.cookies.set("chatbot_email", "admin@corp.com")
     resp = client.get("/api/schema/tables")
+    assert resp.status_code == 400
+
+
+def test_list_tables_unknown_business_returns_400():
+    client = make_client()
+    client.cookies.set("chatbot_email", "admin@corp.com")
+    resp = client.get("/api/schema/tables", params={"business_id": "nope"})
+    assert resp.status_code == 400
+    assert "biz_a" in resp.json()["detail"]  # 错误信息列出可用业务
+
+
+def test_list_tables_as_admin():
+    client = make_client()
+    client.cookies.set("chatbot_email", "admin@corp.com")
+    resp = client.get("/api/schema/tables", params={"business_id": "biz_a"})
     assert resp.status_code == 200
+    assert resp.json()["namespace"] == "ns_a"
     assert resp.json()["tables"] == ["equipment", "sensors"]
 
 
-def test_remove_table_as_admin(monkeypatch):
-    client = make_client(monkeypatch)
+def test_remove_table_as_admin():
+    client = make_client()
     client.cookies.set("chatbot_email", "admin@corp.com")
-    resp = client.delete("/api/schema/tables/equipment")
+    resp = client.delete(
+        "/api/schema/tables/equipment", params={"business_id": "biz_a"}
+    )
     assert resp.status_code == 200
-    assert client.get("/api/schema/tables").json()["tables"] == ["sensors"]
+    resp2 = client.get("/api/schema/tables", params={"business_id": "biz_a"})
+    assert resp2.json()["tables"] == ["sensors"]
 ```
 
 - [ ] **Step 2: 运行测试确认失败**
@@ -645,71 +684,94 @@ Expected: FAIL — `ModuleNotFoundError: ... schema_routes`
 创建 `src/vanna/servers/fastapi/schema_routes.py`：
 
 ```python
-"""FastAPI routes for the built-in web UI schema management (admin only)."""
+"""FastAPI routes for the built-in web UI schema management (admin only).
 
-from typing import Optional
+Namespace resolution follows the same no-fallback rule as DDL ingest:
+business_id is required and must match an enabled business; the vector
+namespace comes from the business configuration.
+"""
 
 from fastapi import FastAPI, HTTPException, Query, Request
 
 from .auth import is_admin_email, resolve_user
 
 
-def _database_name(agent, explicit: Optional[str]) -> str:
-    if explicit:
-        return explicit
-    return getattr(agent.config.autolink_config, "database_name", "default")
+def _resolve_business_namespace(agent, business_id: str) -> str:
+    """Resolve the schema namespace for a business id (no fallback).
+
+    Mirrors ``ddl_import._resolve_business_namespace``: raises 400 listing
+    available businesses when the id is unknown or disabled.
+    """
+    businesses = getattr(getattr(agent, "config", None), "businesses", {}) or {}
+    business = businesses.get(business_id)
+    if business is None:
+        available = ", ".join(sorted(businesses)) or "none"
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"business_id '{business_id}' not found or disabled; "
+                f"available: {available}"
+            ),
+        )
+    return business.effective_database_name()
 
 
-def register_schema_routes(app: FastAPI, agent) -> None:
+def register_schema_routes(app: FastAPI, agent, admin_emails=None) -> None:
     store = agent.schema_vector_store
+    admin_emails = admin_emails or []
 
     def _guard(user) -> None:
-        if not is_admin_email(user.email):
+        if not is_admin_email(user.email, admin_emails):
             raise HTTPException(status_code=403, detail="Admin access required")
 
     @app.get("/api/schema/tables")
     async def list_schema_tables(
-        http_request: Request, database_name: Optional[str] = Query(None)
+        http_request: Request,
+        business_id: str = Query(..., description="Target business id"),
     ):
         user = await resolve_user(agent, http_request)
         _guard(user)
         if store is None:
             raise HTTPException(status_code=503, detail="No schema vector store configured")
-        db = _database_name(agent, database_name)
-        tables = await store.list_tables(db)
-        return {"database_name": db, "tables": tables}
+        namespace = _resolve_business_namespace(agent, business_id)
+        tables = await store.list_tables(namespace)
+        return {"business_id": business_id, "namespace": namespace, "tables": tables}
 
     @app.delete("/api/schema/tables/{table_name}")
     async def remove_schema_table(
-        table_name: str, http_request: Request, database_name: Optional[str] = Query(None)
+        table_name: str,
+        http_request: Request,
+        business_id: str = Query(..., description="Target business id"),
     ):
         user = await resolve_user(agent, http_request)
         _guard(user)
         if store is None:
             raise HTTPException(status_code=503, detail="No schema vector store configured")
-        db = _database_name(agent, database_name)
+        namespace = _resolve_business_namespace(agent, business_id)
         try:
-            removed = await store.remove_table(table_name, db)
+            removed = await store.remove_table(table_name, namespace)
         except NotImplementedError:
             raise HTTPException(status_code=501, detail="Backend does not support table removal")
-        return {"removed_columns": removed, "table_name": table_name}
+        return {"removed_columns": removed, "table_name": table_name, "namespace": namespace}
 ```
+
+> 实现后可将 `ddl_import.py` 中的 `_resolve_business_namespace` 改为从本模块导入，消除重复（可选，不强制）。
 
 - [ ] **Step 4: 运行测试确认通过**
 
 Run: `pytest tests/test_schema_routes.py -v`
-Expected: 3 passed
+Expected: 5 passed
 
 - [ ] **Step 5: 提交**
 
 ```bash
 git add src/vanna/servers/fastapi/schema_routes.py tests/test_schema_routes.py
-git commit -m "feat: add admin-only schema list/remove REST routes"
+git commit -m "feat: add admin-only schema list/remove routes with business routing"
 ```
 
 ---
 
-### Task 6: 装配新路由 + Cookie resolver 接线
+### Task 6: 装配新路由 + app.json server 配置 + Cookie resolver 接线
 
 **Files:**
 - Modify: `src/vanna/servers/fastapi/app.py`
@@ -721,8 +783,6 @@ git commit -m "feat: add admin-only schema list/remove REST routes"
 创建 `tests/test_app_routes.py`：
 
 ```python
-from types import SimpleNamespace
-
 from fastapi.testclient import TestClient
 
 from vanna.core.user import CookieEmailUserResolver
@@ -730,20 +790,41 @@ from vanna.integrations.local import SQLiteConversationStore
 from vanna.servers.fastapi.app import VannaFastAPIServer
 
 
+class FakeBusiness:
+    def effective_database_name(self):
+        return "ns_a"
+
+
 class FakeAgent:
     def __init__(self):
         self.user_resolver = CookieEmailUserResolver()
         self.schema_vector_store = None
-        self.config = SimpleNamespace(autolink_config=SimpleNamespace(database_name="db1"))
+        self.config = type(
+            "C", (), {"businesses": {"biz_a": FakeBusiness()}}
+        )()
         self.conversation_store = SQLiteConversationStore(db_path=":memory:")
 
 
-def test_new_routes_registered(monkeypatch):
-    monkeypatch.setenv("ADMIN_EMAILS", "admin@corp.com")
-    server = VannaFastAPIServer(agent=FakeAgent())
+def test_new_routes_registered():
+    server = VannaFastAPIServer(
+        agent=FakeAgent(),
+        config={"admin_emails": ["admin@corp.com"]},
+    )
     client = TestClient(server.create_app())
     assert client.get("/api/auth/me").status_code == 200
     assert client.get("/api/conversations").status_code == 200
+    body = client.get("/api/auth/me").json()
+    assert body["businesses"] == ["biz_a"]
+
+
+def test_schema_tables_requires_business_id():
+    server = VannaFastAPIServer(
+        agent=FakeAgent(),
+        config={"admin_emails": ["admin@corp.com"]},
+    )
+    client = TestClient(server.create_app())
+    client.cookies.set("chatbot_email", "admin@corp.com")
+    assert client.get("/api/schema/tables").status_code == 400
 ```
 
 - [ ] **Step 2: 运行测试确认失败**
@@ -753,7 +834,7 @@ Expected: FAIL —新路由未注册，`/api/auth/me` 返回 404
 
 - [ ] **Step 3: 修改 app.py 注册新路由**
 
-在 `src/vanna/servers/fastapi/app.py` 的 `register_chat_routes` 与 `register_ddl_import_routes` 调用之后追加：
+在 `src/vanna/servers/fastapi/app.py` 的 `register_chat_routes` 与 `register_ddl_import_routes` 调用之后追加（import 放到模块顶部与其他 import 一起）：
 
 ```python
 from .auth_routes import register_auth_routes
@@ -761,21 +842,47 @@ from .conversation_routes import register_conversation_routes
 from .schema_routes import register_schema_routes
 
 # 在 create_app() 内、register_ddl_import_routes(...) 之后：
-register_auth_routes(app, self.agent)
+admin_emails = self.config.get("admin_emails", [])
+register_auth_routes(app, self.agent, admin_emails=admin_emails)
 register_conversation_routes(app, self.agent)
-register_schema_routes(app, self.agent)
+register_schema_routes(app, self.agent, admin_emails=admin_emails)
 ```
 
-（import 放到模块顶部与其他 import 一起；此处为示意位置。）
+- [ ] **Step 4: 修改 server_runner.py：`server.admin_emails` 配置 + resolver 接线**
 
-- [ ] **Step 4: 修改 server_runner.py 接线 resolver**
+1. `_APP_CONFIG_KEYS` 增加 `"server"`：
 
-在 `src/vanna/servers/cli/server_runner.py` 的 `create_basic_agent(...)` 调用处，确保传入 cookie resolver。定位到现有 `return create_basic_agent(...)`（约 192-209 行），增加 `user_resolver=` 参数：
+```python
+_APP_CONFIG_KEYS = {
+    "llm",
+    "agent",
+    "storage",
+    "tools",
+    "server",
+}
+```
+
+2. 在 `main()` 中（`_create_config_agent()` 成功后、构建 `server_config` 处）解析并注入：
+
+```python
+server_cfg = cfg.get("server") or {}
+# 注意：cfg 来自 _load_app_config()，需在 main() 内重新加载或在
+# _create_config_agent() 中返回；推荐把 _load_app_config() 的结果
+# 在 main() 中先取出再传给 _create_config_agent(cfg)。
+admin_emails = server_cfg.get("admin_emails") or []
+if not isinstance(admin_emails, list) or not all(
+    isinstance(e, str) for e in admin_emails
+):
+    raise ValueError("App config 'server.admin_emails' must be a JSON array of strings")
+server_config["admin_emails"] = admin_emails
+```
+
+3. 在 `_create_config_agent(...)` 调用（`create_basic_agent(...)`）中确保传入 cookie resolver：
 
 ```python
 from vanna.core.user import CookieEmailUserResolver
 
-# 在 create_basic_agent(...) 调用的参数中追加：
+# create_basic_agent(...) 参数追加：
     user_resolver=CookieEmailUserResolver(cookie_name="chatbot_email"),
 ```
 
@@ -790,7 +897,7 @@ Expected: 全部 passed
 
 ```bash
 git add src/vanna/servers/fastapi/app.py src/vanna/servers/cli/server_runner.py tests/test_app_routes.py
-git commit -m "feat: wire auth/conversation/schema routes and cookie resolver"
+git commit -m "feat: wire auth/conversation/schema routes with app.json admin_emails"
 ```
 
 ---
@@ -818,7 +925,7 @@ Expected: 生成 `frontends/web/`（package.json、vite.config.ts、src/ 等）
 cd frontends/web
 npm install tailwindcss @tailwindcss/vite
 npx shadcn@latest init
-npx shadcn@latest add button card input table scroll-area separator badge alert dialog
+npx shadcn@latest add button card input table scroll-area separator badge alert dialog select
 ```
 
 Expected: 生成 `src/components/ui/`、`components.json`，`src/index.css` 含 Tailwind 入口，`vite.config.ts` 加入 `@tailwindcss/vite` 插件。
@@ -855,6 +962,7 @@ export interface AuthMe {
   id: string;
   email: string | null;
   is_admin: boolean;
+  businesses: string[];
 }
 
 export interface ConversationMeta {
@@ -883,24 +991,35 @@ export const api = {
   conversation: (id: string) => fetchJson<ConversationMeta>(`/api/conversations/${id}`),
   deleteConversation: (id: string) =>
     fetchJson<{ deleted: boolean }>(`/api/conversations/${id}`, { method: "DELETE" }),
-  schemaTables: () => fetchJson<{ database_name: string; tables: any[] }>("/api/schema/tables"),
-  deleteSchemaTable: (table: string) =>
-    fetchJson<{ removed_columns: number }>(`/api/schema/tables/${table}`, { method: "DELETE" }),
+  schemaTables: (businessId: string) =>
+    fetchJson<{ business_id: string; namespace: string; tables: any[] }>(
+      `/api/schema/tables?business_id=${encodeURIComponent(businessId)}`
+    ),
+  deleteSchemaTable: (table: string, businessId: string) =>
+    fetchJson<{ removed_columns: number }>(
+      `/api/schema/tables/${encodeURIComponent(table)}?business_id=${encodeURIComponent(businessId)}`,
+      { method: "DELETE" }
+    ),
 };
 ```
 
 - [ ] **Step 2: 写 auth.tsx**
 
+> AuthContext 额外持有当前选中的 `businessId`（登录时写入，localStorage 持久化），全应用共用。
+
 创建 `frontends/web/src/lib/auth.tsx`：
 
 ```tsx
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext, useContext, useEffect, useState, type ReactNode,
+} from "react";
 import { api, type AuthMe } from "./api";
 
 interface AuthState {
   user: AuthMe | null;
   loading: boolean;
-  error: string | null;
+  businessId: string | null;
+  setBusinessId: (id: string | null) => void;
   refresh: () => Promise<void>;
   logout: () => void;
 }
@@ -910,12 +1029,21 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthMe | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [businessId, setBusinessIdState] = useState<string | null>(
+    () => localStorage.getItem("business_id")
+  );
 
   async function refresh() {
     setLoading(true);
     try {
-      setUser(await api.me());
+      const me = await api.me();
+      setUser(me);
+      // 校验持久化的 businessId 仍有效；多业务且未选时保持 null（强制显式选择）
+      if (me.businesses.length === 1) {
+        setBusinessIdState(me.businesses[0]);
+      } else if (businessId && !me.businesses.includes(businessId)) {
+        setBusinessIdState(null);
+      }
     } catch {
       setUser(null);
     } finally {
@@ -923,15 +1051,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  function setBusinessId(id: string | null) {
+    if (id) localStorage.setItem("business_id", id);
+    else localStorage.removeItem("business_id");
+    setBusinessIdState(id);
+  }
+
   function logout() {
     document.cookie = "chatbot_email=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
+    localStorage.removeItem("business_id");
     setUser(null);
+    setBusinessIdState(null);
   }
 
   useEffect(() => { refresh(); }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, refresh, logout }}>
+    <AuthContext.Provider value={{ user, loading, businessId, setBusinessId, refresh, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -941,13 +1077,6 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
-}
-
-export function AnonymousGuard({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
-  if (loading) return null;
-  if (user && user.email) return <>{children}</>;
-  return null;
 }
 
 export function AdminGuard({ children }: { children: ReactNode }) {
@@ -968,16 +1097,19 @@ import { describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "./auth";
 
 describe("useAuth", () => {
-  it("resolves admin user", async () => {
+  it("resolves admin user and single business preselection", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: () => Promise.resolve({ id: "a", email: "admin@corp.com", is_admin: true }),
+      json: () => Promise.resolve({
+        id: "a", email: "admin@corp.com", is_admin: true, businesses: ["biz_a"],
+      }),
     }));
     const wrapper = ({ children }) => <AuthProvider>{children}</AuthProvider>;
     const { result } = renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.user?.is_admin).toBe(true);
+    expect(result.current.businessId).toBe("biz_a"); // 单业务预选
   });
 });
 ```
@@ -998,12 +1130,12 @@ Expected: 1 passed
 
 ```bash
 git add frontends/web/src/lib frontends/web/vite.config.ts frontends/web/package.json
-git commit -m "feat: add api client and auth context with role guards"
+git commit -m "feat: add api client and auth context with business selection"
 ```
 
 ---
 
-### Task 9: 登录页 + 对话页 + 会话侧栏
+### Task 9: 登录页（邮箱 + 业务选择）+ 对话页 + 会话侧栏
 
 **Files:**
 - Create: `frontends/web/src/app/login/LoginPage.tsx`
@@ -1013,6 +1145,8 @@ git commit -m "feat: add api client and auth context with role guards"
 
 - [ ] **Step 1: 写登录页**
 
+> 沿用现有 `templates.py` 的交互约定：**单业务预选、多业务强制显式选择（无默认路由）**。
+
 创建 `frontends/web/src/app/login/LoginPage.tsx`：
 
 ```tsx
@@ -1021,12 +1155,19 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
 
 export default function LoginPage() {
-  const { refresh } = useAuth();
+  const { user, refresh, setBusinessId } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("admin@corp.com");
+  const businesses = user?.businesses ?? [];
+  const [business, setBusiness] = useState<string>(
+    businesses.length === 1 ? businesses[0] : ""
+  );
 
   function submit() {
+    if (!email.trim()) return;
+    if (businesses.length > 1 && !business) return; // 多业务强制显式选择
     document.cookie = `chatbot_email=${encodeURIComponent(email)}; path=/; max-age=31536000; SameSite=Lax`;
+    setBusinessId(businesses.length ? business || businesses[0] : null);
     refresh().then(() => navigate("/"));
   }
 
@@ -1034,13 +1175,31 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-sm rounded-xl border p-6 shadow-sm">
         <h1 className="text-lg font-semibold">登录</h1>
-        <p className="mt-1 text-sm text-muted-foreground">选择账号（管理员账号在 .env 配置）</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          选择账号（管理员账号在 config/app.json 的 server.admin_emails 配置）
+        </p>
         <input
           className="mt-4 w-full rounded-md border px-3 py-2 text-sm"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        <button className="mt-4 w-full rounded-md bg-primary py-2 text-sm text-primary-foreground" onClick={submit}>
+        {businesses.length > 0 && (
+          <select
+            className="mt-3 w-full rounded-md border px-3 py-2 text-sm"
+            value={business}
+            onChange={(e) => setBusiness(e.target.value)}
+          >
+            {businesses.length > 1 && <option value="">Select a business...</option>}
+            {businesses.map((b) => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </select>
+        )}
+        <button
+          className="mt-4 w-full rounded-md bg-primary py-2 text-sm text-primary-foreground disabled:opacity-50"
+          onClick={submit}
+          disabled={businesses.length > 1 && !business}
+        >
           进入
         </button>
       </div>
@@ -1083,16 +1242,18 @@ export default function ConversationSidebar({ onSelect }: { onSelect: (id: strin
 }
 ```
 
-- [ ] **Step 3: 写对话页（嵌入 chatbot-chat）**
+- [ ] **Step 3: 写对话页（嵌入 chatbot-chat，透传 business-id）**
 
 创建 `frontends/web/src/app/chat/ChatPage.tsx`：
 
 ```tsx
 import { useEffect, useRef } from "react";
 import ConversationSidebar from "./ConversationSidebar";
+import { useAuth } from "../../lib/auth";
 
 export default function ChatPage() {
   const chatRef = useRef<HTMLElement | null>(null);
+  const { businessId } = useAuth();
 
   useEffect(() => {
     // 加载现有 webcomponent 产物（由 FastAPI 从 frontends/webcomponent/static 托管）
@@ -1113,6 +1274,7 @@ export default function ChatPage() {
           sse-endpoint="/api/vanna/v2/chat_sse"
           ws-endpoint="/api/vanna/v2/chat_websocket"
           poll-endpoint="/api/vanna/v2/chat_poll"
+          business-id={businessId ?? undefined}
           className="block h-full"
         />
       </main>
@@ -1121,7 +1283,7 @@ export default function ChatPage() {
 }
 ```
 
-> 注：自定义元素属性在 React 19 中可原生透传。若构建时 TS 对 `<chatbot-chat>` 报 JSX 类型错误，在 `src/vite-env.d.ts` 追加 `declare namespace JSX { interface IntrinsicElements { "chatbot-chat": any } }`。
+> 注：`business-id` 属性对应后端 `ChatRequest.business_id`（top-level 字段），路由层会将其合入请求 metadata 完成多业务路由。自定义元素属性在 React 19 中可原生透传；若构建时 TS 对 `<chatbot-chat>` 报 JSX 类型错误，在 `src/vite-env.d.ts` 追加 `declare namespace JSX { interface IntrinsicElements { "chatbot-chat": any } }`。
 
 - [ ] **Step 4: 装配路由**
 
@@ -1181,7 +1343,7 @@ Expected: 构建成功，产出 `frontends/web/dist/`
 
 ```bash
 git add frontends/web/src
-git commit -m "feat: add login page, chat page and conversation sidebar"
+git commit -m "feat: add login page with business selector, chat page and sidebar"
 ```
 
 ---
@@ -1218,14 +1380,22 @@ export default function AdminLayout() {
 }
 ```
 
-- [ ] **Step 2: 写 DDL 导入页**
+- [ ] **Step 2: 写 DDL 导入页（含目标业务选择）**
+
+> ingest 请求体为 `{parse_id, business_id}`（`business_id` 必填，后端无兜底路由）。
 
 创建 `frontends/web/src/app/admin/DdlImportPage.tsx`：
 
 ```tsx
 import { useState } from "react";
+import { useAuth } from "../../lib/auth";
 
 export default function DdlImportPage() {
+  const { user, businessId, setBusinessId } = useAuth();
+  const businesses = user?.businesses ?? [];
+  const [selected, setSelected] = useState<string>(
+    businesses.length === 1 ? businesses[0] : businessId ?? ""
+  );
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1243,7 +1413,7 @@ export default function DdlImportPage() {
     const res = await fetch("/api/vanna/v1/ddl/ingest", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ parse_id: preview.parse_id }),
+      body: JSON.stringify({ parse_id: preview.parse_id, business_id: selected }),
     });
     if (!res.ok) { setError(await res.text()); return; }
     setPreview(null);
@@ -1252,13 +1422,37 @@ export default function DdlImportPage() {
   return (
     <div>
       <h1 className="text-xl font-semibold">DDL 导入</h1>
-      <input type="file" accept=".csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-      <button className="ml-2 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground" onClick={parse}>解析</button>
+      <p className="mt-1 text-sm text-muted-foreground">
+        必须选择目标业务，namespace 由业务配置解析（无兜底路由）。
+      </p>
+      <div className="mt-3 flex items-center gap-2">
+        <select
+          className="rounded-md border px-3 py-2 text-sm"
+          value={selected}
+          onChange={(e) => { setSelected(e.target.value); setBusinessId(e.target.value || null); }}
+        >
+          {businesses.length > 1 && <option value="">Select a business...</option>}
+          {businesses.map((b) => <option key={b} value={b}>{b}</option>)}
+        </select>
+        <input type="file" accept=".csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        <button
+          className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50"
+          onClick={parse}
+          disabled={!file || !selected}
+        >
+          解析
+        </button>
+      </div>
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       {preview && (
         <div className="mt-4 space-y-2 text-sm">
           <p>表: {preview.tables_count} · 列: {preview.columns_count} · 关系: {preview.relations_count}</p>
-          <button className="rounded-md bg-primary px-3 py-2 text-primary-foreground" onClick={ingest}>确认写入向量库</button>
+          <button
+            className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
+            onClick={ingest}
+          >
+            确认写入向量库
+          </button>
         </div>
       )}
     </div>
@@ -1266,37 +1460,57 @@ export default function DdlImportPage() {
 }
 ```
 
-- [ ] **Step 3: 写 Schema 管理页**
+- [ ] **Step 3: 写 Schema 管理页（业务切换器）**
 
 创建 `frontends/web/src/app/admin/SchemaPage.tsx`：
 
 ```tsx
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api";
+import { useAuth } from "../../lib/auth";
 
 export default function SchemaPage() {
-  const [tables, setTables] = useState<{ database_name: string; tables: any[] } | null>(null);
+  const { user, businessId } = useAuth();
+  const businesses = user?.businesses ?? [];
+  const [selected, setSelected] = useState<string>(
+    businesses.length === 1 ? businesses[0] : businessId ?? ""
+  );
+  const [data, setData] = useState<{ namespace: string; tables: any[] } | null>(null);
 
   function load() {
-    api.schemaTables().then(setTables).catch(() => {});
+    if (!selected) { setData(null); return; }
+    api.schemaTables(selected).then(setData).catch(() => {});
   }
 
-  useEffect(load, []);
+  useEffect(load, [selected]);
 
   async function remove(name: string) {
-    await api.deleteSchemaTable(name);
+    await api.deleteSchemaTable(name, selected);
     load();
   }
 
   return (
     <div>
       <h1 className="text-xl font-semibold">Schema 管理</h1>
-      <p className="mt-1 text-sm text-muted-foreground">数据库命名空间：{tables?.database_name}</p>
+      <div className="mt-2 flex items-center gap-2 text-sm">
+        <select
+          className="rounded-md border px-3 py-2"
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+        >
+          {businesses.length > 1 && <option value="">Select a business...</option>}
+          {businesses.map((b) => <option key={b} value={b}>{b}</option>)}
+        </select>
+        {data && <span className="text-muted-foreground">命名空间：{data.namespace}</span>}
+      </div>
       <div className="mt-4 space-y-2">
-        {tables?.tables.map((t) => (
+        {data?.tables.map((t) => (
           <div key={t.table_name ?? t} className="flex items-center justify-between rounded border p-3 text-sm">
             <span>{typeof t === "string" ? t : t.table_name}</span>
-            <button className="rounded border px-2 py-1 text-xs text-red-600" onClick={() => remove(typeof t === "string" ? t : t.table_name)}>
+            <button
+              className="rounded border px-2 py-1 text-xs text-red-600"
+              onClick={() => remove(typeof t === "string" ? t : t.table_name)}
+            >
               删除
             </button>
           </div>
@@ -1324,7 +1538,7 @@ import { AdminGuard } from "./lib/auth";
 </Route>
 ```
 
-并在 `ChatPage` 侧栏加“管理后台”入口（仅 `user.is_admin` 时显示 `<Link to="/admin/ddl-import">⚙️ 管理后台</Link>`）。
+并在 `ChatPage` 侧栏加"管理后台"入口（仅 `user.is_admin` 时显示 `<Link to="/admin/ddl-import">⚙️ 管理后台</Link>`）。
 
 - [ ] **Step 5: 构建验证**
 
@@ -1339,7 +1553,7 @@ Expected: 构建成功
 
 ```bash
 git add frontends/web/src
-git commit -m "feat: add admin layout, DDL import and schema management pages"
+git commit -m "feat: add admin layout, DDL import and schema pages with business routing"
 ```
 
 ---
@@ -1355,7 +1569,7 @@ git commit -m "feat: add admin layout, DDL import and schema management pages"
 创建 `tests/test_spa_serving.py`：
 
 ```python
-import os
+import tempfile
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
@@ -1369,7 +1583,7 @@ class FakeAgent:
         self.user_resolver = CookieEmailUserResolver()
         self.schema_vector_store = None
         self.conversation_store = None
-        self.config = SimpleNamespace(autolink_config=SimpleNamespace(database_name="db1"))
+        self.config = SimpleNamespace(businesses={})
 
 
 def test_serves_index_when_dist_present(tmp_path):
@@ -1383,7 +1597,10 @@ def test_serves_index_when_dist_present(tmp_path):
 
 
 def test_fallback_to_templates_when_dist_missing():
-    server = VannaFastAPIServer(agent=FakeAgent(), config={"web_dist": str(__import__("tempfile").mkdtemp()) + "/no-dist"})
+    server = VannaFastAPIServer(
+        agent=FakeAgent(),
+        config={"web_dist": tempfile.mkdtemp() + "/no-dist"},
+    )
     client = TestClient(server.create_app())
     # / 回退到现有 templates.py 页面
     assert client.get("/").status_code == 200
@@ -1450,22 +1667,42 @@ npm run build
 
 Expected: 产出 `frontends/web/dist/index.html`
 
-- [ ] **Step 2: 启动后端并冒烟**
+- [ ] **Step 2: 准备配置并启动后端**
 
-```bash
-# 项目根，配置 .env（ADMIN_EMAILS=admin@corp.com 等已就绪）
-python -m vanna.servers.cli.server_runner
+`config/app.json`（注意：管理员邮箱配置在 `server.admin_emails`，**不再使用 `.env`**）：
+
+```json
+{
+  "llm": { "active": "...", "instances": { "...": {} } },
+  "agent": { "max_tool_iterations": 10 },
+  "storage": {
+    "project": {
+      "conversation_db": { "active": "local_sqlite", "instances": { "local_sqlite": { "url": "sqlite:///data/db/conversations.db" } } },
+      "vector_db": { "active": "faiss_local", "instances": { "faiss_local": { "backend": "faiss" } } }
+    },
+    "businesses": [
+      { "id": "biz_a", "enabled": true, "database": { "url": "sqlite:///data/db/biz_a.db" }, "schema_vector": { "namespace": "ns_a" } }
+    ]
+  },
+  "server": { "admin_emails": ["admin@corp.com"] }
+}
 ```
 
-Expected: 单进程启动，浏览器访问 `http://localhost:8000` 为 React 应用；`/api/auth/me` 用 `admin@corp.com` 返回 `is_admin: true`。
+```bash
+# 项目根
+python -m vanna.servers
+```
+
+Expected: 单进程启动，启动日志显示 `✓ Multi-business routing enabled` 与 `💼 Business routing enabled: biz_a`；浏览器访问 `http://localhost:9000` 为 React 应用；`/api/auth/me` 用 `admin@corp.com` 返回 `is_admin: true`、`businesses: ["biz_a"]`。
 
 - [ ] **Step 3: 手工冒烟清单**
 
-- 登录页写入 `admin@corp.com` → 跳转对话页，侧栏显示“管理后台”
-- 普通邮箱 → 无“管理后台”入口；直接访问 `/admin/schema` 被守卫拦截
-- 对话发消息 → 会话出现在侧栏；刷新后历史可见
-- 管理后台 DDL 导入（上传 CSV）→ 预览 → 确认入库
-- Schema 管理页列出已导入表，删除单表后索引同步更新
+- 登录页输入 `admin@corp.com` → 业务选择器（单业务预选/多业务必选）→ 跳转对话页，侧栏显示"管理后台"
+- 普通邮箱 → 无"管理后台"入口；直接访问 `/admin/schema` 被守卫拦截
+- 对话发消息（携带所选 business_id）→ 会话出现在侧栏；刷新后历史可见
+- 管理后台 DDL 导入：选目标业务 → 上传 CSV → 预览 → 确认入库（请求体含 business_id）
+- Schema 管理页：切换业务 → 列出该业务命名空间下已导入表，删除单表后索引同步更新
+- 未选/传未知 business_id 调 schema API → 400 且错误信息列出可用业务
 
 - [ ] **Step 4: 提交验证结论（如无代码改动则跳过）**
 
@@ -1473,7 +1710,8 @@ Expected: 单进程启动，浏览器访问 `http://localhost:8000` 为 React �
 
 ## Self-Review 结果
 
-- **Spec 覆盖**：决策记录中「统一风格/会话历史/Schema 管理/角色区分/单一后端部署/ChatGPT 式布局/品牌占位/组件复用」均有对应 Task；新 API（auth/me、conversations、schema/tables）与 `list_tables`/`remove_table` 能力补充已落地。
+- **Spec 覆盖**：决策记录中「统一风格/会话历史/Schema 管理/角色区分/单一后端部署/ChatGPT 式布局/品牌占位/组件复用/**app.json 统一配置/业务选择**」均有对应 Task；新 API（auth/me 含 businesses、conversations、schema/tables 必填 business_id）与 `list_tables`/`remove_table` 能力补充已落地。
+- **多业务对齐**：管理员邮箱改从 app.json `server.admin_emails` 读取（Task 2/6）；schema 系 API 复用 DDL ingest 的无兜底命名空间解析（Task 5）；登录/DDL/Schema 页均含业务选择器，单业务预选、多业务强制显式选择（Task 9/10，与 `templates.py` 现有交互一致）；`<chatbot-chat>` 透传 `business-id`（Task 9）。
 - **落地缺口补齐**：`CookieEmailUserResolver`（Task 1）、`list_tables`/`remove_table`（Task 4）、会话 REST（Task 3）均覆盖。
-- **类型一致性**：`resolve_user(agent, http_request)`、`is_admin_email(email)`、`admin_emails()`、`store.list_tables(db)`/`store.remove_table(table, db)` 签名在 auth_routes / conversation_routes / schema_routes / base / faiss 间一致；前端 `api.*` 与后端响应字段对齐。
-- **已知取舍**：切换 cookie resolver 后，历史 83 条会话存于旧默认 `default_user` 下，新登录用户将从空历史开始（数据仍在 `conversations.db` 可迁移，不在本次范围）。
+- **类型一致性**：`resolve_user(agent, http_request)`、`is_admin_email(email, admin_emails)`、`store.list_tables(namespace)`/`store.remove_table(table, namespace)`、`_resolve_business_namespace(agent, business_id)` 签名在 auth / conversation / schema / ddl_import / base / faiss 间一致；前端 `api.*` 与后端响应字段对齐（`businesses`、`namespace` 等）。
+- **已知取舍**：会话列表暂按用户过滤、不按业务过滤（`business_id` 已在会话 metadata 中，前端过滤/打标为后续增强）；切换 cookie resolver 后，历史会话存于旧默认用户下，新登录用户将从空历史开始（数据仍在 `data/db/conversations.db` 可迁移，不在本次范围）。
