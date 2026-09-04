@@ -287,3 +287,55 @@ class FAISSSchemaVectorStore(SchemaVectorStore):
             if relation.from_table.lower() in lowered
             or relation.to_table.lower() in lowered
         ]
+
+    async def list_tables(self, namespace: str) -> List[SchemaTable]:
+        """List tables by grouping persisted columns."""
+        self._load_database(namespace)
+        metadata = self._metadata.get(namespace) or {}
+        columns = [SchemaColumn(**c) for c in metadata.get("columns", [])]
+        grouped: Dict[str, List[SchemaColumn]] = {}
+        for col in columns:
+            grouped.setdefault(col.table_name, []).append(col)
+        return [
+            SchemaTable(table_name=name, database_name=namespace, columns=cols)
+            for name, cols in grouped.items()
+        ]
+
+    async def remove_table(self, table_name: str, namespace: str) -> int:
+        """Remove a table's columns/relations and rebuild the index."""
+        self._load_database(namespace)
+        index = self._indexes.get(namespace)
+        metadata = self._metadata.get(namespace) or {}
+        columns = [SchemaColumn(**c) for c in metadata.get("columns", [])]
+        embedding_texts = metadata.get("embedding_texts", [])
+        relations = [SchemaRelation(**r) for r in metadata.get("relations", [])]
+
+        lower = table_name.lower()
+        kept_indices = [i for i, c in enumerate(columns) if c.table_name.lower() != lower]
+        kept_cols = [columns[i] for i in kept_indices]
+        kept_texts = [embedding_texts[i] for i in kept_indices if i < len(embedding_texts)]
+        kept_relations = [
+            r for r in relations
+            if r.from_table.lower() != lower and r.to_table.lower() != lower
+        ]
+        removed = len(columns) - len(kept_cols)
+
+        def _remove() -> None:
+            new_index = None
+            if kept_indices and index is not None:
+                vectors = index.reconstruct_n(0, index.ntotal)
+                kept_vectors = np.ascontiguousarray(
+                    vectors[kept_indices], dtype="float32"
+                )
+                new_index = faiss.IndexFlatL2(kept_vectors.shape[1])
+                new_index.add(kept_vectors)
+            self._indexes[namespace] = new_index
+            self._metadata[namespace] = {
+                "columns": [c.model_dump() for c in kept_cols],
+                "embedding_texts": kept_texts,
+                "relations": [r.model_dump() for r in kept_relations],
+            }
+            self._persist_database(namespace)
+
+        await asyncio.get_event_loop().run_in_executor(self._executor, _remove)
+        return removed

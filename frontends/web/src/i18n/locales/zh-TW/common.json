@@ -1,0 +1,11 @@
+{
+  "login": "登錄",
+  "email": "郵箱",
+  "business": "業務",
+  "selectEmail": "請選擇郵箱",
+  "selectBusiness": "請選擇業務",
+  "continue": "繼續",
+  "loading": "加載中...",
+  "pageNotFound": "頁面未找到",
+  "backHome": "返回首頁"
+}

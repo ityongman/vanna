@@ -1,0 +1,11 @@
+{
+  "login": "登录",
+  "email": "邮箱",
+  "business": "业务",
+  "selectEmail": "请选择邮箱",
+  "selectBusiness": "请选择业务",
+  "continue": "继续",
+  "loading": "加载中...",
+  "pageNotFound": "页面未找到",
+  "backHome": "返回首页"
+}

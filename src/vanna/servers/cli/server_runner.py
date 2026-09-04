@@ -5,7 +5,7 @@ CLI for running Vanna Agents servers with example agents.
 import importlib
 import json
 import os
-from typing import Dict, Optional, Any, Tuple, cast, TextIO, Union
+from typing import Dict, List, Optional, Any, Tuple, cast, TextIO, Union
 
 import click
 
@@ -104,6 +104,7 @@ _APP_CONFIG_KEYS = {
     "agent",
     "storage",
     "tools",
+    "server",
 }
 
 
@@ -449,7 +450,7 @@ def _load_businesses(
     return enabled
 
 
-def _create_config_agent() -> Agent:
+def _create_config_agent() -> Tuple[Agent, List[str]]:
     """Create the default agent from the unified JSON app config.
 
     All configuration lives in a single JSON file (config/app.json by
@@ -458,13 +459,14 @@ def _create_config_agent() -> Agent:
     multi-business routing declarations.
 
     Returns:
-        Configured Agent instance
+        Tuple of (Configured Agent instance, admin_emails list)
     """
     cfg = _load_app_config()
 
     llm_service = _create_llm_service(cfg)
 
     from ...agents import create_basic_agent
+    from ...core.user import CookieEmailUserResolver
 
     storage_cfg = cfg.get("storage") or {}
     if not isinstance(storage_cfg, dict):
@@ -525,9 +527,21 @@ def _create_config_agent() -> Agent:
             )
         extra_tools.append(_TOOL_CATALOG[tool_name]())
 
+    # Parse server.admin_emails from config.
+    server_cfg = cfg.get("server") or {}
+    if not isinstance(server_cfg, dict):
+        raise ValueError("App config 'server' must be a JSON object")
+    admin_emails = server_cfg.get("admin_emails") or []
+    if not isinstance(admin_emails, list) or not all(
+        isinstance(e, str) for e in admin_emails
+    ):
+        raise ValueError("App config 'server.admin_emails' must be a JSON array of strings")
+    if admin_emails:
+        click.echo(f"✓ Admin emails: {', '.join(admin_emails)}")
+
     # agent memory defaults to FAISS-backed when faiss is installed
     # (see agents.create_basic_agent), otherwise in-memory demo memory.
-    return create_basic_agent(
+    agent = create_basic_agent(
         llm_service,
         config=AgentConfig(
             businesses=businesses,
@@ -537,7 +551,9 @@ def _create_config_agent() -> Agent:
         vector_store=vector_store,
         embedding_model_path=embedding_model_path,
         conversation_store=conversation_store,
+        user_resolver=CookieEmailUserResolver(cookie_name="chatbot_email"),
     )
+    return agent, admin_emails
 
 
 @click.command()
@@ -611,6 +627,7 @@ def main(
     )
 
     # Create agent
+    admin_emails: list = []
     if example:
         try:
             agent = ExampleAgentLoader.load_example_agent(example)
@@ -622,7 +639,7 @@ def main(
         # Fallback: build agent from the unified JSON app config
         # (mock LLM when unconfigured)
         try:
-            agent = _create_config_agent()
+            agent, admin_emails = _create_config_agent()
             click.echo(
                 "✓ Using basic agent from config/app.json (use --example to specify different agent)"
             )
@@ -644,6 +661,10 @@ def main(
             "💼 Business routing enabled: "
             + ", ".join(agent.config.businesses)
         )
+
+    # Pass admin_emails to server config for auth route registration.
+    if admin_emails:
+        server_config["admin_emails"] = admin_emails
 
     from ..flask.app import VannaFlaskServer
     from ..fastapi.app import VannaFastAPIServer

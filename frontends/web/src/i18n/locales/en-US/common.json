@@ -1,0 +1,11 @@
+{
+  "login": "Login",
+  "email": "Email",
+  "business": "Business",
+  "selectEmail": "Select email",
+  "selectBusiness": "Select business",
+  "continue": "Continue",
+  "loading": "Loading...",
+  "pageNotFound": "Page Not Found",
+  "backHome": "Back Home"
+}

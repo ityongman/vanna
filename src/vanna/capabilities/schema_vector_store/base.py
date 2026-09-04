@@ -91,3 +91,11 @@ class SchemaVectorStore(ABC):
             Relations where from_table or to_table is in table_names.
         """
         pass
+
+    async def list_tables(self, namespace: str) -> List[SchemaTable]:
+        """List tables currently indexed for a namespace (optional capability)."""
+        raise NotImplementedError("This backend does not support listing tables")
+
+    async def remove_table(self, table_name: str, namespace: str) -> int:
+        """Remove a table (columns + relations); returns removed column count."""
+        raise NotImplementedError("This backend does not support removing tables")

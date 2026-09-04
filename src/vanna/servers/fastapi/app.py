@@ -2,16 +2,21 @@
 FastAPI server factory for Vanna Agents.
 """
 
+import os
 from typing import Any, Dict, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from ...core import Agent
 from ..base import ChatHandler
 from .routes import register_chat_routes
 from .ddl_import import register_ddl_import_routes
+from .auth_routes import register_auth_routes
+from .conversation_routes import register_conversation_routes
+from .schema_routes import register_schema_routes
 
 
 class VannaFastAPIServer:
@@ -62,8 +67,6 @@ class VannaFastAPIServer:
             static_folder = self.config.get("static_folder", "static")
             # Skip if it's a URL (Vite HMR mode)
             if not static_folder.startswith("http"):
-                import os
-
                 static_folder = os.path.abspath(static_folder)
                 print(f"[DEBUG] Static folder: {static_folder}, exists: {os.path.exists(static_folder)}")
                 if os.path.exists(static_folder):
@@ -80,10 +83,33 @@ class VannaFastAPIServer:
         register_chat_routes(app, self.chat_handler, self.config)
         register_ddl_import_routes(app, self.agent)
 
+        # Register new API routes
+        admin_emails = self.config.get("admin_emails", [])
+        register_auth_routes(app, self.agent, admin_emails=admin_emails)
+        register_conversation_routes(app, self.agent)
+        register_schema_routes(app, self.agent, admin_emails=admin_emails)
+
         # Add health check
         @app.get("/health")
         async def health_check() -> Dict[str, str]:
             return {"status": "healthy", "service": "vanna"}
+
+        # Serve SPA static assets if built
+        web_dist = self.config.get("web_dist", "frontends/web/dist")
+        web_dist = os.path.abspath(web_dist)
+        index_file = os.path.join(web_dist, "index.html")
+        if os.path.exists(index_file):
+            assets_dir = os.path.join(web_dist, "assets")
+            if os.path.exists(assets_dir):
+                app.mount("/assets", StaticFiles(directory=assets_dir), name="web-assets")
+
+            @app.get("/app", include_in_schema=False)
+            @app.get("/app/{full_path:path}", include_in_schema=False)
+            async def spa_fallback(full_path: str = ""):
+                candidate = os.path.join(web_dist, full_path)
+                if full_path and os.path.isfile(candidate):
+                    return FileResponse(candidate)
+                return FileResponse(index_file)
 
         return app
 

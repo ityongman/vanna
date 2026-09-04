@@ -1,0 +1,9 @@
+{
+  "chat": "對話",
+  "draw": "繪畫",
+  "manage": "管理",
+  "train": "訓練",
+  "ddl-import": "DDL 導入",
+  "schema": "Schema 管理",
+  "settings": "設置"
+}

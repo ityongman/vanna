@@ -1,0 +1,10 @@
+{
+  "chat": "Chat",
+  "draw": "Draw",
+  "manage": "Manage",
+  "train": "Train",
+  "ddl-import": "DDL Import",
+  "schema": "Schema",
+  "settings": "Settings",
+  "logout": "Logout"
+}
