@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Alert, Button, Card, Form, Input, Modal, Select, Space, Statistic, Table, Typography, Upload, message } from 'antd';
-import { UploadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Descriptions, Form, Input, Modal, Select, Space, Statistic, Table, Tag, Typography, Upload, message } from 'antd';
+import { UploadOutlined, ExclamationCircleOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import { useAuth } from '../../lib/auth';
 import type { UploadFile } from 'antd';
 
@@ -100,7 +100,7 @@ function DdlImport() {
         return;
       }
       const result = await res.json();
-      message.success(`成功导入 ${result.tables_count} 张表到 ${result.database_name}`);
+      message.success(`成功导入 ${result.tables_count} 张表到命名空间 "${result.database_name}"`);
       setPreview(null);
       setFile(null);
       setNewBusinessNeeded(null);
@@ -123,7 +123,13 @@ function DdlImport() {
       confirm({
         title: '确认导入',
         icon: <ExclamationCircleOutlined />,
-        content: `CSV 文件中未包含数据库名信息，将使用您选择的业务 "${selected}" 进行导入。`,
+        content: (
+          <div>
+            <p>CSV 文件中未包含数据库名信息。</p>
+            <p><strong>将导入到业务 "{selected}" 的命名空间中。</strong></p>
+            <p>请确认这是您期望的导入目标。</p>
+          </div>
+        ),
         onOk: handleIngest
       });
       return;
@@ -135,8 +141,13 @@ function DdlImport() {
     if (csvDbName === selected) {
       confirm({
         title: '确认导入',
-        icon: <ExclamationCircleOutlined />,
-        content: `CSV 文件中的数据库名 "${csvDbName}" 与选择的业务一致，可以导入。`,
+        icon: <CheckCircleOutlined />,
+        content: (
+          <div>
+            <p>CSV 文件中的数据库名 "{csvDbName}" 与选择的业务一致。</p>
+            <p><strong>将导入到业务 "{selected}" 的命名空间中。</strong></p>
+          </div>
+        ),
         onOk: handleIngest
       });
       return;
@@ -145,7 +156,7 @@ function DdlImport() {
     // Case 3: CSV db_name doesn't match, use CSV as source of truth
     confirm({
       title: '数据库名不一致',
-      icon: <ExclamationCircleOutlined />,
+      icon: <WarningOutlined />,
       content: (
         <div>
           <p>CSV 文件中的数据库名 "{csvDbName}" 与选择的业务 "{selected}" 不一致。</p>
@@ -206,6 +217,33 @@ function DdlImport() {
     }
   }
 
+  // Get import target info
+  function getImportTargetInfo() {
+    if (!preview) return null;
+
+    const { db_names, has_db_name_column } = preview;
+
+    if (has_db_name_column && db_names.length > 0) {
+      const csvDbName = db_names[0];
+      const isMatch = csvDbName === selected;
+      return {
+        business: selected,
+        csvDbName,
+        isMatch,
+        hasDbName: true
+      };
+    }
+
+    return {
+      business: selected,
+      csvDbName: null,
+      isMatch: null,
+      hasDbName: false
+    };
+  }
+
+  const importTarget = getImportTargetInfo();
+
   const columns = [
     { title: '表名', dataIndex: 'table_name', key: 'table_name' },
     {
@@ -235,7 +273,14 @@ function DdlImport() {
             <Text strong style={{ display: 'block', marginBottom: 8 }}>目标业务</Text>
             <Select
               value={selected}
-              onChange={setSelected}
+              onChange={(val) => {
+                setSelected(val);
+                // Clear preview when business changes
+                if (preview) {
+                  setPreview(null);
+                  setNewBusinessNeeded(null);
+                }
+              }}
               style={{ width: '100%' }}
               placeholder="请选择 DDL 要导入的目标业务"
               options={businesses.map(b => ({ label: b, value: b }))}
@@ -270,22 +315,66 @@ function DdlImport() {
 
       {error && <Alert type="error" message={error} style={{ marginTop: 16 }} closable onClose={() => setError(null)} />}
 
-      {preview && (
-        <Card style={{ marginTop: 16 }}>
+      {preview && importTarget && (
+        <Card title="解析结果" style={{ marginTop: 16 }}>
+          {/* Import Target Info */}
+          <Card 
+            type="inner" 
+            title="导入目标" 
+            style={{ marginBottom: 16 }}
+            extra={
+              importTarget.hasDbName ? (
+                importTarget.isMatch ? (
+                  <Tag icon={<CheckCircleOutlined />} color="success">匹配</Tag>
+                ) : (
+                  <Tag icon={<WarningOutlined />} color="warning">不匹配</Tag>
+                )
+              ) : (
+                <Tag>未指定</Tag>
+              )
+            }
+          >
+            <Descriptions column={1} size="small">
+              <Descriptions.Item label="目标业务">
+                <Text strong>{importTarget.business}</Text>
+              </Descriptions.Item>
+              {importTarget.hasDbName && (
+                <Descriptions.Item label="CSV 中的数据库名">
+                  <Text>{importTarget.csvDbName}</Text>
+                </Descriptions.Item>
+              )}
+              {!importTarget.hasDbName && (
+                <Descriptions.Item label="说明">
+                  <Text type="secondary">CSV 文件中未包含数据库名信息，将使用目标业务的命名空间</Text>
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+            
+            {/* Allow changing business when CSV has no db_name */}
+            {!importTarget.hasDbName && (
+              <div style={{ marginTop: 16 }}>
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
+                  如果这不是您期望的导入目标，请重新选择目标业务：
+                </Text>
+                <Select
+                  value={selected}
+                  onChange={setSelected}
+                  style={{ width: '100%' }}
+                  placeholder="重新选择目标业务"
+                  options={businesses.map(b => ({ label: b, value: b }))}
+                />
+              </div>
+            )}
+          </Card>
+
+          {/* Statistics */}
           <Space size="large">
             <Statistic title="表数量" value={preview.tables_count} />
             <Statistic title="列数量" value={preview.columns_count} />
             <Statistic title="关系数量" value={preview.relations_count} />
           </Space>
 
-          {preview.has_db_name_column && preview.db_names.length > 0 && (
-            <Alert
-              type="info"
-              message={`CSV 中包含数据库名: ${preview.db_names.join(', ')}`}
-              style={{ marginTop: 16 }}
-            />
-          )}
-
+          {/* Warnings */}
           {preview.warnings.length > 0 && (
             <Alert
               type="warning"
@@ -295,6 +384,7 @@ function DdlImport() {
             />
           )}
 
+          {/* Table Preview */}
           <Table
             dataSource={preview.tables}
             columns={columns}
@@ -304,6 +394,7 @@ function DdlImport() {
             pagination={false}
           />
 
+          {/* Import Button */}
           {!newBusinessNeeded && (
             <Button
               type="primary"
@@ -319,7 +410,7 @@ function DdlImport() {
 
       {/* New business inline form */}
       {newBusinessNeeded && (
-        <Card style={{ marginTop: 16 }}>
+        <Card title="新建业务配置" style={{ marginTop: 16 }}>
           <Alert
             type="info"
             showIcon
