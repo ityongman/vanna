@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
-import { Alert, Button, Card, Select, Space, Statistic, Table, Typography, Upload, message } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Form, Input, Modal, Select, Space, Statistic, Table, Typography, Upload, message } from 'antd';
+import { UploadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useAuth } from '../../lib/auth';
 import type { UploadFile } from 'antd';
 
 const { Title, Text } = Typography;
+const { confirm } = Modal;
 
 interface ParseResult {
   parse_id: string;
@@ -14,29 +15,64 @@ interface ParseResult {
   relations_count: number;
   tables: Array<{ table_name: string; columns: Array<{ column_name: string; data_type: string }> }>;
   warnings: string[];
+  db_names: string[];
+  has_db_name_column: boolean;
 }
 
 function DdlImport() {
   const { businessId } = useParams();
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const businesses = user?.businesses ?? [];
   const [selected, setSelected] = useState<string>(businessId || '');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<ParseResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newBusinessNeeded, setNewBusinessNeeded] = useState<string | null>(null);
+  const [newBusinessForm] = Form.useForm();
+
+  // Check if new business is needed when preview changes
+  useEffect(() => {
+    if (preview?.has_db_name_column && preview.db_names.length > 0) {
+      const csvDbName = preview.db_names[0];
+      if (!businesses.includes(csvDbName)) {
+        setNewBusinessNeeded(csvDbName);
+        newBusinessForm.setFieldsValue({
+          id: csvDbName,
+          dbPath: `data/db/${csvDbName}.db`,
+          namespace: csvDbName
+        });
+      } else {
+        setNewBusinessNeeded(null);
+      }
+    } else {
+      setNewBusinessNeeded(null);
+    }
+  }, [preview, businesses]);
 
   async function handleParse() {
-    if (!file) { message.error('Please select a DDL CSV file'); return; }
-    if (!selected) { message.error('Please select a target business'); return; }
+    if (!file) { message.error('请先选择 DDL CSV 文件'); return; }
+    if (!selected) { message.error('请先选择目标业务'); return; }
     setLoading(true);
     setError(null);
+    setNewBusinessNeeded(null);
     try {
       const fd = new FormData();
       fd.append('file', file);
       const res = await fetch('/api/vanna/v1/ddl/parse', { method: 'POST', body: fd });
-      if (!res.ok) { setError(await res.text()); return; }
-      setPreview(await res.json());
+      if (!res.ok) {
+        let errorMsg = 'Parse failed';
+        try {
+          const errorData = await res.json();
+          errorMsg = errorData.detail || errorMsg;
+        } catch {
+          errorMsg = await res.text();
+        }
+        setError(errorMsg);
+        return;
+      }
+      const data = await res.json();
+      setPreview(data);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -54,11 +90,24 @@ function DdlImport() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ parse_id: preview.parse_id, business_id: selected }),
       });
-      if (!res.ok) { setError(await res.text()); return; }
+      if (!res.ok) {
+        let errorMsg = 'Ingest failed';
+        try {
+          const errorData = await res.json();
+          errorMsg = errorData.detail || errorMsg;
+        } catch {
+          errorMsg = await res.text();
+        }
+        setError(errorMsg);
+        return;
+      }
       const result = await res.json();
-      message.success(`Ingested ${result.tables_count} tables into ${result.database_name}`);
+      message.success(`成功导入 ${result.tables_count} 张表到 ${result.database_name}`);
       setPreview(null);
       setFile(null);
+      setNewBusinessNeeded(null);
+      // Refresh business list to reflect any changes
+      await refresh();
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -66,10 +115,103 @@ function DdlImport() {
     }
   }
 
+  function handleParseResult() {
+    if (!preview) return;
+
+    const { db_names, has_db_name_column } = preview;
+
+    // Case 1: CSV doesn't have db_name column
+    if (!has_db_name_column || db_names.length === 0) {
+      confirm({
+        title: '确认导入',
+        icon: <ExclamationCircleOutlined />,
+        content: `CSV 文件中未包含数据库名信息，将使用您选择的业务 "${selected}" 进行导入。`,
+        onOk: handleIngest
+      });
+      return;
+    }
+
+    const csvDbName = db_names[0];
+
+    // Case 2: CSV db_name matches selected business
+    if (csvDbName === selected) {
+      confirm({
+        title: '确认导入',
+        icon: <ExclamationCircleOutlined />,
+        content: `CSV 文件中的数据库名 "${csvDbName}" 与选择的业务一致，可以导入。`,
+        onOk: handleIngest
+      });
+      return;
+    }
+
+    // Case 3: CSV db_name doesn't match, use CSV as source of truth
+    confirm({
+      title: '数据库名不一致',
+      icon: <ExclamationCircleOutlined />,
+      content: (
+        <div>
+          <p>CSV 文件中的数据库名 "{csvDbName}" 与选择的业务 "{selected}" 不一致。</p>
+          <p><strong>将以 CSV 文件中的数据库名为准</strong>进行导入。</p>
+          <p>是否继续？</p>
+        </div>
+      ),
+      onOk: () => {
+        // Switch to CSV's business
+        setSelected(csvDbName);
+        // Continue with ingest (new business form will show if needed)
+        handleIngest();
+      }
+    });
+  }
+
+  async function handleCreateAndIngest() {
+    try {
+      const values = await newBusinessForm.validateFields();
+      setLoading(true);
+      setError(null);
+
+      // 1. Create business config
+      const createRes = await fetch('/api/businesses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: values.id,
+          database_url: `sqlite:///${values.dbPath}`,
+          namespace: values.namespace
+        })
+      });
+
+      if (!createRes.ok) {
+        const errorData = await createRes.json().catch(() => ({ detail: '创建业务配置失败' }));
+        message.error(errorData.detail || '创建业务配置失败');
+        return;
+      }
+
+      // 2. Refresh business list
+      await refresh();
+      setSelected(values.id);
+
+      // 3. Execute ingest
+      await handleIngest();
+
+      // 4. Clear new business form
+      setNewBusinessNeeded(null);
+      message.success(`业务 "${values.id}" 创建成功，DDL 导入完成`);
+    } catch (e: any) {
+      if (e.errorFields) {
+        message.error('请填写必填字段');
+      } else {
+        setError(e.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const columns = [
-    { title: 'Table', dataIndex: 'table_name', key: 'table_name' },
+    { title: '表名', dataIndex: 'table_name', key: 'table_name' },
     {
-      title: 'Columns',
+      title: '列信息',
       key: 'columns',
       render: (_: any, record: any) => (
         <ul style={{ margin: 0, paddingLeft: 16 }}>
@@ -83,33 +225,38 @@ function DdlImport() {
 
   return (
     <div>
-      <Title level={4}>DDL Import</Title>
+      <Title level={4}>DDL 导入</Title>
       <Text type="secondary">
-        Upload DDL CSV, preview parsed schema, then ingest into the schema vector store.
-        Business ID is required; namespace is resolved from business config (no fallback routing).
+        上传 DDL CSV 文件，预览解析后的表结构，然后导入到 Schema 向量库。
+        必须选择目标业务，命名空间由业务配置解析（无兜底路由）。
       </Text>
 
       <Card style={{ marginTop: 16 }}>
-        <Space>
-          <Select
-            value={selected}
-            onChange={setSelected}
-            style={{ width: 240 }}
-            placeholder="Select business"
-            options={businesses.map(b => ({ label: b, value: b }))}
-          />
-          <Upload
-            accept=".csv"
-            beforeUpload={(f: UploadFile) => { setFile(f as any); return false; }}
-            maxCount={1}
-            fileList={file ? [{ uid: '-1', name: file.name, status: 'done' } as any] : []}
-            onRemove={() => setFile(null)}
-          >
-            <Button icon={<UploadOutlined />}>Select CSV</Button>
-          </Upload>
-          <Button type="primary" onClick={handleParse} loading={loading} disabled={!file || !selected}>
-            Parse
-          </Button>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Space>
+            <Select
+              value={selected}
+              onChange={setSelected}
+              style={{ width: 240 }}
+              placeholder="选择目标业务"
+              options={businesses.map(b => ({ label: b, value: b }))}
+            />
+            <Upload
+              accept=".csv"
+              beforeUpload={(f: UploadFile) => { setFile(f as any); return false; }}
+              maxCount={1}
+              fileList={file ? [{ uid: '-1', name: file.name, status: 'done' } as any] : []}
+              onRemove={() => { setFile(null); setPreview(null); setNewBusinessNeeded(null); }}
+            >
+              <Button icon={<UploadOutlined />}>选择 CSV 文件</Button>
+            </Upload>
+            <Button type="primary" onClick={handleParse} loading={loading} disabled={!file || !selected}>
+              解析
+            </Button>
+          </Space>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            目标业务决定 DDL 写入的向量库命名空间，由 app.json 业务配置解析
+          </Text>
         </Space>
       </Card>
 
@@ -118,15 +265,23 @@ function DdlImport() {
       {preview && (
         <Card style={{ marginTop: 16 }}>
           <Space size="large">
-            <Statistic title="Tables" value={preview.tables_count} />
-            <Statistic title="Columns" value={preview.columns_count} />
-            <Statistic title="Relations" value={preview.relations_count} />
+            <Statistic title="表数量" value={preview.tables_count} />
+            <Statistic title="列数量" value={preview.columns_count} />
+            <Statistic title="关系数量" value={preview.relations_count} />
           </Space>
+
+          {preview.has_db_name_column && preview.db_names.length > 0 && (
+            <Alert
+              type="info"
+              message={`CSV 中包含数据库名: ${preview.db_names.join(', ')}`}
+              style={{ marginTop: 16 }}
+            />
+          )}
 
           {preview.warnings.length > 0 && (
             <Alert
               type="warning"
-              message="Parse failures (will not be imported)"
+              message="解析失败的表（将不会被导入）"
               description={preview.warnings.join(', ')}
               style={{ marginTop: 16 }}
             />
@@ -141,14 +296,71 @@ function DdlImport() {
             pagination={false}
           />
 
-          <Button
-            type="primary"
-            onClick={handleIngest}
-            loading={loading}
+          {!newBusinessNeeded && (
+            <Button
+              type="primary"
+              onClick={handleParseResult}
+              loading={loading}
+              style={{ marginTop: 16 }}
+            >
+              确认导入到向量库
+            </Button>
+          )}
+        </Card>
+      )}
+
+      {/* New business inline form */}
+      {newBusinessNeeded && (
+        <Card style={{ marginTop: 16 }}>
+          <Alert
+            type="info"
+            showIcon
+            message="检测到新业务"
+            description={`CSV 文件中包含业务 "${newBusinessNeeded}"，但尚未在系统中配置。请填写以下信息创建业务配置。`}
+          />
+          <Form
+            form={newBusinessForm}
+            layout="vertical"
             style={{ marginTop: 16 }}
           >
-            Ingest into Vector Store
-          </Button>
+            <Form.Item
+              label="业务 ID"
+              name="id"
+              rules={[{ required: true, message: '请输入业务 ID' }]}
+            >
+              <Input disabled />
+            </Form.Item>
+            <Form.Item
+              label="数据库文件路径"
+              name="dbPath"
+              rules={[{ required: true, message: '请输入数据库文件路径' }]}
+              extra="SQLite 数据库文件的相对路径，将自动添加 sqlite:/// 前缀"
+            >
+              <Input placeholder="data/db/xxx.db" />
+            </Form.Item>
+            <Form.Item
+              label="命名空间"
+              name="namespace"
+              rules={[{ required: true, message: '请输入命名空间' }]}
+              extra="用于向量库索引隔离，通常使用业务名称"
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item>
+              <Space>
+                <Button
+                  type="primary"
+                  onClick={handleCreateAndIngest}
+                  loading={loading}
+                >
+                  创建并导入
+                </Button>
+                <Button onClick={() => setNewBusinessNeeded(null)}>
+                  取消
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
         </Card>
       )}
     </div>

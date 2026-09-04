@@ -17,6 +17,7 @@ from .ddl_import import register_ddl_import_routes
 from .auth_routes import register_auth_routes
 from .conversation_routes import register_conversation_routes
 from .schema_routes import register_schema_routes
+from .business_routes import register_business_routes
 
 
 class VannaFastAPIServer:
@@ -88,6 +89,7 @@ class VannaFastAPIServer:
         register_auth_routes(app, self.agent, admin_emails=admin_emails)
         register_conversation_routes(app, self.agent)
         register_schema_routes(app, self.agent, admin_emails=admin_emails)
+        register_business_routes(app, self.agent, admin_emails=admin_emails)
 
         # Add health check
         @app.get("/health")

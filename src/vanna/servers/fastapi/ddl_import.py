@@ -5,6 +5,7 @@ agent's schema vector store.
 
 import csv
 import io
+import json
 import os
 import tempfile
 import uuid
@@ -22,6 +23,44 @@ from vanna.capabilities.schema_vector_store.models import (
 
 # parse_id -> (tables, relations)；确认入库后移除（一次性消费）
 _PENDING_PARSES: Dict[str, Tuple[List[SchemaTable], List[SchemaRelation]]] = {}
+
+# Default config path
+_DEFAULT_APP_CONFIG_PATH = "config/app.json"
+
+
+def _auto_enable_business(agent, business_id: str) -> None:
+    """Auto-enable a business after successful DDL import.
+
+    Updates both app.json and the running agent's config.
+    """
+    from vanna.core.agent.config import BusinessConfig
+
+    # Update app.json
+    path = os.getenv("APP_CONFIG_PATH") or _DEFAULT_APP_CONFIG_PATH
+    try:
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                config = json.load(f)
+        else:
+            config = {}
+
+        storage = config.setdefault("storage", {})
+        businesses = storage.setdefault("businesses", [])
+
+        for biz in businesses:
+            if biz.get("id") == business_id:
+                biz["enabled"] = True
+                break
+
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass  # Don't fail the import if config update fails
+
+    # Update running agent config
+    agent_businesses = getattr(agent.config, "businesses", {}) or {}
+    if business_id in agent_businesses:
+        agent_businesses[business_id].enabled = True
 
 
 def _preview(tables: List[SchemaTable], relations: List[SchemaRelation]) -> Dict[str, Any]:
@@ -57,6 +96,44 @@ def _diff_unparsed_tables(csv_text: str, tables: List[SchemaTable]) -> List[str]
             }
             return sorted(candidates - parsed)
     return []
+
+
+def _extract_db_names(csv_text: str) -> Tuple[List[str], bool]:
+    """Extract database names from CSV if a db_name column exists.
+
+    Returns:
+        Tuple of (db_names, has_db_name_column):
+        - db_names: sorted list of unique database names found
+        - has_db_name_column: whether the CSV contains a db_name column
+    """
+    rows = list(csv.reader(io.StringIO(csv_text)))
+    if len(rows) < 2:
+        return [], False
+
+    # Check if headerless (first row contains DDL)
+    first_row_lower = [cell.lower() for cell in rows[0]]
+    if any("create table" in cell.replace("  ", " ") for cell in first_row_lower):
+        return [], False
+
+    # Look for db_name column
+    fieldnames = [name.strip().lower() for name in rows[0]]
+    db_name_keys = ["database_id", "database", "database_name", "db", "db_id", "db_name"]
+    db_col_idx = None
+    for key in db_name_keys:
+        if key in fieldnames:
+            db_col_idx = fieldnames.index(key)
+            break
+
+    if db_col_idx is None:
+        return [], False
+
+    # Extract unique db names
+    db_names = set()
+    for row in rows[1:]:
+        if len(row) > db_col_idx and row[db_col_idx].strip():
+            db_names.add(row[db_col_idx].strip())
+
+    return sorted(db_names), True
 
 
 class IngestRequest(BaseModel):
@@ -275,10 +352,16 @@ def register_ddl_import_routes(app: FastAPI, agent) -> None:
         preview = _preview(tables, relations)
         parse_id = uuid.uuid4().hex
         _PENDING_PARSES[parse_id] = (tables, relations)
+
+        # Extract db_name info from CSV
+        db_names, has_db_name_column = _extract_db_names(text)
+
         preview.update(
             {
                 "parse_id": parse_id,
                 "warnings": _diff_unparsed_tables(text, tables),
+                "db_names": db_names,
+                "has_db_name_column": has_db_name_column,
             }
         )
         return preview
@@ -307,6 +390,10 @@ def register_ddl_import_routes(app: FastAPI, agent) -> None:
             await store.ingest_schema(tables, relations, database_name)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Ingest failed: {e}") from e
+
+        # Auto-enable business after successful DDL import
+        _auto_enable_business(agent, request_body.business_id)
+
         return {
             "database_name": database_name,
             "tables_count": len(tables),
