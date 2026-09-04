@@ -37,22 +37,17 @@ function Login() {
         <p style={{ textAlign: 'center', color: '#666', marginBottom: 24 }}>
           Enter your email to continue
         </p>
-        <Form onFinish={onFinish} layout="vertical">
+        <Form onFinish={onFinish} layout="vertical" initialValues={{ businessId: businesses[0] }}>
           <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email' }]}>
             <Input placeholder="Enter your email" />
           </Form.Item>
-          {businesses.length > 1 && (
+          {businesses.length > 0 && (
             <Form.Item name="businessId" label="Business" rules={[{ required: true }]}>
               <Select placeholder="Select business">
                 {businesses.map(b => (
                   <Select.Option key={b} value={b}>{b}</Select.Option>
                 ))}
               </Select>
-            </Form.Item>
-          )}
-          {businesses.length === 1 && (
-            <Form.Item name="businessId" initialValue={businesses[0]} hidden>
-              <Input />
             </Form.Item>
           )}
           <Form.Item>
