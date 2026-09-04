@@ -42,3 +42,5 @@ frontends/**/.mypy_cache/
 
 .superpowers
 .vscode/
+.vibecoding/
+frontends/web/.npm-cache

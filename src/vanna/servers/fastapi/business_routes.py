@@ -5,17 +5,18 @@ configurations. Changes are persisted to app.json and hot-reloaded
 into the running agent.
 """
 
-import json
-import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from .auth import is_admin_email, resolve_user
-
-# Default config path (matches server_runner.py)
-_DEFAULT_APP_CONFIG_PATH = "config/app.json"
+from .config_sync import (
+    get_businesses_from_config,
+    load_app_config,
+    save_app_config,
+    sync_agent_businesses,
+)
 
 
 class CreateBusinessRequest(BaseModel):
@@ -30,38 +31,6 @@ class EnableBusinessRequest(BaseModel):
     """Request to enable/disable a business."""
 
     enabled: bool = Field(description="Whether to enable or disable the business")
-
-
-def _load_app_config() -> Dict[str, Any]:
-    """Load app.json configuration."""
-    path = os.getenv("APP_CONFIG_PATH") or _DEFAULT_APP_CONFIG_PATH
-    if not os.path.exists(path):
-        return {}
-    try:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, json.JSONDecodeError) as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to read app config: {e}"
-        ) from e
-
-
-def _save_app_config(config: Dict[str, Any]) -> None:
-    """Save app.json configuration."""
-    path = os.getenv("APP_CONFIG_PATH") or _DEFAULT_APP_CONFIG_PATH
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(config, f, indent=2, ensure_ascii=False)
-    except OSError as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to save app config: {e}"
-        ) from e
-
-
-def _get_businesses_from_config(config: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Extract businesses list from config."""
-    storage = config.get("storage") or {}
-    return storage.get("businesses") or []
 
 
 def _update_business_in_config(
@@ -81,24 +50,6 @@ def _update_business_in_config(
     return config
 
 
-def _sync_agent_businesses(agent, config: Dict[str, Any]) -> None:
-    """Hot-reload businesses into the running agent's config."""
-    from vanna.core.agent.config import BusinessConfig
-
-    businesses_data = _get_businesses_from_config(config)
-    new_businesses = {}
-
-    for biz_data in businesses_data:
-        biz_id = biz_data.get("id")
-        if biz_id:
-            try:
-                new_businesses[biz_id] = BusinessConfig(**biz_data)
-            except Exception:
-                pass  # Skip invalid entries
-
-    agent.config.businesses = new_businesses
-
-
 def register_business_routes(
     app: FastAPI, agent, admin_emails: List[str] | None = None
 ) -> None:
@@ -115,8 +66,8 @@ def register_business_routes(
         user = await resolve_user(agent, http_request)
         _guard(user)
 
-        config = _load_app_config()
-        businesses = _get_businesses_from_config(config)
+        config = load_app_config()
+        businesses = get_businesses_from_config(config)
 
         # Also include businesses from running agent config
         agent_businesses = getattr(agent.config, "businesses", {}) or {}
@@ -161,14 +112,23 @@ def register_business_routes(
             raise HTTPException(status_code=400, detail="Business ID is required")
 
         # Check if already exists
-        config = _load_app_config()
-        existing = _get_businesses_from_config(config)
+        config = load_app_config()
+        existing = get_businesses_from_config(config)
         for biz in existing:
             if biz.get("id") == request_body.id:
                 raise HTTPException(
                     status_code=409,
                     detail=f"Business '{request_body.id}' already exists",
                 )
+
+        # Find embedding_model_path from vector_db config
+        default_embedding_model_path = None
+        storage = config.get("storage", {})
+        project = storage.get("project", {})
+        vector_db = project.get("vector_db", {})
+        instances = vector_db.get("instances", {})
+        active_instance = instances.get(vector_db.get("active", ""), {})
+        default_embedding_model_path = active_instance.get("embedding_model_path")
 
         # Create new business entry (disabled by default)
         new_business = {
@@ -178,16 +138,16 @@ def register_business_routes(
             "schema_vector": {
                 "namespace": request_body.namespace,
                 "backend": None,
-                "embedding_model_path": None,
+                "embedding_model_path": default_embedding_model_path,
             },
         }
 
         # Update config
         _update_business_in_config(config, request_body.id, new_business)
-        _save_app_config(config)
+        save_app_config(config)
 
         # Hot-reload into agent
-        _sync_agent_businesses(agent, config)
+        sync_agent_businesses(agent, config)
 
         return new_business
 
@@ -199,8 +159,8 @@ def register_business_routes(
         user = await resolve_user(agent, http_request)
         _guard(user)
 
-        config = _load_app_config()
-        businesses = _get_businesses_from_config(config)
+        config = load_app_config()
+        businesses = get_businesses_from_config(config)
 
         # Find business
         found = False
@@ -216,9 +176,9 @@ def register_business_routes(
             )
 
         # Save config
-        _save_app_config(config)
+        save_app_config(config)
 
         # Hot-reload into agent
-        _sync_agent_businesses(agent, config)
+        sync_agent_businesses(agent, config)
 
         return {"id": business_id, "enabled": request_body.enabled}
