@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Alert, Button, Card, Descriptions, Form, Input, Modal, Select, Space, Statistic, Table, Tag, Typography, Upload, message } from 'antd';
-import { UploadOutlined, ExclamationCircleOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Descriptions, Form, Input, Modal, Radio, Select, Space, Statistic, Table, Tag, Typography, Upload, message } from 'antd';
+import { UploadOutlined, ExclamationCircleOutlined, CheckCircleOutlined, WarningOutlined, PlusOutlined } from '@ant-design/icons';
 import { useAuth } from '../../lib/auth';
 import type { UploadFile } from 'antd';
 
@@ -18,6 +18,8 @@ interface ParseResult {
   has_db_name_column: boolean;
 }
 
+type TargetMode = 'existing' | 'new';
+
 function DdlImport() {
   const { user, refresh } = useAuth();
   const businesses = user?.businesses ?? [];
@@ -26,25 +28,29 @@ function DdlImport() {
   const [preview, setPreview] = useState<ParseResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [newBusinessNeeded, setNewBusinessNeeded] = useState<string | null>(null);
+  const [targetMode, setTargetMode] = useState<TargetMode>('existing');
   const [newBusinessForm] = Form.useForm();
 
-  // Check if new business is needed when preview changes
+  // Reset target mode when preview changes
   useEffect(() => {
-    if (preview?.has_db_name_column && preview.db_names.length > 0) {
-      const csvDbName = preview.db_names[0];
-      if (!businesses.includes(csvDbName)) {
-        setNewBusinessNeeded(csvDbName);
-        newBusinessForm.setFieldsValue({
-          id: csvDbName,
-          dbPath: `data/db/${csvDbName}.db`,
-          namespace: csvDbName
-        });
+    if (preview) {
+      // If CSV has db_name and business doesn't exist, switch to 'new' mode
+      if (preview.has_db_name_column && preview.db_names.length > 0) {
+        const csvDbName = preview.db_names[0];
+        if (!businesses.includes(csvDbName)) {
+          setTargetMode('new');
+          newBusinessForm.setFieldsValue({
+            id: csvDbName,
+            dbPath: `data/db/${csvDbName}.db`,
+            namespace: csvDbName
+          });
+        } else {
+          setTargetMode('existing');
+        }
       } else {
-        setNewBusinessNeeded(null);
+        // CSV has no db_name, default to existing mode
+        setTargetMode('existing');
       }
-    } else {
-      setNewBusinessNeeded(null);
     }
   }, [preview, businesses]);
 
@@ -53,7 +59,6 @@ function DdlImport() {
     if (!selected) { message.error('请先选择目标业务'); return; }
     setLoading(true);
     setError(null);
-    setNewBusinessNeeded(null);
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -78,15 +83,20 @@ function DdlImport() {
     }
   }
 
-  async function handleIngest() {
+  async function handleIngest(businessId?: string) {
     if (!preview) return;
+    const targetBusiness = businessId || selected;
+    if (!targetBusiness) {
+      message.error('请选择目标业务');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/vanna/v1/ddl/ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parse_id: preview.parse_id, business_id: selected }),
+        body: JSON.stringify({ parse_id: preview.parse_id, business_id: targetBusiness }),
       });
       if (!res.ok) {
         let errorMsg = 'Ingest failed';
@@ -103,7 +113,7 @@ function DdlImport() {
       message.success(`成功导入 ${result.tables_count} 张表到命名空间 "${result.database_name}"`);
       setPreview(null);
       setFile(null);
-      setNewBusinessNeeded(null);
+      setTargetMode('existing');
       // Refresh business list to reflect any changes
       await refresh();
     } catch (e: any) {
@@ -120,18 +130,24 @@ function DdlImport() {
 
     // Case 1: CSV doesn't have db_name column
     if (!has_db_name_column || db_names.length === 0) {
-      confirm({
-        title: '确认导入',
-        icon: <ExclamationCircleOutlined />,
-        content: (
-          <div>
-            <p>CSV 文件中未包含数据库名信息。</p>
-            <p><strong>将导入到业务 "{selected}" 的命名空间中。</strong></p>
-            <p>请确认这是您期望的导入目标。</p>
-          </div>
-        ),
-        onOk: handleIngest
-      });
+      if (targetMode === 'new') {
+        // User wants to create new business, trigger form validation
+        handleCreateAndIngest();
+      } else {
+        // User selected existing business
+        confirm({
+          title: '确认导入',
+          icon: <ExclamationCircleOutlined />,
+          content: (
+            <div>
+              <p>CSV 文件中未包含数据库名信息。</p>
+              <p><strong>将导入到业务 "{selected}" 的命名空间中。</strong></p>
+              <p>请确认这是您期望的导入目标。</p>
+            </div>
+          ),
+          onOk: () => handleIngest()
+        });
+      }
       return;
     }
 
@@ -148,29 +164,33 @@ function DdlImport() {
             <p><strong>将导入到业务 "{selected}" 的命名空间中。</strong></p>
           </div>
         ),
-        onOk: handleIngest
+        onOk: () => handleIngest()
       });
       return;
     }
 
-    // Case 3: CSV db_name doesn't match, use CSV as source of truth
-    confirm({
-      title: '数据库名不一致',
-      icon: <WarningOutlined />,
-      content: (
-        <div>
-          <p>CSV 文件中的数据库名 "{csvDbName}" 与选择的业务 "{selected}" 不一致。</p>
-          <p><strong>将以 CSV 文件中的数据库名为准</strong>进行导入。</p>
-          <p>是否继续？</p>
-        </div>
-      ),
-      onOk: () => {
-        // Switch to CSV's business
-        setSelected(csvDbName);
-        // Continue with ingest (new business form will show if needed)
-        handleIngest();
-      }
-    });
+    // Case 3: CSV db_name doesn't match
+    // If in new mode, the form will handle creation
+    if (targetMode === 'new') {
+      handleCreateAndIngest();
+    } else {
+      // This shouldn't happen if business exists, but handle it
+      confirm({
+        title: '数据库名不一致',
+        icon: <WarningOutlined />,
+        content: (
+          <div>
+            <p>CSV 文件中的数据库名 "{csvDbName}" 与选择的业务 "{selected}" 不一致。</p>
+            <p><strong>将以 CSV 文件中的数据库名为准</strong>进行导入。</p>
+            <p>是否继续？</p>
+          </div>
+        ),
+        onOk: () => {
+          setSelected(csvDbName);
+          handleIngest(csvDbName);
+        }
+      });
+    }
   }
 
   async function handleCreateAndIngest() {
@@ -201,10 +221,10 @@ function DdlImport() {
       setSelected(values.id);
 
       // 3. Execute ingest
-      await handleIngest();
+      await handleIngest(values.id);
 
-      // 4. Clear new business form
-      setNewBusinessNeeded(null);
+      // 4. Reset mode
+      setTargetMode('existing');
       message.success(`业务 "${values.id}" 创建成功，DDL 导入完成`);
     } catch (e: any) {
       if (e.errorFields) {
@@ -278,7 +298,7 @@ function DdlImport() {
                 // Clear preview when business changes
                 if (preview) {
                   setPreview(null);
-                  setNewBusinessNeeded(null);
+                  setTargetMode('existing');
                 }
               }}
               style={{ width: '100%' }}
@@ -298,7 +318,7 @@ function DdlImport() {
               beforeUpload={(f: UploadFile) => { setFile(f as any); return false; }}
               maxCount={1}
               fileList={file ? [{ uid: '-1', name: file.name, status: 'done' } as any] : []}
-              onRemove={() => { setFile(null); setPreview(null); setNewBusinessNeeded(null); }}
+              onRemove={() => { setFile(null); setPreview(null); setTargetMode('existing'); }}
             >
               <Button icon={<UploadOutlined />}>选择 CSV 文件</Button>
             </Upload>
@@ -334,6 +354,45 @@ function DdlImport() {
               )
             }
           >
+            {/* Target Mode Selection - only when CSV has no db_name */}
+            {!importTarget.hasDbName && (
+              <div style={{ marginBottom: 16 }}>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>选择导入方式</Text>
+                <Radio.Group 
+                  value={targetMode} 
+                  onChange={(e) => setTargetMode(e.target.value)}
+                  style={{ width: '100%' }}
+                >
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <Radio value="existing">使用现有业务</Radio>
+                    <Radio value="new">
+                      <Space>
+                        <span>创建新业务</span>
+                        <PlusOutlined />
+                      </Space>
+                    </Radio>
+                  </Space>
+                </Radio.Group>
+              </div>
+            )}
+
+            {/* Existing Business Selection */}
+            {(!importTarget.hasDbName && targetMode === 'existing') && (
+              <div style={{ marginBottom: 16 }}>
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
+                  选择要导入到的现有业务：
+                </Text>
+                <Select
+                  value={selected}
+                  onChange={setSelected}
+                  style={{ width: '100%' }}
+                  placeholder="选择现有业务"
+                  options={businesses.map(b => ({ label: b, value: b }))}
+                />
+              </div>
+            )}
+
+            {/* Current Target Display */}
             <Descriptions column={1} size="small">
               <Descriptions.Item label="目标业务">
                 <Text strong>{importTarget.business}</Text>
@@ -349,22 +408,6 @@ function DdlImport() {
                 </Descriptions.Item>
               )}
             </Descriptions>
-            
-            {/* Allow changing business when CSV has no db_name */}
-            {!importTarget.hasDbName && (
-              <div style={{ marginTop: 16 }}>
-                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
-                  如果这不是您期望的导入目标，请重新选择目标业务：
-                </Text>
-                <Select
-                  value={selected}
-                  onChange={setSelected}
-                  style={{ width: '100%' }}
-                  placeholder="重新选择目标业务"
-                  options={businesses.map(b => ({ label: b, value: b }))}
-                />
-              </div>
-            )}
           </Card>
 
           {/* Statistics */}
@@ -394,8 +437,8 @@ function DdlImport() {
             pagination={false}
           />
 
-          {/* Import Button */}
-          {!newBusinessNeeded && (
+          {/* Import Button - show when using existing business */}
+          {(!importTarget.hasDbName && targetMode === 'existing') && (
             <Button
               type="primary"
               onClick={handleParseResult}
@@ -408,14 +451,14 @@ function DdlImport() {
         </Card>
       )}
 
-      {/* New business inline form */}
-      {newBusinessNeeded && (
+      {/* New business inline form - show when CSV has db_name and business doesn't exist */}
+      {(preview && importTarget?.hasDbName && targetMode === 'new') && (
         <Card title="新建业务配置" style={{ marginTop: 16 }}>
           <Alert
             type="info"
             showIcon
             message="检测到新业务"
-            description={`CSV 文件中包含业务 "${newBusinessNeeded}"，但尚未在系统中配置。请填写以下信息创建业务配置。`}
+            description={`CSV 文件中包含业务 "${importTarget.csvDbName}"，但尚未在系统中配置。请填写以下信息创建业务配置。`}
           />
           <Form
             form={newBusinessForm}
@@ -449,12 +492,76 @@ function DdlImport() {
               <Space>
                 <Button
                   type="primary"
-                  onClick={handleCreateAndIngest}
+                  onClick={handleParseResult}
                   loading={loading}
                 >
                   创建并导入
                 </Button>
-                <Button onClick={() => setNewBusinessNeeded(null)}>
+                <Button onClick={() => {
+                  setTargetMode('existing');
+                  setPreview(null);
+                }}>
+                  取消
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Card>
+      )}
+
+      {/* New business form for CSV without db_name - user chose to create new */}
+      {(preview && !importTarget?.hasDbName && targetMode === 'new') && (
+        <Card title="新建业务配置" style={{ marginTop: 16 }}>
+          <Alert
+            type="info"
+            showIcon
+            message="创建新业务"
+            description="您选择了创建新业务，请填写以下信息。创建成功后，DDL 将导入到新业务的命名空间中。"
+          />
+          <Form
+            form={newBusinessForm}
+            layout="vertical"
+            style={{ marginTop: 16 }}
+            initialValues={{
+              id: '',
+              dbPath: 'data/db/',
+              namespace: ''
+            }}
+          >
+            <Form.Item
+              label="业务 ID"
+              name="id"
+              rules={[{ required: true, message: '请输入业务 ID' }]}
+              extra="业务的唯一标识符，用于系统内部路由"
+            >
+              <Input placeholder="例如: new_database" />
+            </Form.Item>
+            <Form.Item
+              label="数据库文件路径"
+              name="dbPath"
+              rules={[{ required: true, message: '请输入数据库文件路径' }]}
+              extra="SQLite 数据库文件的相对路径，将自动添加 sqlite:/// 前缀"
+            >
+              <Input placeholder="data/db/new_database.db" />
+            </Form.Item>
+            <Form.Item
+              label="命名空间"
+              name="namespace"
+              rules={[{ required: true, message: '请输入命名空间' }]}
+              extra="用于向量库索引隔离，通常使用业务名称"
+            >
+              <Input placeholder="new_database" />
+            </Form.Item>
+            <Form.Item>
+              <Space>
+                <Button
+                  type="primary"
+                  onClick={handleParseResult}
+                  loading={loading}
+                >
+                  创建并导入
+                </Button>
+                <Button onClick={() => setTargetMode('existing')}>
                   取消
                 </Button>
               </Space>
