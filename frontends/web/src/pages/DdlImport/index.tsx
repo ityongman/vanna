@@ -231,16 +231,25 @@ function DdlImport() {
         必须选择目标业务，命名空间由业务配置解析（无兜底路由）。
       </Text>
 
-      <Card style={{ marginTop: 16 }}>
-        <Space direction="vertical" style={{ width: '100%' }}>
-          <Space>
+      <Card title="导入配置" style={{ marginTop: 16 }}>
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <div>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>目标业务</Text>
             <Select
               value={selected}
               onChange={setSelected}
-              style={{ width: 240 }}
-              placeholder="选择目标业务"
+              style={{ width: '100%' }}
+              placeholder="请选择 DDL 要导入的目标业务"
               options={businesses.map(b => ({ label: b, value: b }))}
             />
+            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+              选择业务后，DDL 数据将导入到该业务对应的向量库命名空间中。
+              如果 CSV 文件中包含数据库名，系统会自动检测并与您选择的业务进行比对。
+            </Text>
+          </div>
+          
+          <div>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>DDL CSV 文件</Text>
             <Upload
               accept=".csv"
               beforeUpload={(f: UploadFile) => { setFile(f as any); return false; }}
@@ -250,13 +259,14 @@ function DdlImport() {
             >
               <Button icon={<UploadOutlined />}>选择 CSV 文件</Button>
             </Upload>
-            <Button type="primary" onClick={handleParse} loading={loading} disabled={!file || !selected}>
-              解析
-            </Button>
-          </Space>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            目标业务决定 DDL 写入的向量库命名空间，由 app.json 业务配置解析
-          </Text>
+            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+              支持两种格式：包含 db_name 列的 CSV（如 db_name,table_name,DDL）或不含 db_name 列的 CSV（如 table_name,DDL）
+            </Text>
+          </div>
+
+          <Button type="primary" onClick={handleParse} loading={loading} disabled={!file || !selected}>
+            解析预览
+          </Button>
         </Space>
       </Card>
 
