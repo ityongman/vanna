@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router';
 import { Alert, Button, Card, Form, Input, Modal, Select, Space, Statistic, Table, Typography, Upload, message } from 'antd';
 import { UploadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useAuth } from '../../lib/auth';
@@ -20,10 +19,9 @@ interface ParseResult {
 }
 
 function DdlImport() {
-  const { businessId } = useParams();
   const { user, refresh } = useAuth();
   const businesses = user?.businesses ?? [];
-  const [selected, setSelected] = useState<string>(businessId || '');
+  const [selected, setSelected] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<ParseResult | null>(null);
   const [loading, setLoading] = useState(false);
