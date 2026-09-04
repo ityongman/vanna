@@ -2,39 +2,20 @@ import { Outlet, useNavigate, useParams, useLocation } from 'react-router';
 import ProLayout from '@ant-design/pro-layout';
 import {
   MessageOutlined,
-  HighlightOutlined,
-  SettingOutlined,
-  ExperimentOutlined,
-  UploadOutlined,
-  DatabaseOutlined,
   GlobalOutlined,
 } from '@ant-design/icons';
 import { Select } from 'antd';
 import UserMenu from '../components/UserMenu';
-import { useAuth } from '../lib/auth';
 import { t, setLanguage, getLanguage, type Language } from '../i18n';
 
-const userMenuData = [
+const menuData = [
   { path: 'chat', i18nKey: 'chat', icon: <MessageOutlined /> },
-  { path: 'draw', i18nKey: 'draw', icon: <HighlightOutlined /> },
-  { path: 'manage', i18nKey: 'manage', icon: <SettingOutlined /> },
-  { path: 'train', i18nKey: 'train', icon: <ExperimentOutlined /> },
-];
-
-const adminMenuData = [
-  { path: 'ddl-import', i18nKey: 'ddl-import', icon: <UploadOutlined /> },
-  { path: 'schema', i18nKey: 'schema', icon: <DatabaseOutlined /> },
 ];
 
 function AppLayout() {
   const { businessId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
-
-  const menuData = user?.is_admin
-    ? [...userMenuData, ...adminMenuData]
-    : userMenuData;
 
   return (
     <ProLayout

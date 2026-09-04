@@ -1,6 +1,7 @@
 """Cookie-based email user resolver for the built-in web UI."""
 
 from typing import Optional
+from urllib.parse import unquote
 
 from .models import User
 from .request_context import RequestContext
@@ -20,7 +21,7 @@ class CookieEmailUserResolver(UserResolver):
 
     async def resolve_user(self, request_context: RequestContext) -> User:
         email = request_context.get_cookie(self.cookie_name)
-        email = (email or "").strip() or None
+        email = unquote(email or "").strip() or None
         if email is None:
             return User(id="anonymous", username="anonymous", email=None)
         return User(id=email, username=email.split("@")[0], email=email)
