@@ -46,9 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function logout() {
     document.cookie = "chatbot_email=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
-    localStorage.removeItem("business_id");
+    // Keep businessId in localStorage so it persists across login/logout
     setUser(null);
-    setBusinessIdState(null);
   }
 
   useEffect(() => { refresh(); }, []);
