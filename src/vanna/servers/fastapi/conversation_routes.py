@@ -1,5 +1,7 @@
 """FastAPI routes exposing the conversation store for the web UI."""
 
+from typing import Optional
+
 from fastapi import FastAPI, HTTPException, Query, Request
 
 from .auth import resolve_user
@@ -13,9 +15,16 @@ def register_conversation_routes(app: FastAPI, agent) -> None:
         http_request: Request,
         limit: int = Query(50, ge=1, le=200),
         offset: int = Query(0, ge=0),
+        business_id: Optional[str] = Query(None),
     ):
         user = await resolve_user(agent, http_request)
         conversations = await store.list_conversations(user, limit=limit, offset=offset)
+        if business_id is not None:
+            conversations = [
+                c
+                for c in conversations
+                if c.metadata.get("business_id") == business_id
+            ]
         return [c.model_dump(mode="json") for c in conversations]
 
     @app.get("/api/conversations/{conversation_id}")

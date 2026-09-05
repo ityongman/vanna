@@ -476,6 +476,12 @@ class Agent:
             # Create empty conversation (will add message after workflow handler check)
             conversation = Conversation(id=conversation_id, user=user, messages=[])
 
+        # Tag the conversation with the requesting business so listings
+        # can be filtered per business.
+        request_business_id = request_context.metadata.get("business_id")
+        if request_business_id:
+            conversation.metadata["business_id"] = request_business_id
+
         # Try workflow handler before adding message to conversation
         if self.workflow_handler:
             try:

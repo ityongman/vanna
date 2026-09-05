@@ -37,9 +37,12 @@ class FakeAgent:
         self.conversation_store = FakeStore()
 
 
-def make_client():
+def make_client(store=None):
     app = FastAPI()
-    register_conversation_routes(app, FakeAgent())
+    agent = FakeAgent()
+    if store is not None:
+        agent.conversation_store = store
+    register_conversation_routes(app, agent)
     return TestClient(app)
 
 
@@ -54,3 +57,35 @@ def test_delete_conversation():
     client = make_client()
     resp = client.delete("/api/conversations/nope")
     assert resp.status_code == 404
+
+
+def test_list_conversations_filtered_by_business():
+    store = FakeStore()
+    store._convs["c1"] = Conversation(
+        id="c1",
+        user=User(id="anonymous", email=None),
+        messages=[],
+        metadata={"business_id": "b1"},
+    )
+    store._convs["c2"] = Conversation(
+        id="c2",
+        user=User(id="anonymous", email=None),
+        messages=[],
+        metadata={"business_id": "b2"},
+    )
+    store._convs["c3"] = Conversation(
+        id="c3",
+        user=User(id="anonymous", email=None),
+        messages=[],
+        metadata={},
+    )
+
+    client = make_client(store)
+
+    resp = client.get("/api/conversations?business_id=b1")
+    assert resp.status_code == 200
+    assert [c["id"] for c in resp.json()] == ["c1"]
+
+    resp_all = client.get("/api/conversations")
+    assert resp_all.status_code == 200
+    assert len(resp_all.json()) == 3

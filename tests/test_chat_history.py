@@ -314,3 +314,12 @@ async def test_title_generated_only_once_per_conversation():
     assert llm.title_calls == 1
     conv = store._convs[conv_id]
     assert conv.metadata.get("title") == "Top Artist Sales"
+
+
+@pytest.mark.asyncio
+async def test_conversation_tagged_with_business_id():
+    store = FakeStore()
+    agent = make_agent(FakeLlmService(), store)
+    await _run_agent(agent, metadata={"business_id": "biz_a"})
+    conv = next(iter(store._convs.values()))
+    assert conv.metadata.get("business_id") == "biz_a"
