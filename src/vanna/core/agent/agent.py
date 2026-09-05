@@ -852,22 +852,45 @@ You can:
         conversation_id: str,
         rich_components: List[Dict[str, Any]],
     ) -> None:
-        """Persist serialized rich components onto the final assistant message."""
+        """Persist serialized rich components onto the final assistant message.
+
+        Only the assistant message produced by this turn is updated:
+        short-circuited flows (starter UI, workflow commands) also stream
+        components but do not add an assistant message, and must not
+        overwrite the rich components of an earlier turn.
+
+        Note: this read-modify-write cycle is an extra whole-object update
+        on top of the ones already performed while streaming, so concurrent
+        requests on the same conversation can still race (pre-existing
+        behavior).
+        """
+        if not self.config.auto_save_conversations:
+            # The turn itself is not persisted when auto-save is off;
+            # attaching rich components would only clobber older turns.
+            return
+
         user = await self.user_resolver.resolve_user(request_context)
         conversation = await self.conversation_store.get_conversation(
             conversation_id, user
         )
         if conversation is None:
-            # Starter requests (never persisted) and aborted streams have
-            # nothing to attach to.
+            # No persisted conversation to attach to.
             return
+
+        # The trailing assistant message belongs to this turn when its
+        # content matches the last text component streamed.
+        last_text_content: Optional[str] = None
+        for r in rich_components:
+            content = r.get("data", {}).get("content")
+            if r.get("type") == "text" and content:
+                last_text_content = content
 
         for msg in reversed(conversation.messages):
             if msg.role == "assistant":
-                msg.rich = rich_components
+                if last_text_content and msg.content == last_text_content:
+                    msg.rich = rich_components
+                    await self.conversation_store.update_conversation(conversation)
                 break
-
-        await self.conversation_store.update_conversation(conversation)
 
     async def get_available_tools(self, user: User) -> List[ToolSchema]:
         """Get tools available to the user."""

@@ -10,6 +10,8 @@ from vanna.core.storage.models import Conversation, Message
 from vanna.core.user import User
 from vanna.core.user.request_context import RequestContext
 from vanna.core.user.resolver import UserResolver
+from vanna.components import RichTextComponent, UiComponent
+from vanna.core.workflow import WorkflowHandler, WorkflowResult
 
 
 class FakeStore(ConversationStore):
@@ -31,7 +33,7 @@ class FakeStore(ConversationStore):
         return self._convs.get(conversation_id)
 
     async def update_conversation(self, conversation):
-        self._convs[conversation.id] = conversation
+        self._convs[conversation.id] = conversation.model_copy(deep=True)
 
     async def delete_conversation(self, conversation_id, user):
         return self._convs.pop(conversation_id, None) is not None
@@ -77,7 +79,7 @@ class FakeLlmService(LlmService):
         return []
 
 
-def make_agent(llm_service, store):
+def make_agent(llm_service, store, workflow_handler=None):
     """Build an agent wired to the given fake store and LLM."""
     from vanna import Agent, AgentConfig
     from vanna.core.registry import ToolRegistry
@@ -89,15 +91,20 @@ def make_agent(llm_service, store):
         user_resolver=SimpleUserResolver(),
         agent_memory=DemoAgentMemory(max_items=1000),
         conversation_store=store,
+        workflow_handler=workflow_handler,
         config=AgentConfig(),
     )
 
 
-async def _run_agent(agent, message="Who is the top artist?", metadata=None):
+async def _run_agent(
+    agent, message="Who is the top artist?", metadata=None, conversation_id=None
+):
     """Send one message through the agent, returning all components."""
     request_context = RequestContext(cookies={}, headers={}, metadata=metadata or {})
     components = []
-    async for component in agent.send_message(request_context, message):
+    async for component in agent.send_message(
+        request_context, message, conversation_id=conversation_id
+    ):
         components.append(component)
     return components
 
@@ -136,3 +143,82 @@ async def test_agent_persists_rich_components_on_assistant_message():
         r.get("data", {}).get("content") == "Iron Maiden sold the most."
         for r in text_comps
     ), "expected the final text component to be persisted"
+
+
+class FakeWorkflowHandler(WorkflowHandler):
+    """Short-circuits /help and serves a starter UI for empty messages."""
+
+    async def try_handle(self, agent, user, conversation, message):
+        if message.startswith("/help"):
+            return WorkflowResult(
+                should_skip_llm=True,
+                components=[
+                    UiComponent(
+                        rich_component=RichTextComponent(
+                            content="Available commands: /help", markdown=True
+                        )
+                    )
+                ],
+            )
+        return WorkflowResult(should_skip_llm=False)
+
+    async def get_starter_ui(self, agent, user, conversation):
+        return [
+            UiComponent(
+                rich_component=RichTextComponent(content="Welcome!", markdown=True)
+            )
+        ]
+
+
+@pytest.mark.asyncio
+async def test_starter_ui_does_not_overwrite_existing_rich():
+    store = FakeStore()
+    agent = make_agent(
+        FakeLlmService(reply="Iron Maiden sold the most."),
+        store,
+        workflow_handler=FakeWorkflowHandler(),
+    )
+
+    components = await _run_agent(agent)
+    assert components, "expected streamed components"
+
+    conv_id = next(iter(store._convs))
+    first = store._convs[conv_id]
+    original_rich = [m for m in first.messages if m.role == "assistant"][-1].rich
+    assert original_rich, "expected rich components after the first turn"
+
+    # A starter UI request against the existing conversation must not
+    # overwrite the rich components of the previous assistant turn.
+    await _run_agent(agent, message="", metadata={"starter_ui_request": True}, conversation_id=conv_id)
+
+    reloaded = store._convs[conv_id]
+    assistant_msgs = [m for m in reloaded.messages if m.role == "assistant"]
+    assert assistant_msgs, "expected the assistant message to be preserved"
+    assert assistant_msgs[-1].rich == original_rich
+
+
+@pytest.mark.asyncio
+async def test_workflow_short_circuit_does_not_overwrite_existing_rich():
+    store = FakeStore()
+    agent = make_agent(
+        FakeLlmService(reply="Iron Maiden sold the most."),
+        store,
+        workflow_handler=FakeWorkflowHandler(),
+    )
+
+    components = await _run_agent(agent)
+    assert components, "expected streamed components"
+
+    conv_id = next(iter(store._convs))
+    first = store._convs[conv_id]
+    original_rich = [m for m in first.messages if m.role == "assistant"][-1].rich
+    assert original_rich, "expected rich components after the first turn"
+
+    # A workflow short-circuit (/help) against the existing conversation
+    # must not overwrite the rich components of the previous turn.
+    await _run_agent(agent, message="/help", conversation_id=conv_id)
+
+    reloaded = store._convs[conv_id]
+    assistant_msgs = [m for m in reloaded.messages if m.role == "assistant"]
+    assert assistant_msgs, "expected the assistant message to be preserved"
+    assert assistant_msgs[-1].rich == original_rich
