@@ -254,3 +254,25 @@ async def test_workflow_short_circuit_does_not_persist_empty_conversation():
     assert store._convs == {}, (
         "workflow short-circuit must not persist an empty conversation"
     )
+
+
+@pytest.mark.asyncio
+async def test_conversation_title_generated_by_llm_after_first_turn():
+    store = FakeStore()
+    agent = make_agent(FakeLlmService(reply="42 albums", title="Top Artist Sales"), store)
+
+    await _run_agent(agent)
+    conv = next(iter(store._convs.values()))
+    assert conv.metadata.get("title") == "Top Artist Sales"
+
+
+@pytest.mark.asyncio
+async def test_conversation_title_falls_back_to_first_user_message():
+    store = FakeStore()
+    agent = make_agent(FakeLlmService(reply="ok", fail_title=True), store)
+
+    long_message = "请帮我统计每个艺人的专辑销量并按金额排序输出前十个" * 3  # > 60 chars
+    await _run_agent(agent, message=long_message)
+
+    conv = next(iter(store._convs.values()))
+    assert conv.metadata.get("title") == long_message[:60]

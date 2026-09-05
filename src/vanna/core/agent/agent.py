@@ -837,6 +837,23 @@ You can:
                 )
             )
 
+        # Auto-generate a title after the first completed turn (assistant
+        # reply produced, title not yet set). Failures fall back inline.
+        if (
+            self.config.auto_save_conversations
+            and conversation.messages
+            and "title" not in conversation.metadata
+            and any(m.role == "assistant" for m in conversation.messages)
+        ):
+            try:
+                conversation.metadata["title"] = (
+                    await self._generate_conversation_title(conversation)
+                )
+            except Exception as e:
+                logger.error(
+                    "Failed to generate conversation title: %s", e, exc_info=True
+                )
+
         # Save conversation if configured
         if self.config.auto_save_conversations:
             await self.conversation_store.update_conversation(conversation)
@@ -890,6 +907,41 @@ You can:
                     msg.rich = rich_components
                     await self.conversation_store.update_conversation(conversation)
                 break
+
+    async def _generate_conversation_title(self, conversation: Conversation) -> str:
+        """Generate a short title via LLM, falling back to truncation.
+
+        The LLM is asked to return at most 6 words and nothing else; any
+        failure (unconfigured LLM, provider error, empty reply) falls back
+        to the first 60 characters of the first user message.
+        """
+        first_user_message = next(
+            (m.content for m in conversation.messages if m.role == "user"), ""
+        )
+
+        try:
+            request = LlmRequest(
+                messages=[
+                    LlmMessage(role="user", content=first_user_message),
+                ],
+                user=conversation.user,
+                stream=False,
+                temperature=0.2,
+                max_tokens=32,
+                system_prompt=(
+                    "Generate a concise title (max 6 words) for the following "
+                    "conversation. Return ONLY the title, no quotes, no extra text."
+                ),
+                metadata={"purpose": "conversation_title"},
+            )
+            response = await self._send_llm_request(request)
+            title = (response.content or "").strip().strip('"').strip()
+            if title:
+                return " ".join(title.split())[:60]
+        except Exception as e:
+            logger.error("Title generation via LLM failed: %s", e, exc_info=True)
+
+        return first_user_message.strip()[:60] or "New conversation"
 
     async def get_available_tools(self, user: User) -> List[ToolSchema]:
         """Get tools available to the user."""
