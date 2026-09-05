@@ -477,10 +477,12 @@ class Agent:
             conversation = Conversation(id=conversation_id, user=user, messages=[])
 
         # Tag the conversation with the requesting business so listings
-        # can be filtered per business.
+        # can be filtered per business. Existing tags are preserved: the
+        # first business to use a conversation keeps ownership, while
+        # historically untagged conversations are backfilled.
         request_business_id = request_context.metadata.get("business_id")
         if request_business_id:
-            conversation.metadata["business_id"] = request_business_id
+            conversation.metadata.setdefault("business_id", request_business_id)
 
         # Try workflow handler before adding message to conversation
         if self.workflow_handler:

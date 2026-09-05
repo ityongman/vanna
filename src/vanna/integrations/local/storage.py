@@ -51,7 +51,11 @@ class MemoryConversationStore(ConversationStore):
         return False
 
     async def list_conversations(
-        self, user: User, limit: int = 50, offset: int = 0
+        self,
+        user: User,
+        limit: int = 50,
+        offset: int = 0,
+        business_id: Optional[str] = None,
     ) -> List[Conversation]:
         """List conversations for user."""
         user_conversations = [
@@ -59,4 +63,11 @@ class MemoryConversationStore(ConversationStore):
         ]
         # Sort by updated_at desc
         user_conversations.sort(key=lambda x: x.updated_at, reverse=True)
+        # Filter before paginating so pages stay consistent per business.
+        if business_id is not None:
+            user_conversations = [
+                c
+                for c in user_conversations
+                if c.metadata.get("business_id") == business_id
+            ]
         return user_conversations[offset : offset + limit]

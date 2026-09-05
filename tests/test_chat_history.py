@@ -38,8 +38,12 @@ class FakeStore(ConversationStore):
     async def delete_conversation(self, conversation_id, user):
         return self._convs.pop(conversation_id, None) is not None
 
-    async def list_conversations(self, user, limit=50, offset=0):
+    async def list_conversations(self, user, limit=50, offset=0, business_id=None):
         convs = list(self._convs.values())
+        if business_id is not None:
+            convs = [
+                c for c in convs if c.metadata.get("business_id") == business_id
+            ]
         return convs[offset : offset + limit]
 
 
@@ -323,3 +327,33 @@ async def test_conversation_tagged_with_business_id():
     await _run_agent(agent, metadata={"business_id": "biz_a"})
     conv = next(iter(store._convs.values()))
     assert conv.metadata.get("business_id") == "biz_a"
+
+
+@pytest.mark.asyncio
+async def test_existing_conversation_keeps_original_business_tag():
+    store = FakeStore()
+    agent = make_agent(FakeLlmService(), store)
+
+    # First turn tags the conversation as belonging to biz_a.
+    await _run_agent(agent, metadata={"business_id": "biz_a"})
+    conversation_id = next(iter(store._convs.values())).id
+    assert store._convs[conversation_id].metadata.get("business_id") == "biz_a"
+
+    # A later turn of the same conversation carries biz_b; the original
+    # business tag must be preserved.
+    await _run_agent(
+        agent, metadata={"business_id": "biz_b"}, conversation_id=conversation_id
+    )
+
+    assert store._convs[conversation_id].metadata.get("business_id") == "biz_a"
+
+
+@pytest.mark.asyncio
+async def test_conversation_without_business_not_tagged():
+    store = FakeStore()
+    agent = make_agent(FakeLlmService(), store)
+
+    await _run_agent(agent)
+
+    conv = next(iter(store._convs.values()))
+    assert "business_id" not in conv.metadata

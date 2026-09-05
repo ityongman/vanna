@@ -40,7 +40,15 @@ class ConversationStore(ABC):
 
     @abstractmethod
     async def list_conversations(
-        self, user: User, limit: int = 50, offset: int = 0
+        self,
+        user: User,
+        limit: int = 50,
+        offset: int = 0,
+        business_id: Optional[str] = None,
     ) -> List[Conversation]:
-        """List conversations for user."""
+        """List conversations for user.
+
+        Ordering: filter by user, sort by updated_at descending, filter
+        by business_id (when given), then apply offset/limit pagination.
+        """
         pass

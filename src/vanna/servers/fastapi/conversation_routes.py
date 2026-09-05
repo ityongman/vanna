@@ -18,13 +18,11 @@ def register_conversation_routes(app: FastAPI, agent) -> None:
         business_id: Optional[str] = Query(None),
     ):
         user = await resolve_user(agent, http_request)
-        conversations = await store.list_conversations(user, limit=limit, offset=offset)
-        if business_id is not None:
-            conversations = [
-                c
-                for c in conversations
-                if c.metadata.get("business_id") == business_id
-            ]
+        # Filtering/pagination is delegated to the store; an empty
+        # business_id means "no filter" (mirroring the write side).
+        conversations = await store.list_conversations(
+            user, limit=limit, offset=offset, business_id=business_id or None
+        )
         return [c.model_dump(mode="json") for c in conversations]
 
     @app.get("/api/conversations/{conversation_id}")

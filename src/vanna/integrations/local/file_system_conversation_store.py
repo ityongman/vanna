@@ -57,6 +57,7 @@ class FileSystemConversationStore(ConversationStore):
             "user": conversation.user.model_dump(mode="json"),
             "created_at": conversation.created_at.isoformat(),
             "updated_at": conversation.updated_at.isoformat(),
+            "metadata": conversation.metadata,
         }
 
         metadata_path = self._get_metadata_path(conversation.id)
@@ -131,10 +132,10 @@ class FileSystemConversationStore(ConversationStore):
         try:
             # Load metadata
             with open(metadata_path, "r") as f:
-                metadata = json.load(f)
+                raw = json.load(f)
 
             # Verify ownership
-            if metadata["user"]["id"] != user.id:
+            if raw["user"]["id"] != user.id:
                 return None
 
             # Load all messages
@@ -142,11 +143,12 @@ class FileSystemConversationStore(ConversationStore):
 
             # Reconstruct conversation
             conversation = Conversation(
-                id=metadata["id"],
-                user=User.model_validate(metadata["user"]),
+                id=raw["id"],
+                user=User.model_validate(raw["user"]),
                 messages=messages,
-                created_at=datetime.fromisoformat(metadata["created_at"]),
-                updated_at=datetime.fromisoformat(metadata["updated_at"]),
+                created_at=datetime.fromisoformat(raw["created_at"]),
+                updated_at=datetime.fromisoformat(raw["updated_at"]),
+                metadata=raw.get("metadata", {}),
             )
 
             return conversation
@@ -206,7 +208,11 @@ class FileSystemConversationStore(ConversationStore):
             return False
 
     async def list_conversations(
-        self, user: User, limit: int = 50, offset: int = 0
+        self,
+        user: User,
+        limit: int = 50,
+        offset: int = 0,
+        business_id: Optional[str] = None,
     ) -> List[Conversation]:
         """List conversations for user."""
         if not self.base_dir.exists():
@@ -226,10 +232,10 @@ class FileSystemConversationStore(ConversationStore):
             try:
                 # Load metadata
                 with open(metadata_path, "r") as f:
-                    metadata = json.load(f)
+                    raw = json.load(f)
 
                 # Skip conversations not owned by this user
-                if metadata["user"]["id"] != user.id:
+                if raw["user"]["id"] != user.id:
                     continue
 
                 # Load messages
@@ -237,11 +243,12 @@ class FileSystemConversationStore(ConversationStore):
 
                 # Reconstruct conversation
                 conversation = Conversation(
-                    id=metadata["id"],
-                    user=User.model_validate(metadata["user"]),
+                    id=raw["id"],
+                    user=User.model_validate(raw["user"]),
                     messages=messages,
-                    created_at=datetime.fromisoformat(metadata["created_at"]),
-                    updated_at=datetime.fromisoformat(metadata["updated_at"]),
+                    created_at=datetime.fromisoformat(raw["created_at"]),
+                    updated_at=datetime.fromisoformat(raw["updated_at"]),
+                    metadata=raw.get("metadata", {}),
                 )
                 conversations.append(conversation)
             except (json.JSONDecodeError, ValueError, KeyError) as e:
@@ -250,6 +257,12 @@ class FileSystemConversationStore(ConversationStore):
 
         # Sort by updated_at desc
         conversations.sort(key=lambda x: x.updated_at, reverse=True)
+
+        # Filter before paginating so pages stay consistent per business.
+        if business_id is not None:
+            conversations = [
+                c for c in conversations if c.metadata.get("business_id") == business_id
+            ]
 
         # Apply pagination
         return conversations[offset : offset + limit]
