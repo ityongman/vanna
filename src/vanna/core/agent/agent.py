@@ -7,7 +7,7 @@ between LLM services, tools, and conversation storage.
 
 import traceback
 import uuid
-from typing import TYPE_CHECKING, AsyncGenerator, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
 
 from vanna.components import (
     UiComponent,
@@ -283,11 +283,38 @@ class Agent:
             UiComponent instances for UI updates
         """
         try:
+            # Ensure a conversation id exists up-front so the rich
+            # components collected below can be attached to the right
+            # conversation once generation completes.
+            if conversation_id is None:
+                conversation_id = str(uuid.uuid4())
+
+            # Collect serialized rich components while streaming; they are
+            # persisted onto the final assistant message for history replay.
+            rich_components: List[Dict[str, Any]] = []
+
             # Delegate to internal method
             async for component in self._send_message(
                 request_context, message, conversation_id=conversation_id
             ):
+                if component.rich_component is not None:
+                    rich_components.append(
+                        component.rich_component.serialize_for_frontend()
+                    )
                 yield component
+
+            if rich_components:
+                try:
+                    await self._attach_rich_components(
+                        request_context, conversation_id, rich_components
+                    )
+                except Exception as e:
+                    logger.error(
+                        "Failed to attach rich components to conversation %s: %s",
+                        conversation_id,
+                        e,
+                        exc_info=True,
+                    )
         except Exception as e:
             # Log full stack trace
             stack_trace = traceback.format_exc()
@@ -818,6 +845,29 @@ You can:
         # Run after_message hooks
         for hook in self.lifecycle_hooks:
             await hook.after_message(conversation)
+
+    async def _attach_rich_components(
+        self,
+        request_context: RequestContext,
+        conversation_id: str,
+        rich_components: List[Dict[str, Any]],
+    ) -> None:
+        """Persist serialized rich components onto the final assistant message."""
+        user = await self.user_resolver.resolve_user(request_context)
+        conversation = await self.conversation_store.get_conversation(
+            conversation_id, user
+        )
+        if conversation is None:
+            # Starter requests (never persisted) and aborted streams have
+            # nothing to attach to.
+            return
+
+        for msg in reversed(conversation.messages):
+            if msg.role == "assistant":
+                msg.rich = rich_components
+                break
+
+        await self.conversation_store.update_conversation(conversation)
 
     async def get_available_tools(self, user: User) -> List[ToolSchema]:
         """Get tools available to the user."""

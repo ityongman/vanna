@@ -114,3 +114,25 @@ def test_message_rich_field_roundtrip_json():
     assert dumped["rich"] == rich
     reloaded = Message.model_validate(dumped)
     assert reloaded.rich == rich
+
+
+@pytest.mark.asyncio
+async def test_agent_persists_rich_components_on_assistant_message():
+    store = FakeStore()
+    agent = make_agent(FakeLlmService(reply="Iron Maiden sold the most."), store)
+
+    components = await _run_agent(agent)
+    assert components, "expected streamed components"
+
+    convs = list(store._convs.values())
+    assert len(convs) == 1
+    assistant_msgs = [m for m in convs[0].messages if m.role == "assistant"]
+    assert assistant_msgs, "expected an assistant message"
+
+    rich = assistant_msgs[-1].rich
+    assert rich, "expected rich components persisted on the assistant message"
+    text_comps = [r for r in rich if r.get("type") == "text"]
+    assert any(
+        r.get("data", {}).get("content") == "Iron Maiden sold the most."
+        for r in text_comps
+    ), "expected the final text component to be persisted"
