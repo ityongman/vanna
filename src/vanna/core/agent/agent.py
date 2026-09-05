@@ -399,7 +399,7 @@ class Agent:
                     conversation_id, user
                 )
                 if not conversation:
-                    # Create empty conversation (will be saved if workflow produces components)
+                    # In-memory only; starter requests never persist
                     conversation = Conversation(
                         id=conversation_id, user=user, messages=[]
                     )
@@ -514,8 +514,9 @@ class Agent:
                         )
                     )
 
-                    # Save conversation if auto-save enabled
-                    if self.config.auto_save_conversations:
+                    # Save only if the workflow produced conversation content;
+                    # empty sessions must not be persisted.
+                    if self.config.auto_save_conversations and conversation.messages:
                         await self.conversation_store.update_conversation(conversation)
 
                     # Exit without calling LLM

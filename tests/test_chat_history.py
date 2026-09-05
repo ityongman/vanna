@@ -241,3 +241,16 @@ async def test_starter_requests_do_not_persist_conversation(message, metadata):
     assert components, "starter UI components expected"
 
     assert store._convs == {}, "starter requests must not create a conversation"
+
+
+@pytest.mark.asyncio
+async def test_workflow_short_circuit_does_not_persist_empty_conversation():
+    store = FakeStore()
+    agent = make_agent(FakeLlmService(), store, workflow_handler=FakeWorkflowHandler())
+
+    components = await _run_agent(agent, message="/help")
+    assert components, "expected workflow components"
+
+    assert store._convs == {}, (
+        "workflow short-circuit must not persist an empty conversation"
+    )
