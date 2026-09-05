@@ -935,13 +935,13 @@ You can:
                 metadata={"purpose": "conversation_title"},
             )
             response = await self._send_llm_request(request)
-            title = (response.content or "").strip().strip('"').strip()
+            title = (response.content or "").strip().strip("\"'").strip()
             if title:
                 return " ".join(title.split())[:60]
         except Exception as e:
             logger.error("Title generation via LLM failed: %s", e, exc_info=True)
 
-        return first_user_message.strip()[:60] or "New conversation"
+        return " ".join(first_user_message.strip().split())[:60] or "New conversation"
 
     async def get_available_tools(self, user: User) -> List[ToolSchema]:
         """Get tools available to the user."""

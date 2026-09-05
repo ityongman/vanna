@@ -63,9 +63,11 @@ class FakeLlmService(LlmService):
         self.reply = reply
         self.title = title
         self.fail_title = fail_title
+        self.title_calls = 0
 
     async def send_request(self, request: LlmRequest) -> LlmResponse:
         if request.metadata.get("purpose") == "conversation_title":
+            self.title_calls += 1
             if self.fail_title:
                 raise RuntimeError("title LLM unavailable")
             return LlmResponse(content=self.title or "")
@@ -276,3 +278,39 @@ async def test_conversation_title_falls_back_to_first_user_message():
 
     conv = next(iter(store._convs.values()))
     assert conv.metadata.get("title") == long_message[:60]
+
+
+@pytest.mark.asyncio
+async def test_title_llm_quote_cleaning():
+    store = FakeStore()
+    llm = FakeLlmService(reply="ok", title="'Top Artist Sales'")
+    agent = make_agent(llm, store)
+
+    await _run_agent(agent)
+    conv = next(iter(store._convs.values()))
+    assert conv.metadata.get("title") == "Top Artist Sales"
+
+
+@pytest.mark.asyncio
+async def test_conversation_title_empty_llm_reply_falls_back():
+    store = FakeStore()
+    agent = make_agent(FakeLlmService(reply="ok", title=""), store)
+
+    await _run_agent(agent)
+    conv = next(iter(store._convs.values()))
+    assert conv.metadata.get("title") == "Who is the top artist?"
+
+
+@pytest.mark.asyncio
+async def test_title_generated_only_once_per_conversation():
+    store = FakeStore()
+    llm = FakeLlmService(reply="42 albums", title="Top Artist Sales")
+    agent = make_agent(llm, store)
+
+    await _run_agent(agent)
+    conv_id = next(iter(store._convs))
+    await _run_agent(agent, message="What about singles?", conversation_id=conv_id)
+
+    assert llm.title_calls == 1
+    conv = store._convs[conv_id]
+    assert conv.metadata.get("title") == "Top Artist Sales"
