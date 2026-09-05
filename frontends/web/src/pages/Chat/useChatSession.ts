@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ConversationMeta } from '../../lib/api';
 import { streamChat } from '../../lib/sse';
-import { ChatMessage, ChatStreamChunk, RichComponent } from './types';
+import { AUTH_ERROR_DETAIL, ChatMessage, ChatStreamChunk, RichComponent } from './types';
 
 function makeId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -230,7 +230,7 @@ export function useChatSession(businessId: string | undefined): ChatSession {
           patchAssistant((m) => ({
             ...m,
             status: 'error',
-            errorDetail: authError ? 'authentication required' : e?.message ?? 'request failed',
+            errorDetail: authError ? AUTH_ERROR_DETAIL : e?.message ?? 'request failed',
           }));
         }
       } finally {
@@ -303,7 +303,7 @@ export function useChatSession(businessId: string | undefined): ChatSession {
             status: 'error',
             errorDetail:
               status === 401 || status === 403
-                ? 'authentication required'
+                ? AUTH_ERROR_DETAIL
                 : e?.message,
           }));
         }
@@ -332,7 +332,12 @@ export function useChatSession(businessId: string | undefined): ChatSession {
         .slice(0, failedIndex)
         .reverse()
         .find((m) => m.role === 'user');
-      if (!sourceMessage) return;
+      if (!sourceMessage) {
+        // A8: starter card failure has no preceding user message; clearing
+        // the list makes the starter effect re-run and refetch it.
+        setMessages([]);
+        return;
+      }
       setMessages((prev) => prev.filter((m) => m.id !== failedMessageId));
       void startStream(sourceMessage.content, false);
     },

@@ -1,7 +1,7 @@
 import { Alert, Avatar, Button, Space, Spin } from 'antd';
 import { ReloadOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons';
 import { t } from '../../../i18n';
-import { ChatMessage, dedupeRich } from '../types';
+import { AUTH_ERROR_DETAIL, ChatMessage, dedupeRich } from '../types';
 import RichRenderer from './renderers/RichRenderer';
 
 export interface MessageBubbleProps {
@@ -47,13 +47,13 @@ export default function MessageBubble({ message, onSendAction, onRetry }: Messag
                 type="error"
                 showIcon
                 message={
-                  message.errorDetail === 'authentication required'
+                  message.errorDetail === AUTH_ERROR_DETAIL
                     ? t('common', 'chat.authenticationRequired', '登录已过期，请重新登录')
                     : message.content || message.errorDetail || t('common', 'chat.generationFailed', '生成失败')
                 }
                 action={
                   onRetry &&
-                  message.errorDetail !== 'authentication required' && (
+                  message.errorDetail !== AUTH_ERROR_DETAIL && (
                     <Button size="small" icon={<ReloadOutlined />} onClick={() => onRetry(message.id)}>
                       {t('common', 'chat.retry', '重试')}
                     </Button>

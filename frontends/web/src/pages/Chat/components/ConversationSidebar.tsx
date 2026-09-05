@@ -32,7 +32,9 @@ export default function ConversationSidebar({
   const [keyword, setKeyword] = useState('');
 
   const filtered = useMemo(() => {
-    const sorted = [...conversations].sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
+    const sorted = [...conversations].sort(
+      (a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at)
+    );
     const kw = keyword.trim().toLowerCase();
     if (!kw) return sorted;
     return sorted.filter((c) => conversationTitle(c).toLowerCase().includes(kw));
@@ -59,6 +61,7 @@ export default function ConversationSidebar({
         ) : (
           <List
             size="small"
+            rowKey={(c) => c.id}
             dataSource={filtered}
             renderItem={(conv) => {
               const active = conv.id === activeId;

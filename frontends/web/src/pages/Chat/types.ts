@@ -31,6 +31,9 @@ export interface ChatStreamChunk {
   timestamp: number;
 }
 
+/** Error detail marker for 401/403 authentication failures. */
+export const AUTH_ERROR_DETAIL = 'authentication required';
+
 /**
  * Collapse component updates sharing the same id (lifecycle create/update
  * sequences) to the latest payload for replay rendering.

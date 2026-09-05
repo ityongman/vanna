@@ -34,9 +34,13 @@ export default function MessageList({ messages, loading, onSendAction, onRetry }
     return () => el.removeEventListener('scroll', onScroll);
   }, []);
 
-  // New chunks scroll to bottom instantly (messages grow while streaming).
+  // New chunks scroll to bottom only when the user is already near the
+  // bottom, so streaming never yanks users who scrolled up to read.
   useEffect(() => {
-    scrollToBottom(false);
+    const el = containerRef.current;
+    if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
+      scrollToBottom(false);
+    }
   }, [messages]);
 
   return (
