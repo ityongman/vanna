@@ -428,10 +428,8 @@ class Agent:
                         )
                     )
 
-                # Save the conversation if it was newly created
-                if self.config.auto_save_conversations:
-                    await self.conversation_store.update_conversation(conversation)
-
+                # Starter requests only stream UI components; they never
+                # persist a conversation (empty sessions should not exist).
                 return  # Exit without calling LLM
 
             except Exception as e:

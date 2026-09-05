@@ -222,3 +222,22 @@ async def test_workflow_short_circuit_does_not_overwrite_existing_rich():
     assistant_msgs = [m for m in reloaded.messages if m.role == "assistant"]
     assert assistant_msgs, "expected the assistant message to be preserved"
     assert assistant_msgs[-1].rich == original_rich
+
+
+@pytest.mark.parametrize(
+    "message,metadata",
+    [
+        ("", None),
+        ("", {"starter_ui_request": True}),
+        ("hi", {"starter_ui_request": True}),
+    ],
+)
+@pytest.mark.asyncio
+async def test_starter_requests_do_not_persist_conversation(message, metadata):
+    store = FakeStore()
+    agent = make_agent(FakeLlmService(), store, workflow_handler=FakeWorkflowHandler())
+
+    components = await _run_agent(agent, message=message, metadata=metadata)
+    assert components, "starter UI components expected"
+
+    assert store._convs == {}, "starter requests must not create a conversation"
