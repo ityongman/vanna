@@ -16,6 +16,16 @@ function mapStoredRich(rich?: Record<string, any>[]): RichComponent[] {
   }));
 }
 
+/**
+ * Extract the HTTP status code from fetch/stream errors shaped
+ * "HTTP 401: Unauthorized"; returns 0 when no status prefix is present.
+ */
+function httpStatusOf(error: unknown): number {
+  const message = error instanceof Error ? error.message : '';
+  const match = /^HTTP (\d{3})\b/.exec(message);
+  return match ? Number(match[1]) : 0;
+}
+
 /** Live input updates pushed by the backend (ChatInputUpdateComponent). */
 export interface ChatInputHint {
   placeholder?: string;
@@ -215,8 +225,8 @@ export function useChatSession(businessId: string | undefined): ChatSession {
         } else {
           // A6: detect unauthenticated responses by the HTTP status code
           // prefix (e.g. "HTTP 401: Unauthorized"), never by error text.
-          const statusPrefix = /^HTTP (\d{3})\b/.exec(e?.message ?? '')?.[1] ?? '';
-          const authError = statusPrefix === '401' || statusPrefix === '403';
+          const status = httpStatusOf(e);
+          const authError = status === 401 || status === 403;
           patchAssistant((m) => ({
             ...m,
             status: 'error',
@@ -287,7 +297,15 @@ export function useChatSession(businessId: string | undefined): ChatSession {
         if (e?.name === 'AbortError') {
           patchStarter((m) => ({ ...m, status: 'done' }));
         } else {
-          patchStarter((m) => ({ ...m, status: 'error', errorDetail: e?.message }));
+          const status = httpStatusOf(e);
+          patchStarter((m) => ({
+            ...m,
+            status: 'error',
+            errorDetail:
+              status === 401 || status === 403
+                ? 'authentication required'
+                : e?.message,
+          }));
         }
       })
       .finally(() => {
@@ -306,10 +324,17 @@ export function useChatSession(businessId: string | undefined): ChatSession {
 
   const retry = useCallback(
     (failedMessageId: string) => {
-      const lastUser = [...messages].reverse().find((m) => m.role === 'user');
-      if (!lastUser) return;
+      // Find the user message immediately preceding the failed assistant
+      // message rather than the last user message in the conversation.
+      const failedIndex = messages.findIndex((m) => m.id === failedMessageId);
+      if (failedIndex < 0) return;
+      const sourceMessage = [...messages]
+        .slice(0, failedIndex)
+        .reverse()
+        .find((m) => m.role === 'user');
+      if (!sourceMessage) return;
       setMessages((prev) => prev.filter((m) => m.id !== failedMessageId));
-      void startStream(lastUser.content, false);
+      void startStream(sourceMessage.content, false);
     },
     [messages, startStream]
   );
