@@ -15,9 +15,10 @@ export interface ComposerProps {
 export default function Composer({ sending, placeholder, value, onSend, onStop }: ComposerProps) {
   const [draft, setDraft] = useState('');
 
-  // A8: sync backend-pushed input text (ChatInputUpdateComponent.value).
+  // A9: sync backend-pushed input text (ChatInputUpdateComponent.value) and
+  // clear the draft when the hint resets (new chat / conversation switch).
   useEffect(() => {
-    if (value !== undefined) setDraft(value);
+    setDraft(value ?? '');
   }, [value]);
 
   const submit = () => {

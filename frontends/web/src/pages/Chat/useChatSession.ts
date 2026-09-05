@@ -63,6 +63,7 @@ export function useChatSession(businessId: string | undefined): ChatSession {
   const abortRef = useRef<AbortController | null>(null);
   const conversationIdRef = useRef<string | null>(null);
   conversationIdRef.current = conversationId;
+  const openSeqRef = useRef(0);
 
   const refreshConversations = useCallback(async () => {
     try {
@@ -83,9 +84,11 @@ export function useChatSession(businessId: string | undefined): ChatSession {
   const openConversation = useCallback(
     async (id: string) => {
       stop();
+      const seq = ++openSeqRef.current;
       setLoadingConversation(true);
       try {
         const conv = await api.conversation(id);
+        if (seq !== openSeqRef.current) return;
         setConversationId(conv.id);
         setMessages(
           conv.messages.map((m) => ({
@@ -98,10 +101,11 @@ export function useChatSession(businessId: string | undefined): ChatSession {
         );
         setInputHint(null);
       } catch {
+        if (seq !== openSeqRef.current) return;
         setMessages([]);
         setConversationId(null);
       } finally {
-        setLoadingConversation(false);
+        if (seq === openSeqRef.current) setLoadingConversation(false);
       }
     },
     [stop]
@@ -252,9 +256,11 @@ export function useChatSession(businessId: string | undefined): ChatSession {
     abortRef.current = controller;
 
     const starterId = makeId('msg');
-    setMessages([
-      { id: starterId, role: 'assistant', content: '', rich: [], status: 'streaming' },
-    ]);
+    setMessages((prev) =>
+      prev.length === 0
+        ? [{ id: starterId, role: 'assistant', content: '', rich: [], status: 'streaming' }]
+        : prev
+    );
 
     const patchStarter = (patch: (m: ChatMessage) => ChatMessage) => {
       setMessages((prev) => prev.map((m) => (m.id === starterId ? patch(m) : m)));
@@ -313,6 +319,7 @@ export function useChatSession(businessId: string | undefined): ChatSession {
           abortRef.current = null;
         }
       });
+    return () => controller.abort();
   }, [conversationId, businessId, messages.length, sending]);
 
   const sendMessage = useCallback(

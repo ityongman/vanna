@@ -16,32 +16,44 @@ export interface MessageListProps {
 export default function MessageList({ messages, loading, onSendAction, onRetry }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showScrollDown, setShowScrollDown] = useState(false);
+  // A9: whether the user is following the bottom (updated on scroll).
+  const stickRef = useRef(true);
+  // A9: previous loading state, to detect "history finished loading".
+  const prevLoadingRef = useRef<boolean | undefined>(undefined);
 
   const scrollToBottom = (smooth: boolean) => {
     const el = containerRef.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
   };
 
-  // Show the scroll-down button only while the user is away from the bottom.
+  // Track the scroll position: show the scroll-down button only while the
+  // user is away from the bottom, and remember whether they follow it.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const onScroll = () => {
-      setShowScrollDown(el.scrollHeight - el.scrollTop - el.clientHeight > 80);
+      const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setShowScrollDown(dist > 80);
+      stickRef.current = dist < 80;
     };
     onScroll();
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
   }, []);
 
-  // New chunks scroll to bottom only when the user is already near the
-  // bottom, so streaming never yanks users who scrolled up to read.
+  // New chunks follow the bottom only while the user is already there, so
+  // streaming never yanks users who scrolled up to read.
   useEffect(() => {
-    const el = containerRef.current;
-    if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
+    if (stickRef.current) scrollToBottom(false);
+  }, [messages]);
+
+  // After a conversation finishes loading, always jump to the newest message.
+  useEffect(() => {
+    if (prevLoadingRef.current && !loading) {
       scrollToBottom(false);
     }
-  }, [messages]);
+    prevLoadingRef.current = loading;
+  }, [loading]);
 
   return (
     <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
