@@ -7,5 +7,20 @@
   "continue": "继续",
   "loading": "加载中...",
   "pageNotFound": "页面未找到",
-  "backHome": "返回首页"
+  "backHome": "返回首页",
+  "chat.newConversation": "新建对话",
+  "chat.searchPlaceholder": "搜索会话",
+  "chat.emptyList": "暂无会话",
+  "chat.defaultTitle": "新对话",
+  "chat.deleteConfirm": "确认删除该会话？",
+  "chat.scrollToBottom": "回到底部",
+  "chat.copied": "已复制",
+  "chat.copy": "复制",
+  "chat.generationFailed": "生成失败",
+  "chat.retry": "重试",
+  "chat.inputPlaceholder": "输入问题，Enter 发送，Shift+Enter 换行",
+  "chat.send": "发送",
+  "chat.stop": "停止",
+  "chat.toggleSidebar": "切换会话列表",
+  "chat.authenticationRequired": "登录已过期，请重新登录"
 }
