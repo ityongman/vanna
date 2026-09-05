@@ -5,10 +5,17 @@ export interface AuthMe {
   businesses: string[];
 }
 
+export interface ConversationMessageMeta {
+  role: string;
+  content: string;
+  rich?: Record<string, any>[];
+}
+
 export interface ConversationMeta {
   id: string;
   updated_at: string;
-  messages: { role: string; content: string }[];
+  metadata?: { title?: string; business_id?: string };
+  messages: ConversationMessageMeta[];
 }
 
 export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -27,7 +34,12 @@ export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T>
 
 export const api = {
   me: () => fetchJson<AuthMe>("/api/auth/me"),
-  conversations: () => fetchJson<ConversationMeta[]>("/api/conversations"),
+  conversations: (businessId?: string) =>
+    fetchJson<ConversationMeta[]>(
+      businessId
+        ? `/api/conversations?business_id=${encodeURIComponent(businessId)}`
+        : '/api/conversations'
+    ),
   conversation: (id: string) => fetchJson<ConversationMeta>(`/api/conversations/${id}`),
   deleteConversation: (id: string) =>
     fetchJson<{ deleted: boolean }>(`/api/conversations/${id}`, { method: "DELETE" }),
