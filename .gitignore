@@ -41,6 +41,7 @@ frontends/**/package-lock.json
 frontends/**/.mypy_cache/
 
 .superpowers
+.worktrees/
 .vscode/
 .vibecoding/
 frontends/web/.npm-cache
