@@ -1,15 +1,13 @@
 import { useState } from 'react';
-import { Button, Layout } from 'antd';
-import { MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
+import { Layout } from 'antd';
 import { useParams } from 'react-router';
-import { t } from '../../i18n';
 import { useAuth } from '../../lib/auth';
 import { useChatSession } from './useChatSession';
 import ConversationSidebar from './components/ConversationSidebar';
 import MessageList from './components/MessageList';
 import Composer from './components/Composer';
 
-const { Sider, Content } = Layout;
+const { Content } = Layout;
 
 function ChatContent({ businessId }: { businessId: string | undefined }) {
   const { user } = useAuth();
@@ -17,35 +15,32 @@ function ChatContent({ businessId }: { businessId: string | undefined }) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <Layout style={{ height: 'calc(100vh - 120px)' }}>
-      <Sider
-        theme="light"
-        width={280}
-        collapsedWidth={0}
-        collapsible
-        collapsed={collapsed}
-        onCollapse={setCollapsed}
-        trigger={null}
-        style={{ borderRight: '1px solid #f0f0f0' }}
+    <Layout style={{ flex: 1, minHeight: 0, flexDirection: 'row' }}>
+      <div
+        style={{
+          width: collapsed ? 64 : 280,
+          flex: 'none',
+          height: '100%',
+          overflow: 'hidden',
+          borderRight: '1px solid #f0f0f0',
+          background: '#fff',
+          transition: 'width 0.2s ease',
+        }}
       >
         <ConversationSidebar
           conversations={chat.conversations}
           activeId={chat.conversationId}
+          collapsed={collapsed}
+          onToggle={() => setCollapsed((v) => !v)}
           onSelect={(id) => void chat.openConversation(id)}
           onNew={chat.newConversation}
           onDelete={(id) => void chat.deleteConversation(id)}
         />
-      </Sider>
+      </div>
       <Layout>
         <Content style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={{ padding: '4px 8px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center' }}>
-            <Button
-              type="text"
-              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-              onClick={() => setCollapsed((v) => !v)}
-              title={t('common', 'chat.toggleSidebar', '切换会话列表')}
-            />
-            <span style={{ marginLeft: 8, color: '#1677ff' }}>{user?.email || ''}</span>
+            <span style={{ marginLeft: 4, color: '#1677ff' }}>{user?.email || ''}</span>
           </div>
           <MessageList
             messages={chat.messages}

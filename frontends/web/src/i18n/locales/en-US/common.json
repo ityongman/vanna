@@ -8,7 +8,12 @@
   "loading": "Loading...",
   "pageNotFound": "Page Not Found",
   "backHome": "Back Home",
-  "chat.newConversation": "New Chat",
+  "chat.newChat": "New Chat",
+  "chat.search": "Search",
+  "chat.recentChats": "Recent Chats",
+  "chat.recent": "Recent",
+  "chat.closeSidebar": "Close Sidebar",
+  "chat.openSidebar": "Open Sidebar",
   "chat.searchPlaceholder": "Search conversations",
   "chat.emptyList": "No conversations",
   "chat.defaultTitle": "New chat",
@@ -21,6 +26,5 @@
   "chat.inputPlaceholder": "Ask a question. Enter to send, Shift+Enter for a new line",
   "chat.send": "Send",
   "chat.stop": "Stop",
-  "chat.toggleSidebar": "Toggle conversation list",
   "chat.authenticationRequired": "Session expired, please sign in again"
 }

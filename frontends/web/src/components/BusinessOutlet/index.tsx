@@ -28,9 +28,9 @@ function BusinessOutlet() {
     businesses.length > 1 && !NO_BUSINESS_SWITCHER_PAGES.has(currentPage);
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {showBusinessSwitcher && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flex: 'none' }}>
           <Text strong>Business:</Text>
           <Select
             value={businessId}
