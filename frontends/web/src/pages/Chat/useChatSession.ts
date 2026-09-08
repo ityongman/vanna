@@ -59,6 +59,12 @@ export function useChatSession(businessId: string | undefined): ChatSession {
   const [conversations, setConversations] = useState<ConversationMeta[]>([]);
   const [inputHint, setInputHint] = useState<ChatInputHint | null>(null);
   const [loadingConversation, setLoadingConversation] = useState(false);
+  // Bumped whenever the session resets to a fresh draft (new conversation,
+  // open-conversation failure, starter retry) so the starter-card effect
+  // re-runs. Replaces `messages.length` as effect dependency: the starter
+  // effect inserts a message itself, which would otherwise change the dep,
+  // run its own cleanup and abort its own in-flight request.
+  const [starterNonce, setStarterNonce] = useState(0);
 
   const abortRef = useRef<AbortController | null>(null);
   const conversationIdRef = useRef<string | null>(null);
@@ -104,6 +110,7 @@ export function useChatSession(businessId: string | undefined): ChatSession {
         if (seq !== openSeqRef.current) return;
         setMessages([]);
         setConversationId(null);
+        setStarterNonce((n) => n + 1);
       } finally {
         if (seq === openSeqRef.current) setLoadingConversation(false);
       }
@@ -116,6 +123,7 @@ export function useChatSession(businessId: string | undefined): ChatSession {
     setConversationId(null);
     setMessages([]);
     setInputHint(null);
+    setStarterNonce((n) => n + 1);
   }, [stop]);
 
   const deleteConversation = useCallback(
@@ -320,7 +328,11 @@ export function useChatSession(businessId: string | undefined): ChatSession {
         }
       });
     return () => controller.abort();
-  }, [conversationId, businessId, messages.length, sending]);
+    // `messages.length` is intentionally NOT a dependency: this effect calls
+    // setMessages itself, so listing it would re-run the effect, abort the
+    // stream below mid-flight and leave a canceled request behind. Draft
+    // resets re-trigger the fetch via `starterNonce` instead.
+  }, [conversationId, businessId, sending, starterNonce]);
 
   const sendMessage = useCallback(
     (text: string) => {
@@ -341,8 +353,10 @@ export function useChatSession(businessId: string | undefined): ChatSession {
         .find((m) => m.role === 'user');
       if (!sourceMessage) {
         // A8: starter card failure has no preceding user message; clearing
-        // the list makes the starter effect re-run and refetch it.
+        // the list and bumping the nonce makes the starter effect re-run
+        // and refetch it.
         setMessages([]);
+        setStarterNonce((n) => n + 1);
         return;
       }
       setMessages((prev) => prev.filter((m) => m.id !== failedMessageId));
