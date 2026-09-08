@@ -5,6 +5,7 @@ import ChartView from './ChartView';
 import CardView from './CardView';
 import ActionButtons from './ActionButtons';
 import StatusCardView from './StatusCardView';
+import NotificationView from './NotificationView';
 import UnknownComponent from './UnknownComponent';
 
 export interface RichRendererProps {
