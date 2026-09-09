@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Layout } from 'antd';
 import { useParams } from 'react-router';
-import { useAuth } from '../../lib/auth';
 import { useChatSession } from './useChatSession';
 import ConversationSidebar from './components/ConversationSidebar';
 import MessageList from './components/MessageList';
@@ -10,7 +9,6 @@ import Composer from './components/Composer';
 const { Content } = Layout;
 
 function ChatContent({ businessId }: { businessId: string | undefined }) {
-  const { user } = useAuth();
   const chat = useChatSession(businessId);
   const [collapsed, setCollapsed] = useState(false);
 
@@ -39,9 +37,6 @@ function ChatContent({ businessId }: { businessId: string | undefined }) {
       </div>
       <Layout>
         <Content style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div style={{ padding: '4px 8px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center' }}>
-            <span style={{ marginLeft: 4, color: '#1677ff' }}>{user?.email || ''}</span>
-          </div>
           <MessageList
             messages={chat.messages}
             loading={chat.loadingConversation}

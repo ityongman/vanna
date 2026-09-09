@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ConversationMeta } from '../../lib/api';
 import { streamChat } from '../../lib/sse';
+import { getLanguage } from '../../i18n';
 import { AUTH_ERROR_DETAIL, ChatMessage, ChatStreamChunk, RichComponent } from './types';
 
 function makeId(prefix: string): string {
@@ -276,7 +277,12 @@ export function useChatSession(businessId: string | undefined): ChatSession {
 
     let starterFailed = false;
     void streamChat(
-      { message: '', business_id: businessId, metadata: { starter_ui_request: true } },
+      {
+        message: '',
+        business_id: businessId,
+        // Report the UI language so the backend starter greeting is localized.
+        metadata: { starter_ui_request: true, language: getLanguage() },
+      },
       {
         onChunk: (chunk: ChatStreamChunk) => {
           const errorFrame = chunk as unknown as {
