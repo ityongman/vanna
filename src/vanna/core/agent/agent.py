@@ -364,6 +364,14 @@ class Agent:
 
         if is_starter_request and self.workflow_handler:
             try:
+                # Thread the client UI language into the user metadata so the
+                # workflow handler can return a localized starter greeting.
+                # A copy is made to avoid mutating a resolver-cached user.
+                language = request_context.metadata.get("language")
+                if language:
+                    user = user.model_copy(deep=True)
+                    user.metadata = {**user.metadata, "language": language}
+
                 # Load or create conversation for context
                 if conversation_id is None:
                     conversation_id = str(uuid.uuid4())

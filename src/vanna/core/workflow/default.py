@@ -28,6 +28,27 @@ from vanna.components import (
 
 # Note: StatusCardComponent and ButtonGroupComponent are kept for /status command compatibility
 
+# Language-aware starter greetings. The "System Ready" setup card is replaced
+# by a friendly prompt when the client reports its UI language; the setup card
+# remains the fallback for clients that do not send a language.
+_GREETINGS = {
+    "zh-CN": "你今天在想些什么？可以直接问我关于这些数据的问题。",
+    "zh-TW": "你今天在想什麼？可以直接問我有關這些資料的問題。",
+    "en-US": "What's on your mind today? Ask me anything about your data.",
+}
+
+
+def _greeting_for(language) -> Optional[str]:
+    """Resolve a localized starter greeting for the given language tag.
+
+    Returns None when no language is reported or no matching greeting exists,
+    so callers fall back to the setup status card.
+    """
+    if not language:
+        return None
+    lang = str(language)
+    return _GREETINGS.get(lang) or _GREETINGS.get(lang.lower())
+
 
 class DefaultWorkflowHandler(WorkflowHandler):
     """Default workflow handler that provides setup health checking and starter UI.
@@ -116,6 +137,21 @@ class DefaultWorkflowHandler(WorkflowHandler):
 
         # Analyze setup
         setup_analysis = self._analyze_setup(tool_names)
+
+        # Language-aware greeting: a friendly prompt instead of the setup
+        # status card when the client reports its UI language. The greetings
+        # are generic (business-agnostic) so they never imply a wrong
+        # database; the setup card remains the fallback.
+        greeting = _greeting_for(user.metadata.get("language"))
+        if greeting:
+            return [
+                UiComponent(
+                    rich_component=RichTextComponent(
+                        content=greeting, markdown=True
+                    ),
+                    simple_component=None,
+                )
+            ]
 
         # Generate single concise card
         if self.welcome_message:
