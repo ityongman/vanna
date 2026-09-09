@@ -17,6 +17,7 @@ from .config_sync import (
     save_app_config,
     sync_agent_businesses,
 )
+from vanna.integrations.databases.factory import SUPPORTED_SCHEMES
 
 
 class CreateBusinessRequest(BaseModel):
@@ -110,6 +111,20 @@ def register_business_routes(
         # Validate business ID
         if not request_body.id or not request_body.id.strip():
             raise HTTPException(status_code=400, detail="Business ID is required")
+
+        # Validate database URL scheme against the runner factory whitelist
+        # (must fail at creation time, not at first query).
+        url = request_body.database_url
+        scheme = url.split("://", 1)[0].lower() if "://" in url else ""
+        if scheme not in SUPPORTED_SCHEMES:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Invalid database URL '{url}': unsupported scheme "
+                    f"'{scheme or '(none)'}'. Supported schemes: "
+                    f"{', '.join(SUPPORTED_SCHEMES)}"
+                ),
+            )
 
         # Check if already exists
         config = load_app_config()

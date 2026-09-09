@@ -22,7 +22,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   async function refresh() {
-    setLoading(true);
+    // 静默刷新：不置全局 loading（首屏 loading 由 useState(true) 提供）。
+    // 置 loading 会经 AuthGuard 卸载整个路由子树，导致进行中的页面状态丢失。
     try {
       const me = await api.me();
       setUser(me);

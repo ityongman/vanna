@@ -100,7 +100,7 @@ export default function DdlImportPage() {
     if (preview?.business_state === 'missing') {
       newBusinessForm.setFieldsValue({
         id: preview.db_name,
-        dbPath: `data/db/${preview.db_name}.db`,
+        database_url: `sqlite:///data/db/${preview.db_name}.db`,
         namespace: preview.db_name,
       });
     }
@@ -172,7 +172,7 @@ export default function DdlImportPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: values.id,
-          database_url: `sqlite:///${values.dbPath}`,
+          database_url: values.database_url,
           namespace: values.namespace,
         }),
       });
@@ -181,7 +181,8 @@ export default function DdlImportPage() {
         setError(createData?.detail || '创建业务配置失败');
         return;
       }
-      await refresh();
+      // 先完成导入再刷新业务列表（doIngest 成功后自带 refresh），
+      // 避免中途全局刷新导致页面卸载、导入结果丢失。
       await doIngest(values.id);
     } catch (e) {
       setError('请填写完整的新业务配置');
@@ -380,11 +381,15 @@ export default function DdlImportPage() {
                       <Input disabled />
                     </Form.Item>
                     <Form.Item
-                      label="数据库路径（相对项目根目录）"
-                      name="dbPath"
-                      rules={[{ required: true, message: '请填写数据库路径' }]}
+                      label="数据库 URL"
+                      name="database_url"
+                      extra="支持 sqlite / duckdb / mysql / postgresql / mssql / oracle / clickhouse / hive / presto，如 postgresql://user:pwd@host:5432/dbname"
+                      rules={[
+                        { required: true, message: '请填写数据库 URL' },
+                        { pattern: /^[a-z][a-z0-9+]*:\/\//i, message: '格式须为 scheme://... 的完整连接串' },
+                      ]}
                     >
-                      <Input disabled={!isAdmin} />
+                      <Input placeholder="sqlite:///data/db/xxx.db" disabled={!isAdmin} />
                     </Form.Item>
                     <Form.Item
                       label="向量库 namespace"

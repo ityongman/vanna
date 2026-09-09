@@ -6,6 +6,7 @@ import {
 } from '@ant-design/icons';
 import { Select } from 'antd';
 import UserMenu from '../components/UserMenu';
+import { useAuth } from '../lib/auth';
 import { t, setLanguage, getLanguage, type Language } from '../i18n';
 
 const menuData = [
@@ -13,9 +14,12 @@ const menuData = [
 ];
 
 function AppLayout() {
-  const { businessId } = useParams();
+  const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+  // /admin/* 管理路由不在业务段下，菜单的对话入口回退到首个业务
+  const businessId = params.businessId ?? user?.businesses?.[0];
 
   return (
     <ProLayout
