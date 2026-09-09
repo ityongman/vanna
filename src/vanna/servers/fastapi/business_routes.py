@@ -14,6 +14,7 @@ from .auth import is_admin_email, resolve_user
 from .config_sync import (
     get_businesses_from_config,
     load_app_config,
+    remove_business_from_config,
     save_app_config,
     sync_agent_businesses,
 )
@@ -197,3 +198,64 @@ def register_business_routes(
         sync_agent_businesses(agent, config)
 
         return {"id": business_id, "enabled": request_body.enabled}
+
+    @app.delete("/api/businesses/{business_id}")
+    async def delete_business(business_id: str, http_request: Request):
+        """Delete a business: clear its vector namespace, drop the app.json
+        entry and hot-unload it from the running agent."""
+        user = await resolve_user(agent, http_request)
+        _guard(user)
+
+        # Resolve the namespace before the config entry is gone
+        # (active businesses first, disabled via app.json fallback).
+        businesses = getattr(getattr(agent, "config", None), "businesses", {}) or {}
+        namespace = None
+        for biz_id, biz in businesses.items():
+            if str(biz_id).lower() == business_id.lower():
+                namespace = biz.effective_database_name()
+                break
+        if namespace is None:
+            from .config_sync import resolve_business_namespace_from_config
+
+            namespace = resolve_business_namespace_from_config(business_id)
+        if namespace is None:
+            raise HTTPException(
+                status_code=404, detail=f"Business '{business_id}' not found"
+            )
+
+        # 1) Clear the vector namespace (schema index + metadata)
+        removed_columns = 0
+        store = getattr(agent, "schema_vector_store", None)
+        if store is not None:
+            try:
+                removed_columns = await store.remove_namespace(namespace)
+            except NotImplementedError:
+                raise HTTPException(
+                    status_code=501,
+                    detail=(
+                        "Current vector backend does not support namespace "
+                        "removal; remove the app.json entry manually"
+                    ),
+                )
+
+        # 2) Remove the app.json entry and hot-unload
+        if not remove_business_from_config(agent, business_id):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Business '{business_id}' not found in app.json",
+            )
+
+        # 3) Drop the cached per-business SqlRunner, if any
+        runners = getattr(agent, "_business_sql_runners", None)
+        if runners is not None:
+            runners.pop(business_id, None)
+            # Case-insensitive cleanup for keys that differ in case
+            for key in [k for k in runners if str(k).lower() == business_id.lower()]:
+                runners.pop(key, None)
+
+        return {
+            "id": business_id,
+            "namespace": namespace,
+            "removed_columns": removed_columns,
+            "message": "Business deleted; vector namespace cleared",
+        }

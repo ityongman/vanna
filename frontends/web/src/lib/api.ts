@@ -52,4 +52,9 @@ export const api = {
       `/api/schema/tables/${encodeURIComponent(table)}?business_id=${encodeURIComponent(businessId)}`,
       { method: "DELETE" }
     ),
+  deleteBusiness: (businessId: string) =>
+    fetchJson<{ id: string; namespace: string; removed_columns: number }>(
+      `/api/businesses/${encodeURIComponent(businessId)}`,
+      { method: "DELETE" }
+    ),
 };
