@@ -90,6 +90,27 @@ def set_business_enabled(agent, business_id: str, enabled: bool) -> bool:
     return True
 
 
+def remove_business_from_config(agent, business_id: str) -> bool:
+    """Remove a business entry from app.json and hot-reload.
+
+    Returns True when the business existed in app.json and was removed.
+    Note: this only touches the configuration; vector namespace data must
+    be cleaned separately via the schema store.
+    """
+    config = load_app_config()
+    businesses = get_businesses_from_config(config)
+    remaining = [
+        biz for biz in businesses
+        if str(biz.get("id", "")).lower() != business_id.lower()
+    ]
+    if len(remaining) == len(businesses):
+        return False
+    config.setdefault("storage", {})["businesses"] = remaining
+    save_app_config(config)
+    sync_agent_businesses(agent, config)
+    return True
+
+
 def resolve_business_namespace_from_config(business_id: str) -> Optional[str]:
     """Namespace from app.json for a business (disabled entries included).
 

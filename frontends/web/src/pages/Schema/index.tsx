@@ -14,7 +14,7 @@ interface SchemaTable {
 
 function SchemaPage() {
   const { businessId } = useParams();
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const businesses = user?.businesses ?? [];
   const [selected, setSelected] = useState<string>(businessId || '');
   const [tables, setTables] = useState<SchemaTable[]>([]);
@@ -43,6 +43,21 @@ function SchemaPage() {
       loadTables();
     } catch (e: any) {
       message.error(e.message || 'Failed to delete table');
+    }
+  }
+
+  async function handleDeleteBusiness() {
+    if (!selected) return;
+    try {
+      await api.deleteBusiness(selected);
+      message.success(`Business "${selected}" deleted`);
+      setSelected('');
+      setTables([]);
+      setNamespace('');
+      // 刷新用户可见业务列表，移除已删除业务
+      await refresh();
+    } catch (e: any) {
+      message.error(e.message || 'Failed to delete business');
     }
   }
 
@@ -102,6 +117,20 @@ function SchemaPage() {
             Refresh
           </Button>
           {namespace && <Text type="secondary">Namespace: {namespace}</Text>}
+          {selected && (
+            <Popconfirm
+              title={`Delete business "${selected}"?`}
+              description="This clears its schema vector namespace AND removes the business from app.json. This cannot be undone."
+              onConfirm={handleDeleteBusiness}
+              okText="Delete"
+              cancelText="Cancel"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="primary" danger icon={<DeleteOutlined />}>
+                Delete Business
+              </Button>
+            </Popconfirm>
+          )}
         </Space>
       </Card>
 

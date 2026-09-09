@@ -339,3 +339,23 @@ class FAISSSchemaVectorStore(SchemaVectorStore):
 
         await asyncio.get_event_loop().run_in_executor(self._executor, _remove)
         return removed
+
+    async def remove_namespace(self, namespace: str) -> int:
+        """Remove an entire namespace: reset in-memory state and persist empty."""
+        self._load_database(namespace)
+        metadata = self._metadata.get(namespace) or {}
+        removed = len(metadata.get("columns", []))
+
+        def _remove_all() -> None:
+            self._indexes[namespace] = None
+            self._metadata[namespace] = {
+                "columns": [],
+                "embedding_texts": [],
+                "relations": [],
+            }
+            self._persist_database(namespace)
+
+        await asyncio.get_event_loop().run_in_executor(
+            self._executor, _remove_all
+        )
+        return removed

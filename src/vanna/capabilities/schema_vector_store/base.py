@@ -99,3 +99,12 @@ class SchemaVectorStore(ABC):
     async def remove_table(self, table_name: str, namespace: str) -> int:
         """Remove a table (columns + relations); returns removed column count."""
         raise NotImplementedError("This backend does not support removing tables")
+
+    async def remove_namespace(self, namespace: str) -> int:
+        """Remove an entire namespace (all tables, columns, relations).
+
+        Returns the removed column count. Optional capability.
+        """
+        raise NotImplementedError(
+            "This backend does not support removing namespaces"
+        )
