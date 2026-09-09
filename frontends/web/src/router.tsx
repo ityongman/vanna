@@ -57,13 +57,21 @@ export const router = createBrowserRouter(
                     { path: 'draw', element: <Draw /> },
                     { path: 'manage', element: <Manage /> },
                     { path: 'train', element: <Train /> },
-                    {
-                      element: <AdminRoutes />,
-                      children: [
-                        { path: 'ddl-import', element: <DdlImport /> },
-                        { path: 'schema', element: <Schema /> },
-                      ],
-                    },
+                  ],
+                },
+              ],
+            },
+            {
+              // 管理页面与具体业务无关（导入目标由 CSV db_name 决定），
+              // 放在业务路由之外，避免 URL 携带业务段造成误解。
+              path: 'admin',
+              element: <AppLayout />,
+              children: [
+                {
+                  element: <AdminRoutes />,
+                  children: [
+                    { path: 'ddl-import', element: <DdlImport /> },
+                    { path: 'schema', element: <Schema /> },
                   ],
                 },
               ],

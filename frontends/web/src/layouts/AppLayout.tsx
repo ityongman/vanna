@@ -2,12 +2,16 @@ import { Outlet, useLocation, useNavigate, useParams } from 'react-router';
 import { GlobalOutlined, MessageOutlined } from '@ant-design/icons';
 import { Button, Select, Tooltip } from 'antd';
 import UserMenu from '../components/UserMenu';
+import { useAuth } from '../lib/auth';
 import { setLanguage, getLanguage, t, type Language } from '../i18n';
 
 function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { businessId } = useParams();
+  const params = useParams();
+  const { user } = useAuth();
+  // /admin/* 管理路由不在业务段下，「返回聊天」回退到首个业务
+  const businessId = params.businessId ?? user?.businesses?.[0];
 
   // 管理页等非聊天页显示“返回聊天”入口
   const showBackToChat = !location.pathname.endsWith('/chat');
