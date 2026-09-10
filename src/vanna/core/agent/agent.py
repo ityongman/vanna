@@ -7,7 +7,7 @@ between LLM services, tools, and conversation storage.
 
 import traceback
 import uuid
-from typing import TYPE_CHECKING, AsyncGenerator, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
 
 from vanna.components import (
     UiComponent,
@@ -171,7 +171,7 @@ class Agent:
         if sql_runner is None and config.database is not None:
             from vanna.integrations.databases.factory import create_sql_runner
 
-            sql_runner = create_sql_runner(config.database.url)
+            sql_runner = create_sql_runner(config.database.to_url())
         self.sql_runner = sql_runner
         self.extra_tools = list(extra_tools)
         # 业务路由的 runner 缓存：business_id -> SqlRunner（首次请求创建后复用）
@@ -259,7 +259,7 @@ class Agent:
             from vanna.integrations.databases.factory import create_sql_runner
 
             self._business_sql_runners[business.id] = create_sql_runner(
-                business.database.url
+                business.database.to_url()
             )
             logger.info("Created SqlRunner for business '%s'", business.id)
         return self._business_sql_runners[business.id]
@@ -283,11 +283,38 @@ class Agent:
             UiComponent instances for UI updates
         """
         try:
+            # Ensure a conversation id exists up-front so the rich
+            # components collected below can be attached to the right
+            # conversation once generation completes.
+            if conversation_id is None:
+                conversation_id = str(uuid.uuid4())
+
+            # Collect serialized rich components while streaming; they are
+            # persisted onto the final assistant message for history replay.
+            rich_components: List[Dict[str, Any]] = []
+
             # Delegate to internal method
             async for component in self._send_message(
                 request_context, message, conversation_id=conversation_id
             ):
+                if component.rich_component is not None:
+                    rich_components.append(
+                        component.rich_component.serialize_for_frontend()
+                    )
                 yield component
+
+            if rich_components:
+                try:
+                    await self._attach_rich_components(
+                        request_context, conversation_id, rich_components
+                    )
+                except Exception as e:
+                    logger.error(
+                        "Failed to attach rich components to conversation %s: %s",
+                        conversation_id,
+                        e,
+                        exc_info=True,
+                    )
         except Exception as e:
             # Log full stack trace
             stack_trace = traceback.format_exc()
@@ -380,7 +407,7 @@ class Agent:
                     conversation_id, user
                 )
                 if not conversation:
-                    # Create empty conversation (will be saved if workflow produces components)
+                    # In-memory only; starter requests never persist
                     conversation = Conversation(
                         id=conversation_id, user=user, messages=[]
                     )
@@ -409,10 +436,8 @@ class Agent:
                         )
                     )
 
-                # Save the conversation if it was newly created
-                if self.config.auto_save_conversations:
-                    await self.conversation_store.update_conversation(conversation)
-
+                # Starter requests only stream UI components; they never
+                # persist a conversation (empty sessions should not exist).
                 return  # Exit without calling LLM
 
             except Exception as e:
@@ -459,6 +484,14 @@ class Agent:
             # Create empty conversation (will add message after workflow handler check)
             conversation = Conversation(id=conversation_id, user=user, messages=[])
 
+        # Tag the conversation with the requesting business so listings
+        # can be filtered per business. Existing tags are preserved: the
+        # first business to use a conversation keeps ownership, while
+        # historically untagged conversations are backfilled.
+        request_business_id = request_context.metadata.get("business_id")
+        if request_business_id:
+            conversation.metadata.setdefault("business_id", request_business_id)
+
         # Try workflow handler before adding message to conversation
         if self.workflow_handler:
             try:
@@ -497,8 +530,9 @@ class Agent:
                         )
                     )
 
-                    # Save conversation if auto-save enabled
-                    if self.config.auto_save_conversations:
+                    # Save only if the workflow produced conversation content;
+                    # empty sessions must not be persisted.
+                    if self.config.auto_save_conversations and conversation.messages:
                         await self.conversation_store.update_conversation(conversation)
 
                     # Exit without calling LLM
@@ -819,6 +853,23 @@ You can:
                 )
             )
 
+        # Auto-generate a title after the first completed turn (assistant
+        # reply produced, title not yet set). Failures fall back inline.
+        if (
+            self.config.auto_save_conversations
+            and conversation.messages
+            and "title" not in conversation.metadata
+            and any(m.role == "assistant" for m in conversation.messages)
+        ):
+            try:
+                conversation.metadata["title"] = (
+                    await self._generate_conversation_title(conversation)
+                )
+            except Exception as e:
+                logger.error(
+                    "Failed to generate conversation title: %s", e, exc_info=True
+                )
+
         # Save conversation if configured
         if self.config.auto_save_conversations:
             await self.conversation_store.update_conversation(conversation)
@@ -826,6 +877,87 @@ You can:
         # Run after_message hooks
         for hook in self.lifecycle_hooks:
             await hook.after_message(conversation)
+
+    async def _attach_rich_components(
+        self,
+        request_context: RequestContext,
+        conversation_id: str,
+        rich_components: List[Dict[str, Any]],
+    ) -> None:
+        """Persist serialized rich components onto the final assistant message.
+
+        Only the assistant message produced by this turn is updated:
+        short-circuited flows (starter UI, workflow commands) also stream
+        components but do not add an assistant message, and must not
+        overwrite the rich components of an earlier turn.
+
+        Note: this read-modify-write cycle is an extra whole-object update
+        on top of the ones already performed while streaming, so concurrent
+        requests on the same conversation can still race (pre-existing
+        behavior).
+        """
+        if not self.config.auto_save_conversations:
+            # The turn itself is not persisted when auto-save is off;
+            # attaching rich components would only clobber older turns.
+            return
+
+        user = await self.user_resolver.resolve_user(request_context)
+        conversation = await self.conversation_store.get_conversation(
+            conversation_id, user
+        )
+        if conversation is None:
+            # No persisted conversation to attach to.
+            return
+
+        # The trailing assistant message belongs to this turn when its
+        # content matches the last text component streamed.
+        last_text_content: Optional[str] = None
+        for r in rich_components:
+            content = r.get("data", {}).get("content")
+            if r.get("type") == "text" and content:
+                last_text_content = content
+
+        for msg in reversed(conversation.messages):
+            if msg.role == "assistant":
+                if last_text_content and msg.content == last_text_content:
+                    msg.rich = rich_components
+                    await self.conversation_store.update_conversation(conversation)
+                break
+
+    async def _generate_conversation_title(self, conversation: Conversation) -> str:
+        """Generate a short title via LLM, falling back to truncation.
+
+        The LLM is asked to return at most 6 words and nothing else; any
+        failure (unconfigured LLM, provider error, empty reply) falls back
+        to the first 60 characters of the first user message.
+        """
+        first_user_message = next(
+            (m.content for m in conversation.messages if m.role == "user"), ""
+        )
+
+        try:
+            request = LlmRequest(
+                messages=[
+                    LlmMessage(role="user", content=first_user_message),
+                ],
+                user=conversation.user,
+                stream=False,
+                temperature=0.2,
+                max_tokens=32,
+                system_prompt=(
+                    "Generate a concise title (max 6 words) for the following "
+                    "conversation. Return ONLY the title, no quotes, no extra text."
+                ),
+                metadata={"purpose": "conversation_title"},
+            )
+            response = await self._send_llm_request(request)
+            title = (response.content or "").strip().strip("\"'").strip()
+            if title:
+                return " ".join(title.split())[:60]
+        except Exception as e:
+            logger.error("Title generation via LLM failed: %s", e, exc_info=True)
+
+        return " ".join(first_user_message.strip().split())[:60] or "New conversation"
 
     async def get_available_tools(self, user: User) -> List[ToolSchema]:
         """Get tools available to the user."""

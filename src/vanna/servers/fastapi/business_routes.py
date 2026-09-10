@@ -5,7 +5,7 @@ configurations. Changes are persisted to app.json and hot-reloaded
 into the running agent.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -18,14 +18,33 @@ from .config_sync import (
     save_app_config,
     sync_agent_businesses,
 )
+from vanna.core.agent.config import DatabaseConfig
 from vanna.integrations.databases.factory import SUPPORTED_SCHEMES
+
+
+class DatabaseInput(BaseModel):
+    """Structured database connection fields (preferred over a raw URL).
+
+    Only the fields relevant to ``type`` are required; the connection URL is
+    assembled by ``DatabaseConfig.to_url()`` when a SqlRunner is created.
+    """
+
+    type: str = Field(description="Database type, e.g. sqlite / postgresql")
+    path: Optional[str] = Field(default=None, description="File path for sqlite/duckdb")
+    host: Optional[str] = Field(default=None, description="Server host")
+    port: Optional[int] = Field(default=None, description="Server port")
+    user: Optional[str] = Field(default=None, description="Login user")
+    password: Optional[str] = Field(default=None, description="Login password")
+    database: Optional[str] = Field(default=None, description="Database name")
 
 
 class CreateBusinessRequest(BaseModel):
     """Request to create a new business configuration."""
 
     id: str = Field(description="Business identifier")
-    database_url: str = Field(description="Database URL (e.g., sqlite:///data/db/xxx.db)")
+    database: DatabaseInput = Field(
+        description="Structured database connection fields"
+    )
     namespace: str = Field(description="Schema vector namespace")
 
 
@@ -91,7 +110,11 @@ def register_business_routes(
                 result.append({
                     "id": biz_id,
                     "enabled": biz_config.enabled,
-                    "database": {"url": biz_config.database.url} if biz_config.database else {},
+                    "database": (
+                        biz_config.database.model_dump(exclude_none=True)
+                        if biz_config.database
+                        else {}
+                    ),
                     "schema_vector": {
                         "namespace": biz_config.schema_vector.namespace,
                         "backend": biz_config.schema_vector.backend,
@@ -113,16 +136,19 @@ def register_business_routes(
         if not request_body.id or not request_body.id.strip():
             raise HTTPException(status_code=400, detail="Business ID is required")
 
-        # Validate database URL scheme against the runner factory whitelist
-        # (must fail at creation time, not at first query).
-        url = request_body.database_url
+        # Validate the structured database fields by assembling the URL and
+        # checking its scheme against the runner factory whitelist (must fail
+        # at creation time, not at first query).
+        db_input = request_body.database
+        db_config = DatabaseConfig(**db_input.model_dump())
+        url = db_config.to_url()
         scheme = url.split("://", 1)[0].lower() if "://" in url else ""
         if scheme not in SUPPORTED_SCHEMES:
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    f"Invalid database URL '{url}': unsupported scheme "
-                    f"'{scheme or '(none)'}'. Supported schemes: "
+                    f"Invalid database type '{db_input.type}': unsupported "
+                    f"scheme '{scheme or '(none)'}'. Supported schemes: "
                     f"{', '.join(SUPPORTED_SCHEMES)}"
                 ),
             )
@@ -146,11 +172,13 @@ def register_business_routes(
         active_instance = instances.get(vector_db.get("active", ""), {})
         default_embedding_model_path = active_instance.get("embedding_model_path")
 
-        # Create new business entry (disabled by default)
+        # Create new business entry (disabled by default). The database is
+        # stored as structured fields; the connection URL is assembled on
+        # demand by DatabaseConfig.to_url().
         new_business = {
             "id": request_body.id,
             "enabled": False,
-            "database": {"url": request_body.database_url},
+            "database": db_config.model_dump(exclude_none=True),
             "schema_vector": {
                 "namespace": request_body.namespace,
                 "backend": None,

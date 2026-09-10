@@ -5,20 +5,117 @@ This module contains configuration models that control agent behavior.
 """
 
 from typing import Dict, Optional
+from urllib.parse import quote
 
 from pydantic import BaseModel, Field
 
 from .autolink_config import AutoLinkConfig
 
+# Schemes whose target is a local file rather than a host.
+_FILE_SCHEMES = {"sqlite", "duckdb"}
+
+# Default ports per scheme, applied when the config omits a port.
+_DEFAULT_PORTS = {
+    "mysql": 3306,
+    "postgresql": 5432,
+    "postgres": 5432,
+    "mssql": 1433,
+    "oracle": 1521,
+    "clickhouse": 8123,
+    "hive": 10000,
+    "presto": 443,
+}
+
 
 class DatabaseConfig(BaseModel):
     """Target database configuration for text-to-SQL.
+
+    Two equivalent shapes are accepted:
+
+    - Structured (preferred): ``type`` plus the fields that type needs
+      (``path`` for sqlite/duckdb, ``host``/``port``/``user``/``password``/
+      ``database`` for server engines). The connection URL is assembled on
+      demand by :meth:`to_url`, so the stored config stays readable and each
+      field stays independently validated.
+    - Legacy: a pre-assembled ``url`` string. Kept for backward
+      compatibility; ``to_url`` returns it untouched.
 
     The URL scheme determines which SqlRunner implementation is created
     (e.g. "sqlite:///Chinook.sqlite" -> SqliteRunner).
     """
 
-    url: str = Field(description="Database URL, e.g. sqlite:///Chinook.sqlite")
+    url: Optional[str] = Field(
+        default=None,
+        description=(
+            "Legacy assembled connection URL, e.g. sqlite:///Chinook.sqlite. "
+            "When set it takes precedence over the structured fields."
+        ),
+    )
+    type: Optional[str] = Field(
+        default=None,
+        description=(
+            "Database type/scheme: sqlite, duckdb, mysql, postgresql, "
+            "mssql, oracle, clickhouse, hive or presto"
+        ),
+    )
+    path: Optional[str] = Field(
+        default=None,
+        description="Database file path for file-backed types (sqlite/duckdb)",
+    )
+    host: Optional[str] = Field(default=None, description="Server host")
+    port: Optional[int] = Field(default=None, gt=0, description="Server port")
+    user: Optional[str] = Field(default=None, description="Login user")
+    password: Optional[str] = Field(
+        default=None, description="Login password (never logged)"
+    )
+    database: Optional[str] = Field(
+        default=None,
+        description="Database name, or catalog/schema path for presto",
+    )
+    query: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="Extra URL query parameters, e.g. {'driver': 'ODBC Driver 18'}",
+    )
+
+    def to_url(self) -> str:
+        """Assemble the connection URL from the effective configuration.
+
+        A legacy ``url`` wins unchanged; otherwise the URL is built from the
+        structured fields. Returns "" when neither is set, letting the
+        SqlRunner factory raise its own "invalid URL" error.
+        """
+        if self.url:
+            return self.url
+        scheme = (self.type or "").lower()
+        if not scheme:
+            return ""
+
+        if scheme in _FILE_SCHEMES:
+            # SQLAlchemy convention: 3 slashes -> relative path,
+            # 4 slashes -> absolute path.
+            raw = self.path or ""
+            if raw.startswith("/"):
+                return f"{scheme}:///{raw}"
+            return f"{scheme}:///{raw.lstrip('/')}"
+
+        # Server engines: scheme://user:pwd@host:port/database?query
+        auth = ""
+        if self.user:
+            auth = quote(self.user, safe="")
+            if self.password is not None:
+                auth += f":{quote(self.password, safe='')}"
+            auth += "@"
+        host = self.host or ""
+        port = self.port or _DEFAULT_PORTS.get(scheme)
+        netloc = f"{host}:{port}" if port else host
+        path = f"/{self.database}" if self.database else ""
+        query = ""
+        if self.query:
+            query = "?" + "&".join(
+                f"{quote(str(k), safe='')}={quote(str(v), safe='')}"
+                for k, v in self.query.items()
+            )
+        return f"{scheme}://{auth}{netloc}{path}{query}"
 
 
 class SchemaVectorConfig(BaseModel):

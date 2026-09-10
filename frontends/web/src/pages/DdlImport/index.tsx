@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-  Alert, Button, Card, Col, Descriptions, Form, Input, Result, Row, Space,
-  Steps, Table, Tag, Typography, Upload, message,
+  Alert, Button, Card, Col, Descriptions, Form, Input, InputNumber, Result,
+  Row, Select, Space, Steps, Table, Tag, Typography, Upload, message,
 } from 'antd';
 import {
   CheckCircleOutlined, DownloadOutlined, ReloadOutlined,
@@ -11,6 +11,62 @@ import Modal from 'antd/es/modal';
 import { useAuth } from '../../lib/auth';
 
 const { Title, Text } = Typography;
+
+/** 数据库类型及其表单所需字段（与后端 SUPPORTED_SCHEMES 一致）。 */
+interface DbTypeSpec {
+  /** 文件型数据库只填路径，服务型填 host/port/... */
+  kind: 'file' | 'server';
+  /** 默认端口，未填时后端也会回退到同值 */
+  defaultPort?: number;
+  /** 是否需要 catalog/schema 两段路径（presto） */
+  catalogSchema?: boolean;
+}
+
+const DB_TYPES: Record<string, DbTypeSpec> = {
+  sqlite: { kind: 'file' },
+  duckdb: { kind: 'file' },
+  mysql: { kind: 'server', defaultPort: 3306 },
+  postgresql: { kind: 'server', defaultPort: 5432 },
+  mssql: { kind: 'server', defaultPort: 1433 },
+  oracle: { kind: 'server', defaultPort: 1521 },
+  clickhouse: { kind: 'server', defaultPort: 8123 },
+  hive: { kind: 'server', defaultPort: 10000 },
+  presto: { kind: 'server', defaultPort: 443, catalogSchema: true },
+};
+
+const DB_TYPE_OPTIONS = Object.keys(DB_TYPES).map((t) => ({ label: t, value: t }));
+
+/** 表单值 -> 后端 CreateBusinessRequest.database */
+interface DatabaseFormValues {
+  type: string;
+  path?: string;
+  host?: string;
+  port?: number;
+  user?: string;
+  password?: string;
+  catalog?: string;
+  schema?: string;
+  database?: string;
+}
+
+function toDatabasePayload(values: DatabaseFormValues) {
+  const spec = DB_TYPES[values.type];
+  if (!spec) return null;
+  if (spec.kind === 'file') {
+    return { type: values.type, path: values.path };
+  }
+  return {
+    type: values.type,
+    host: values.host,
+    port: values.port,
+    user: values.user,
+    password: values.password,
+    // presto 的 database 字段是 catalog/schema 两段路径
+    database: spec.catalogSchema
+      ? [values.catalog, values.schema].filter(Boolean).join('/')
+      : values.database,
+  };
+}
 
 interface ColumnInfo {
   column_name: string;
@@ -85,6 +141,8 @@ export default function DdlImportPage() {
   const [ingestResult, setIngestResult] = useState<IngestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [newBusinessForm] = Form.useForm();
+  // 新建业务表单当前选中的数据库类型，决定展示哪些字段
+  const [dbType, setDbType] = useState<string>('sqlite');
 
   const resetToUpload = () => {
     setFile(null);
@@ -92,15 +150,18 @@ export default function DdlImportPage() {
     setIngestResult(null);
     setError(null);
     setCurrent(0);
+    setDbType('sqlite');
     newBusinessForm.resetFields();
   };
 
   // 解析结果变化时，预填新业务表单默认值
   useEffect(() => {
     if (preview?.business_state === 'missing') {
+      setDbType('sqlite');
       newBusinessForm.setFieldsValue({
         id: preview.db_name,
-        database_url: `sqlite:///data/db/${preview.db_name}.db`,
+        type: 'sqlite',
+        path: `data/db/${preview.db_name}.db`,
         namespace: preview.db_name,
       });
     }
@@ -165,6 +226,11 @@ export default function DdlImportPage() {
   async function handleCreateAndIngest() {
     try {
       const values = await newBusinessForm.validateFields();
+      const database = toDatabasePayload(values);
+      if (!database) {
+        setError('请选择数据库类型');
+        return;
+      }
       setIngestLoading(true);
       setError(null);
       const createResponse = await fetch('/api/businesses', {
@@ -172,7 +238,7 @@ export default function DdlImportPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: values.id,
-          database_url: values.database_url,
+          database,
           namespace: values.namespace,
         }),
       });
@@ -381,16 +447,96 @@ export default function DdlImportPage() {
                       <Input disabled />
                     </Form.Item>
                     <Form.Item
-                      label="数据库 URL"
-                      name="database_url"
-                      extra="支持 sqlite / duckdb / mysql / postgresql / mssql / oracle / clickhouse / hive / presto，如 postgresql://user:pwd@host:5432/dbname"
-                      rules={[
-                        { required: true, message: '请填写数据库 URL' },
-                        { pattern: /^[a-z][a-z0-9+]*:\/\//i, message: '格式须为 scheme://... 的完整连接串' },
-                      ]}
+                      label="数据库类型"
+                      name="type"
+                      rules={[{ required: true, message: '请选择数据库类型' }]}
                     >
-                      <Input placeholder="sqlite:///data/db/xxx.db" disabled={!isAdmin} />
+                      <Select
+                        options={DB_TYPE_OPTIONS}
+                        disabled={!isAdmin}
+                        onChange={(v: string) => {
+                          setDbType(v);
+                          // 切换类型时重置与旧类型相关的字段，避免残留脏值
+                          newBusinessForm.setFieldsValue({
+                            path: undefined,
+                            host: undefined,
+                            port: undefined,
+                            user: undefined,
+                            password: undefined,
+                            catalog: undefined,
+                            schema: undefined,
+                            database: undefined,
+                          });
+                        }}
+                      />
                     </Form.Item>
+                    {DB_TYPES[dbType]?.kind === 'file' ? (
+                      <Form.Item
+                        label="数据库文件路径"
+                        name="path"
+                        extra="相对路径相对于服务启动目录，如 data/db/xxx.db；绝对路径以 / 或盘符开头"
+                        rules={[{ required: true, message: '请填写数据库文件路径' }]}
+                      >
+                        <Input
+                          placeholder="data/db/xxx.db"
+                          disabled={!isAdmin}
+                        />
+                      </Form.Item>
+                    ) : (
+                      <>
+                        <Form.Item
+                          label="主机"
+                          name="host"
+                          rules={[{ required: true, message: '请填写主机' }]}
+                        >
+                          <Input placeholder="127.0.0.1" disabled={!isAdmin} />
+                        </Form.Item>
+                        <Form.Item label="端口" name="port">
+                          <InputNumber
+                            style={{ width: '100%' }}
+                            min={1}
+                            placeholder={
+                              DB_TYPES[dbType]?.defaultPort
+                                ? `默认 ${DB_TYPES[dbType].defaultPort}`
+                                : '默认端口'
+                            }
+                            disabled={!isAdmin}
+                          />
+                        </Form.Item>
+                        <Form.Item label="用户名" name="user">
+                          <Input disabled={!isAdmin} />
+                        </Form.Item>
+                        <Form.Item label="密码" name="password">
+                          <Input.Password disabled={!isAdmin} />
+                        </Form.Item>
+                        {DB_TYPES[dbType]?.catalogSchema ? (
+                          <>
+                            <Form.Item
+                              label="Catalog"
+                              name="catalog"
+                              rules={[{ required: true, message: '请填写 catalog' }]}
+                            >
+                              <Input placeholder="hive" disabled={!isAdmin} />
+                            </Form.Item>
+                            <Form.Item
+                              label="Schema"
+                              name="schema"
+                              rules={[{ required: true, message: '请填写 schema' }]}
+                            >
+                              <Input placeholder="default" disabled={!isAdmin} />
+                            </Form.Item>
+                          </>
+                        ) : (
+                          <Form.Item
+                            label="数据库名"
+                            name="database"
+                            rules={[{ required: true, message: '请填写数据库名' }]}
+                          >
+                            <Input placeholder="dbname" disabled={!isAdmin} />
+                          </Form.Item>
+                        )}
+                      </>
+                    )}
                     <Form.Item
                       label="向量库 namespace"
                       name="namespace"
