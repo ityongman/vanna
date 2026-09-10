@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Alert, Button, Card, Col, Descriptions, Form, Input, InputNumber, Result,
+  Alert, Button, Card, Col, Descriptions, Form, Input, InputNumber, Progress, Result,
   Row, Select, Space, Steps, Table, Tag, Typography, Upload, message,
 } from 'antd';
 import {
@@ -34,7 +34,13 @@ const DB_TYPES: Record<string, DbTypeSpec> = {
   presto: { kind: 'server', defaultPort: 443, catalogSchema: true },
 };
 
-const DB_TYPE_OPTIONS = Object.keys(DB_TYPES).map((t) => ({ label: t, value: t }));
+// 当前仅对外开放三种数据库类型；其余类型保留在 DB_TYPES 中，后续需要时再放开
+const VISIBLE_DB_TYPES = ['sqlite', 'mysql', 'postgresql'];
+const DB_TYPE_LABELS: Record<string, string> = { postgresql: 'pgsql' };
+const DB_TYPE_OPTIONS = VISIBLE_DB_TYPES.map((t) => ({
+  label: DB_TYPE_LABELS[t] || t,
+  value: t,
+}));
 
 /** 表单值 -> 后端 CreateBusinessRequest.database */
 interface DatabaseFormValues {
@@ -101,6 +107,26 @@ interface IngestResult {
   merge_warning: string | null;
 }
 
+interface IngestProgress {
+  status: 'running' | 'done' | 'failed';
+  stage: string;
+  message: string;
+  tables_count: number;
+  table_names: string[];
+  done: boolean;
+  error: string | null;
+}
+
+/** 导入各阶段展示信息；creating 为前端本地阶段（创建业务），其余来自后端进度端点 */
+const INGEST_STAGE_META: Record<string, { text: string; percent: number }> = {
+  creating: { text: '创建业务配置', percent: 10 },
+  merging: { text: '读取已有索引并计算增量合并', percent: 25 },
+  writing: { text: '写入向量库（含向量嵌入与索引构建）', percent: 70 },
+  enabling: { text: '启用业务配置', percent: 90 },
+  done: { text: '导入完成', percent: 100 },
+  failed: { text: '导入失败', percent: 100 },
+};
+
 const SAMPLE_CSV = [
   'db_name,table_name,ddl',
   '"mydb","orders","CREATE TABLE orders (',
@@ -137,6 +163,7 @@ export default function DdlImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [parseLoading, setParseLoading] = useState(false);
   const [ingestLoading, setIngestLoading] = useState(false);
+  const [ingestProgress, setIngestProgress] = useState<IngestProgress | null>(null);
   const [preview, setPreview] = useState<ParseResult | null>(null);
   const [ingestResult, setIngestResult] = useState<IngestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -148,6 +175,7 @@ export default function DdlImportPage() {
     setFile(null);
     setPreview(null);
     setIngestResult(null);
+    setIngestProgress(null);
     setError(null);
     setCurrent(0);
     setDbType('sqlite');
@@ -199,12 +227,43 @@ export default function DdlImportPage() {
     if (!preview) return;
     setIngestLoading(true);
     setError(null);
+    setIngestProgress({
+      status: 'running',
+      stage: 'merging',
+      message: '正在启动导入…',
+      tables_count: preview.tables_count,
+      table_names: preview.tables.map((t) => t.table_name),
+      done: false,
+      error: null,
+    });
+    // 导入请求执行期间，轮询后端进度端点刷新页面展示
+    const parseId = preview.parse_id;
+    let stopPolling = false;
+    void (async () => {
+      const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+      while (!stopPolling) {
+        await delay(1000);
+        if (stopPolling) break;
+        try {
+          const r = await fetch(
+            `/api/vanna/v1/ddl/ingest/progress?parse_id=${encodeURIComponent(parseId)}`,
+          );
+          if (!r.ok) continue;
+          const p = await r.json().catch(() => null);
+          if (!p) continue;
+          setIngestProgress(p);
+          if (p.done) break;
+        } catch {
+          // 单次轮询失败忽略，下一轮继续
+        }
+      }
+    })();
     try {
       const response = await fetch('/api/vanna/v1/ddl/ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          parse_id: preview.parse_id,
+          parse_id: parseId,
           business_id: businessId,
         }),
       });
@@ -219,7 +278,9 @@ export default function DdlImportPage() {
     } catch (e) {
       setError('网络异常，导入失败');
     } finally {
+      stopPolling = true;
       setIngestLoading(false);
+      setIngestProgress(null);
     }
   }
 
@@ -233,6 +294,15 @@ export default function DdlImportPage() {
       }
       setIngestLoading(true);
       setError(null);
+      setIngestProgress({
+        status: 'running',
+        stage: 'creating',
+        message: '正在创建业务配置…',
+        tables_count: preview ? preview.tables_count : 0,
+        table_names: preview ? preview.tables.map((t) => t.table_name) : [],
+        done: false,
+        error: null,
+      });
       const createResponse = await fetch('/api/businesses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -304,6 +374,31 @@ export default function DdlImportPage() {
         current={current}
         items={stepsItems}
       />
+      {ingestProgress && (
+        <Card style={{ marginBottom: 16 }} size="small">
+          <Space direction="vertical" style={{ width: '100%' }} size={8}>
+            <Progress
+              percent={INGEST_STAGE_META[ingestProgress.stage]?.percent ?? 0}
+              status={
+                ingestProgress.status === 'failed'
+                  ? 'exception'
+                  : ingestProgress.status === 'done'
+                    ? 'success'
+                    : 'active'
+              }
+            />
+            <Text strong>
+              {INGEST_STAGE_META[ingestProgress.stage]?.text ?? ingestProgress.stage}
+            </Text>
+            <Text type="secondary">
+              {ingestProgress.message}（共 {ingestProgress.tables_count} 张表）
+            </Text>
+            {ingestProgress.status === 'failed' && ingestProgress.error && (
+              <Alert type="error" showIcon message={ingestProgress.error} />
+            )}
+          </Space>
+        </Card>
+      )}
       {error && (
         <Alert
           style={{ marginBottom: 16 }}

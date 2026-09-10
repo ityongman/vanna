@@ -28,6 +28,28 @@ from .config_sync import (
 # parse_id -> (tables, relations)；确认入库后移除（一次性消费）
 _PENDING_PARSES: Dict[str, Tuple[List[SchemaTable], List[SchemaRelation]]] = {}
 
+# parse_id -> 入库进度状态；入库期间由进度查询端点轮询读取
+_INGEST_PROGRESS: Dict[str, Dict[str, Any]] = {}
+
+
+def _make_progress(
+    stage: str,
+    message: str,
+    tables: List[SchemaTable],
+    status: str = "running",
+    error: Any = None,
+) -> Dict[str, Any]:
+    """Build a progress snapshot for the ingest progress endpoint."""
+    return {
+        "status": status,
+        "stage": stage,
+        "message": message,
+        "tables_count": len(tables),
+        "table_names": sorted(t.table_name for t in tables),
+        "done": status in ("done", "failed"),
+        "error": error,
+    }
+
 
 _DB_NAME_KEYS = [
     "db_name", "database_id", "database", "database_name", "db", "db_id",
@@ -449,16 +471,42 @@ def register_ddl_import_routes(app: FastAPI, agent) -> None:
         # Namespace comes from the business configuration (app.json fallback).
         database_name = _resolve_business_namespace(agent, request_body.business_id)
 
+        # 进度状态独立于 _PENDING_PARSES 的一次性消费生命周期
+        _INGEST_PROGRESS[request_body.parse_id] = _make_progress(
+            stage="merging",
+            message="正在合并已有索引…",
+            tables=tables,
+        )
+
         merge_warning = None
         try:
             merged = await _merge_schema(store, tables, relations, database_name)
         except Exception as e:
+            _INGEST_PROGRESS[request_body.parse_id] = _make_progress(
+                stage="failed",
+                message=f"合并失败：{e}",
+                tables=tables,
+                status="failed",
+                error=str(e),
+            )
             raise HTTPException(status_code=500, detail=f"Ingest failed: {e}") from e
         if merged is None:
             # list_tables 不可用：回退为整库覆盖
+            _INGEST_PROGRESS[request_body.parse_id] = _make_progress(
+                stage="writing",
+                message="正在写入向量库（整库覆盖）…",
+                tables=tables,
+            )
             try:
                 await store.ingest_schema(tables, relations, database_name)
             except Exception as e:
+                _INGEST_PROGRESS[request_body.parse_id] = _make_progress(
+                    stage="failed",
+                    message=f"写入失败：{e}",
+                    tables=tables,
+                    status="failed",
+                    error=str(e),
+                )
                 raise HTTPException(status_code=500, detail=f"Ingest failed: {e}") from e
             added = sorted(t.table_name for t in tables)
             updated = []
@@ -466,13 +514,37 @@ def register_ddl_import_routes(app: FastAPI, agent) -> None:
             merge_warning = "当前向量库后端不支持增量合并，已整库覆盖原有索引"
         else:
             merged_tables, merged_rels, added, updated, kept = merged
+            _INGEST_PROGRESS[request_body.parse_id] = _make_progress(
+                stage="writing",
+                message="正在写入向量库（增量合并）…",
+                tables=merged_tables,
+            )
             try:
                 await store.ingest_schema(merged_tables, merged_rels, database_name)
             except Exception as e:
+                _INGEST_PROGRESS[request_body.parse_id] = _make_progress(
+                    stage="failed",
+                    message=f"写入失败：{e}",
+                    tables=merged_tables,
+                    status="failed",
+                    error=str(e),
+                )
                 raise HTTPException(status_code=500, detail=f"Ingest failed: {e}") from e
 
         # 导入成功后启用业务（新业务以 enabled=false 创建，此处翻转）
+        _INGEST_PROGRESS[request_body.parse_id] = _make_progress(
+            stage="enabling",
+            message="正在启用业务…",
+            tables=tables,
+        )
         set_business_enabled(agent, request_body.business_id, True)
+
+        _INGEST_PROGRESS[request_body.parse_id] = _make_progress(
+            stage="done",
+            message="导入完成",
+            tables=tables,
+            status="done",
+        )
 
         return {
             "database_name": database_name,
@@ -486,3 +558,14 @@ def register_ddl_import_routes(app: FastAPI, agent) -> None:
             "message": "Ingested successfully; AutoLink can now search this "
             "namespace",
         }
+
+    @app.get("/api/vanna/v1/ddl/ingest/progress")
+    async def ddl_ingest_progress(parse_id: str) -> Dict[str, Any]:
+        """Poll the current ingest progress for a given parse_id."""
+        progress = _INGEST_PROGRESS.get(parse_id)
+        if progress is None:
+            raise HTTPException(
+                status_code=404,
+                detail="No ingest progress found for this parse_id",
+            )
+        return progress
