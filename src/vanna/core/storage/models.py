@@ -29,6 +29,10 @@ class Message(BaseModel):
     tool_call_id: Optional[str] = Field(
         default=None, description="ID if this is a tool response"
     )
+    rich: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Serialized rich UI components for history replay",
+    )
 
 
 class Conversation(BaseModel):

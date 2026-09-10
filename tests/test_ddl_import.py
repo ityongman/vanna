@@ -264,6 +264,33 @@ def test_ingest_consumes_parse_id():
     assert second.status_code == 400  # already consumed
 
 
+def test_ingest_progress_reports_done_after_ingest():
+    store = FakeStore()
+    client = make_client(FakeAgent(schema_vector_store=store))
+    parse_id, _ = _parse_then(client)
+    assert client.post(
+        "/api/vanna/v1/ddl/ingest",
+        json={"parse_id": parse_id, "business_id": "biz_a"},
+    ).status_code == 200
+    response = client.get(
+        "/api/vanna/v1/ddl/ingest/progress", params={"parse_id": parse_id}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "done"
+    assert data["stage"] == "done"
+    assert data["done"] is True
+    assert data["tables_count"] == 2
+
+
+def test_ingest_progress_unknown_parse_id_returns_404():
+    client = make_client()
+    response = client.get(
+        "/api/vanna/v1/ddl/ingest/progress", params={"parse_id": "nope"}
+    )
+    assert response.status_code == 404
+
+
 def test_page_lists_businesses_with_namespaces():
     """页面下拉框应列出可用业务及其 namespace。"""
     html = make_client(

@@ -137,18 +137,46 @@ class SQLiteConversationStore(ConversationStore):
             return True
 
     async def list_conversations(
-        self, user: User, limit: int = 50, offset: int = 0
+        self,
+        user: User,
+        limit: int = 50,
+        offset: int = 0,
+        business_id: Optional[str] = None,
     ) -> List[Conversation]:
         """List conversations for user, most recently updated first."""
+        if business_id is None:
+            with self._lock:
+                rows = self._conn.execute(
+                    """
+                    SELECT data FROM conversations
+                    WHERE user_id = ?
+                    ORDER BY updated_at DESC
+                    LIMIT ? OFFSET ?
+                    """,
+                    (user.id, limit, offset),
+                ).fetchall()
+
+            conversations = []
+            for (data,) in rows:
+                try:
+                    conversations.append(self._deserialize(data))
+                except (json.JSONDecodeError, ValueError) as e:
+                    print(f"Failed to deserialize conversation: {e}")
+                    continue
+            return conversations
+
+        # The dataset is small, so fetch the user's full history without
+        # LIMIT/OFFSET, filter on business_id in Python, then slice. A
+        # future optimization could push the filter into SQL via a
+        # parameterized json_extract on the metadata JSON plus an index.
         with self._lock:
             rows = self._conn.execute(
                 """
                 SELECT data FROM conversations
                 WHERE user_id = ?
                 ORDER BY updated_at DESC
-                LIMIT ? OFFSET ?
                 """,
-                (user.id, limit, offset),
+                (user.id,),
             ).fetchall()
 
         conversations = []
@@ -158,7 +186,11 @@ class SQLiteConversationStore(ConversationStore):
             except (json.JSONDecodeError, ValueError) as e:
                 print(f"Failed to deserialize conversation: {e}")
                 continue
-        return conversations
+
+        conversations = [
+            c for c in conversations if c.metadata.get("business_id") == business_id
+        ]
+        return conversations[offset : offset + limit]
 
     def close(self) -> None:
         """Close the underlying database connection."""

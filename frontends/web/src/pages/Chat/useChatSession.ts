@@ -1,0 +1,389 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { api, ConversationMeta } from '../../lib/api';
+import { streamChat } from '../../lib/sse';
+import { getLanguage } from '../../i18n';
+import { AUTH_ERROR_DETAIL, ChatMessage, ChatStreamChunk, RichComponent } from './types';
+
+function makeId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function mapStoredRich(rich?: Record<string, any>[]): RichComponent[] {
+  return (rich ?? []).map((r) => ({
+    id: r.id ?? makeId('rc'),
+    type: r.type ?? 'unknown',
+    visible: r.visible,
+    data: r.data ?? {},
+  }));
+}
+
+/**
+ * Extract the HTTP status code from fetch/stream errors shaped
+ * "HTTP 401: Unauthorized"; returns 0 when no status prefix is present.
+ */
+function httpStatusOf(error: unknown): number {
+  const message = error instanceof Error ? error.message : '';
+  const match = /^HTTP (\d{3})\b/.exec(message);
+  return match ? Number(match[1]) : 0;
+}
+
+/** Live input updates pushed by the backend (ChatInputUpdateComponent). */
+export interface ChatInputHint {
+  placeholder?: string;
+  value?: string;
+}
+
+export interface ChatSession {
+  conversationId: string | null;
+  messages: ChatMessage[];
+  sending: boolean;
+  conversations: ConversationMeta[];
+  loadingConversation: boolean;
+  inputHint: ChatInputHint | null;
+  sendMessage: (text: string) => void;
+  stop: () => void;
+  newConversation: () => void;
+  openConversation: (id: string) => void;
+  deleteConversation: (id: string) => void;
+  refreshConversations: () => void;
+  retry: (failedMessageId: string) => void;
+}
+
+/**
+ * Chat session state: draft conversations (conversationId === null, never
+ * persisted), streaming, history loading and per-business listing.
+ */
+export function useChatSession(businessId: string | undefined): ChatSession {
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sending, setSending] = useState(false);
+  const [conversations, setConversations] = useState<ConversationMeta[]>([]);
+  const [inputHint, setInputHint] = useState<ChatInputHint | null>(null);
+  const [loadingConversation, setLoadingConversation] = useState(false);
+  // Bumped whenever the session resets to a fresh draft (new conversation,
+  // open-conversation failure, starter retry) so the starter-card effect
+  // re-runs. Replaces `messages.length` as effect dependency: the starter
+  // effect inserts a message itself, which would otherwise change the dep,
+  // run its own cleanup and abort its own in-flight request.
+  const [starterNonce, setStarterNonce] = useState(0);
+
+  const abortRef = useRef<AbortController | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
+  conversationIdRef.current = conversationId;
+  const openSeqRef = useRef(0);
+
+  const refreshConversations = useCallback(async () => {
+    try {
+      setConversations(await api.conversations(businessId));
+    } catch {
+      setConversations([]);
+    }
+  }, [businessId]);
+
+  useEffect(() => {
+    void refreshConversations();
+  }, [refreshConversations]);
+
+  const stop = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
+  const openConversation = useCallback(
+    async (id: string) => {
+      stop();
+      const seq = ++openSeqRef.current;
+      setLoadingConversation(true);
+      try {
+        const conv = await api.conversation(id);
+        if (seq !== openSeqRef.current) return;
+        setConversationId(conv.id);
+        setMessages(
+          conv.messages.map((m) => ({
+            id: makeId('msg'),
+            role: (m.role === 'user' ? 'user' : 'assistant') as ChatMessage['role'],
+            content: m.content,
+            rich: mapStoredRich(m.rich),
+            status: 'done',
+          }))
+        );
+        setInputHint(null);
+      } catch {
+        if (seq !== openSeqRef.current) return;
+        setMessages([]);
+        setConversationId(null);
+        setStarterNonce((n) => n + 1);
+      } finally {
+        if (seq === openSeqRef.current) setLoadingConversation(false);
+      }
+    },
+    [stop]
+  );
+
+  const newConversation = useCallback(() => {
+    stop();
+    setConversationId(null);
+    setMessages([]);
+    setInputHint(null);
+    setStarterNonce((n) => n + 1);
+  }, [stop]);
+
+  const deleteConversation = useCallback(
+    async (id: string) => {
+      try {
+        await api.deleteConversation(id);
+        if (conversationIdRef.current === id) {
+          newConversation();
+        }
+      } finally {
+        void refreshConversations();
+      }
+    },
+    [newConversation, refreshConversations]
+  );
+
+  const startStream = useCallback(
+    async (text: string, attachUser: boolean) => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setSending(true);
+
+      const userMessage: ChatMessage = {
+        id: makeId('msg'),
+        role: 'user',
+        content: text,
+        rich: [],
+        status: 'done',
+      };
+      const assistantId = makeId('msg');
+      const assistantMessage: ChatMessage = {
+        id: assistantId,
+        role: 'assistant',
+        content: '',
+        rich: [],
+        status: 'streaming',
+      };
+      setMessages((prev) =>
+        attachUser ? [...prev, userMessage, assistantMessage] : [...prev, assistantMessage]
+      );
+
+      const patchAssistant = (patch: (m: ChatMessage) => ChatMessage) => {
+        setMessages((prev) => prev.map((m) => (m.id === assistantId ? patch(m) : m)));
+      };
+
+      let boundConversationId = conversationIdRef.current;
+      let streamFailed = false;
+
+      try {
+        await streamChat(
+          {
+            message: text,
+            conversation_id: boundConversationId ?? undefined,
+            business_id: businessId,
+          },
+          {
+            onChunk: (chunk: ChatStreamChunk) => {
+              // A6: backend error frames ({type:'error',data:{message}}) carry
+              // none of the ChatStreamChunk payload fields; detect them first.
+              const errorFrame = chunk as unknown as {
+                type?: string;
+                data?: { message?: unknown };
+              };
+              if (errorFrame.type === 'error') {
+                streamFailed = true;
+                patchAssistant((m) => ({
+                  ...m,
+                  status: 'error',
+                  errorDetail:
+                    typeof errorFrame.data?.message === 'string'
+                      ? errorFrame.data.message
+                      : 'request failed',
+                }));
+                return;
+              }
+              if (chunk.conversation_id && !boundConversationId) {
+                boundConversationId = chunk.conversation_id;
+                conversationIdRef.current = chunk.conversation_id;
+                setConversationId(chunk.conversation_id);
+              }
+              const simpleText = (chunk.simple as { text?: unknown } | null)?.text;
+              if (typeof simpleText === 'string') {
+                patchAssistant((m) => ({ ...m, content: m.content + simpleText }));
+              }
+              if (chunk.rich) {
+                patchAssistant((m) => ({ ...m, rich: [...m.rich, chunk.rich] }));
+                if (chunk.rich.type === 'chat_input_update') {
+                  const data = chunk.rich.data ?? {};
+                  setInputHint({
+                    placeholder:
+                      typeof data.placeholder === 'string' ? data.placeholder : undefined,
+                    value: typeof data.value === 'string' ? data.value : undefined,
+                  });
+                }
+              }
+            },
+          },
+          controller.signal
+        );
+        if (!streamFailed) {
+          patchAssistant((m) => ({ ...m, status: 'done' }));
+        }
+      } catch (e: any) {
+        if (e?.name === 'AbortError') {
+          patchAssistant((m) =>
+            m.content || m.rich.length > 0
+              ? { ...m, status: 'done' }
+              : { ...m, status: 'error', errorDetail: 'generation stopped' }
+          );
+        } else {
+          // A6: detect unauthenticated responses by the HTTP status code
+          // prefix (e.g. "HTTP 401: Unauthorized"), never by error text.
+          const status = httpStatusOf(e);
+          const authError = status === 401 || status === 403;
+          patchAssistant((m) => ({
+            ...m,
+            status: 'error',
+            errorDetail: authError ? AUTH_ERROR_DETAIL : e?.message ?? 'request failed',
+          }));
+        }
+      } finally {
+        setSending(false);
+        abortRef.current = null;
+        void refreshConversations();
+      }
+    },
+    [businessId, refreshConversations]
+  );
+
+  // Starter UI: on a fresh draft (no conversation, no messages), request
+  // the backend welcome card. Starter requests never bind a conversation
+  // id (the backend does not persist them) and never persist locally.
+  useEffect(() => {
+    if (conversationId !== null || messages.length > 0 || sending) return;
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const starterId = makeId('msg');
+    setMessages((prev) =>
+      prev.length === 0
+        ? [{ id: starterId, role: 'assistant', content: '', rich: [], status: 'streaming' }]
+        : prev
+    );
+
+    const patchStarter = (patch: (m: ChatMessage) => ChatMessage) => {
+      setMessages((prev) => prev.map((m) => (m.id === starterId ? patch(m) : m)));
+    };
+
+    let starterFailed = false;
+    void streamChat(
+      {
+        message: '',
+        business_id: businessId,
+        // Report the UI language so the backend starter greeting is localized.
+        metadata: { starter_ui_request: true, language: getLanguage() },
+      },
+      {
+        onChunk: (chunk: ChatStreamChunk) => {
+          const errorFrame = chunk as unknown as {
+            type?: string;
+            data?: { message?: unknown };
+          };
+          if (errorFrame.type === 'error') {
+            starterFailed = true;
+            patchStarter((m) => ({
+              ...m,
+              status: 'error',
+              errorDetail:
+                typeof errorFrame.data?.message === 'string'
+                  ? errorFrame.data.message
+                  : 'request failed',
+            }));
+            return;
+          }
+          if (chunk.rich) {
+            patchStarter((m) => ({ ...m, rich: [...m.rich, chunk.rich] }));
+          }
+        },
+      },
+      controller.signal
+    )
+      .then(() => {
+        if (!starterFailed) {
+          patchStarter((m) => ({ ...m, status: 'done' }));
+        }
+      })
+      .catch((e: any) => {
+        if (e?.name === 'AbortError') {
+          patchStarter((m) => ({ ...m, status: 'done' }));
+        } else {
+          const status = httpStatusOf(e);
+          patchStarter((m) => ({
+            ...m,
+            status: 'error',
+            errorDetail:
+              status === 401 || status === 403
+                ? AUTH_ERROR_DETAIL
+                : e?.message,
+          }));
+        }
+      })
+      .finally(() => {
+        if (abortRef.current === controller) {
+          abortRef.current = null;
+        }
+      });
+    return () => controller.abort();
+    // `messages.length` is intentionally NOT a dependency: this effect calls
+    // setMessages itself, so listing it would re-run the effect, abort the
+    // stream below mid-flight and leave a canceled request behind. Draft
+    // resets re-trigger the fetch via `starterNonce` instead.
+  }, [conversationId, businessId, sending, starterNonce]);
+
+  const sendMessage = useCallback(
+    (text: string) => {
+      void startStream(text, true);
+    },
+    [startStream]
+  );
+
+  const retry = useCallback(
+    (failedMessageId: string) => {
+      // Find the user message immediately preceding the failed assistant
+      // message rather than the last user message in the conversation.
+      const failedIndex = messages.findIndex((m) => m.id === failedMessageId);
+      if (failedIndex < 0) return;
+      const sourceMessage = [...messages]
+        .slice(0, failedIndex)
+        .reverse()
+        .find((m) => m.role === 'user');
+      if (!sourceMessage) {
+        // A8: starter card failure has no preceding user message; clearing
+        // the list and bumping the nonce makes the starter effect re-run
+        // and refetch it.
+        setMessages([]);
+        setStarterNonce((n) => n + 1);
+        return;
+      }
+      setMessages((prev) => prev.filter((m) => m.id !== failedMessageId));
+      void startStream(sourceMessage.content, false);
+    },
+    [messages, startStream]
+  );
+
+  return {
+    conversationId,
+    messages,
+    sending,
+    conversations,
+    loadingConversation,
+    inputHint,
+    sendMessage,
+    stop,
+    newConversation,
+    openConversation,
+    deleteConversation,
+    refreshConversations,
+    retry,
+  };
+}

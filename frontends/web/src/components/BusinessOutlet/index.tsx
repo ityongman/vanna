@@ -20,9 +20,9 @@ function BusinessOutlet() {
   };
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {businesses.length > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flex: 'none' }}>
           <Text strong>Business:</Text>
           <Select
             value={businessId}
