@@ -496,7 +496,7 @@ def _create_config_agent() -> Tuple[Agent, List[str]]:
     embedding_model_path: Optional[str] = None
     for business_id, business in businesses.items():
         click.echo(
-            f"    - {business_id}: db={business.database.url}, "
+            f"    - {business_id}: db={business.database.to_url()}, "
             f"namespace={business.effective_database_name()}, "
             f"vector={'inherit' if business.schema_vector.backend is None else business.schema_vector.backend}"
         )

@@ -171,7 +171,7 @@ class Agent:
         if sql_runner is None and config.database is not None:
             from vanna.integrations.databases.factory import create_sql_runner
 
-            sql_runner = create_sql_runner(config.database.url)
+            sql_runner = create_sql_runner(config.database.to_url())
         self.sql_runner = sql_runner
         self.extra_tools = list(extra_tools)
         # 业务路由的 runner 缓存：business_id -> SqlRunner（首次请求创建后复用）
@@ -259,7 +259,7 @@ class Agent:
             from vanna.integrations.databases.factory import create_sql_runner
 
             self._business_sql_runners[business.id] = create_sql_runner(
-                business.database.url
+                business.database.to_url()
             )
             logger.info("Created SqlRunner for business '%s'", business.id)
         return self._business_sql_runners[business.id]
