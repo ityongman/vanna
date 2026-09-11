@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.0",
-    "@ant-design/pro-layout": "^7.0.0",
     "@ant-design/v5-patch-for-react-19": "^1.0.3",
     "antd": "^5.0.0",
     "plotly.js-dist-min": "^4.0.0",
@@ -18,8 +17,7 @@
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
     "react-router": "^7.0.0",
-    "remark-gfm": "^4.0.1",
-    "umi-request": "^1.4.0"
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@types/plotly.js-dist-min": "^2.3.4",
