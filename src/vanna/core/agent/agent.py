@@ -226,11 +226,20 @@ class Agent:
         # 兜底 runner 解析，详见 RunSqlTool.execute 的优先级注释。
         if self.sql_runner is not None or self.config.businesses:
             from vanna.tools.run_sql import RunSqlTool
-            from vanna.tools.visualize_data import VisualizeDataTool
 
             self._register_if_absent(RunSqlTool(sql_runner=self.sql_runner))
-            # VisualizeDataTool 是 text-to-SQL 能力链的配套工具，用于可视化查询结果
-            self._register_if_absent(VisualizeDataTool())
+            # VisualizeDataTool 是 text-to-SQL 能力链的配套工具，用于可视化查询结果。
+            # plotly 属于可选依赖（extras "visualize"），缺失时仅跳过可视化
+            # 工具并告警，不影响 run_sql 文本转 SQL 主链路。
+            try:
+                from vanna.tools.visualize_data import VisualizeDataTool
+
+                self._register_if_absent(VisualizeDataTool())
+            except ImportError:
+                logger.warning(
+                    "plotly not installed; visualize_data tool not registered "
+                    "(install with: pip install vanna-agent-sdk[visualize])"
+                )
         else:
             logger.warning(
                 "No sql_runner provided and no config.database set; "
