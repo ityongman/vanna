@@ -38,6 +38,8 @@ export default function RichRenderer({ component, onSendAction }: RichRendererPr
       return <ActionButtons component={component} onSendAction={onSendAction} />;
     case 'status_card':
       return <StatusCardView component={component} />;
+    case 'notification':
+      return <NotificationView component={component} />;
     default:
       return <UnknownComponent component={component} />;
   }

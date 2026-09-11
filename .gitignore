@@ -39,6 +39,7 @@ frontends/**/static/
 frontends/**/.storybook-static/
 frontends/**/package-lock.json
 frontends/**/.mypy_cache/
+frontends/**/*.tsbuildinfo
 
 .superpowers
 .worktrees/
