@@ -45,3 +45,5 @@ frontends/**/.mypy_cache/
 .vscode/
 .vibecoding/
 frontends/web/.npm-cache
+.trae/
+TODO.md
