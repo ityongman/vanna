@@ -371,6 +371,52 @@ git commit -m "feat(agent): persist streamed rich components on assistant messag
 
 ---
 
+### Addendum A2: Task 2 代码审查修复（经主 agent 批准）
+
+代码质量审查对 `e1088618` 提出 Changes Requested，以下修复经批准执行：
+
+- **I-2**：`_attach_rich_components` 开头加 `auto_save_conversations` 守卫（与 `_send_message` 末尾保存行为一致）。
+- **I-1 / M-3 / M-5**：`_attach_rich_components` 仅当最后一条 assistant 消息的 content 与本轮流出的最后一个 text 组件 content 相等时才写 rich 并保存（防止 starter/workflow 短路路径覆盖上一轮 rich；避免无谓 UPDATE）。
+- **I-3**：docstring 注明 read-modify-write 并发限制（预存在行为）。
+- **M-2**：修正 `conversation is None` 分支注释。
+- **测试**：FakeStore.update_conversation 改深拷贝 `model_copy(deep=True)`；新增 FakeWorkflowHandler 与两条回归测试（starter 请求、/help 短路均不得覆盖已有 rich）；`_run_agent` 增加可选 `conversation_id` 参数。
+
+修复提交信息：`fix(agent): guard rich attachment against short-circuit flows and auto-save off`
+
+---
+
+### Addendum A3: Task 3 测试必须配置 workflow_handler（经主 agent 批准）
+
+`agent.py` 中 starter 分支的生效条件是 `is_starter_request and self.workflow_handler`（无 workflow_handler 时 `("hi", {"starter_ui_request": True})` 会误入 LLM 路径、`("", None)` 会静默 return 不产组件）。因此 Task 3 的测试构造 agent 时必须传入 `workflow_handler=FakeWorkflowHandler()`（Addendum A2 已定义该类）：
+
+```python
+agent = make_agent(FakeLlmService(), store, workflow_handler=FakeWorkflowHandler())
+```
+
+其余测试代码与计划一致。
+
+---
+
+### Addendum A3b: workflow 短路路径空会话不落库（经主 agent 批准）
+
+Task 3 代码质量审查（Approved）指出：`_send_message` 的 workflow 短路分支（`should_skip_llm`）在新会话场景下仍会保存 `messages=[]` 的空会话，与 C2 不变式同构违背。修复：
+
+1. workflow 短路分支保存块改为仅在会话有消息时保存：
+
+```python
+                    # Save only if the workflow produced conversation content;
+                    # empty sessions must not be persisted.
+                    if self.config.auto_save_conversations and conversation.messages:
+                        await self.conversation_store.update_conversation(conversation)
+```
+
+2. 顺手更新过时注释：starter 分支中 `# Create empty conversation (will be saved if workflow produces components)` 改为 `# In-memory only; starter requests never persist`。
+3. 新增回归测试 `test_workflow_short_circuit_does_not_persist_empty_conversation`（/help 新会话 → `store._convs == {}`）。
+
+修复提交信息：`fix(agent): skip persisting workflow short-circuit empty conversations`
+
+---
+
 ### Task 3: C2 — starter 请求不落库
 
 **Files:**
@@ -439,6 +485,22 @@ Expected: PASS — 全部通过（含 3 个新参数化用例，先前的 rich �
 git add src/vanna/core/agent/agent.py tests/test_chat_history.py
 git commit -m "fix(agent): stop persisting empty starter conversations"
 ```
+
+---
+
+### Addendum A4: Task 4 标题清洗一致性 + 行为锁定测试（经主 agent 批准）
+
+代码质量审查（Approved）的 Minor 修复：
+
+1. **Minor #1**：fallback 与 LLM 路径清洗一致——`_generate_conversation_title` 最终返回改为 `" ".join(first_user_message.strip().split())[:60] or "New conversation"`。
+2. **Minor #2/引号**：LLM 路径标题清洗兼容单双引号——`title = (response.content or "").strip().strip("\"'").strip()`。
+3. **Minor #3（部分）**：补 3 条行为锁定测试：
+   - `test_title_llm_quote_cleaning`：FakeLlmService(title="'Top Artist Sales'") → 期望 `"Top Artist Sales"`（先 RED，单引号未被去除）。
+   - `test_conversation_title_empty_llm_reply_falls_back`：title=""（空回复）→ 回退首条用户消息（行为锁定，当前已正确）。
+   - `test_title_generated_only_once_per_conversation`：FakeLlmService 增加 `title_calls` 计数（purpose==conversation_title 时 +1），两轮对话后断言 `llm.title_calls == 1`（第二轮因 title 已在 metadata 不再发起标题请求）。
+4. 其余 Minor（#4 保存前阻塞、#5 fallback 不升级）按设计接受，不修改。
+
+修复提交信息：`fix(agent): normalize title cleaning and lock fallback behaviors with tests`
 
 ---
 
@@ -712,6 +774,27 @@ git add src/vanna/core/agent/agent.py src/vanna/servers/fastapi/conversation_rou
 git commit -m "feat(chat): tag conversations with business_id and support filtered listing"
 ```
 
+### Addendum A5: Task 5 代码质量审查修复（经主 agent 亲自核实批准）
+
+Task 5 首提 `63c4fe70` 通过 spec 合规审查（Approved，逐字合规）；代码质量审查 Changes Requested。主 agent 已亲自 Read 核实 src 代码（agent.py L479-483、conversation_routes.py L21-27、三个 store 实现的切片位置、FS store `_save_metadata` L55-60 及 get/list 重建段、`Conversation.metadata` 模型字段），批准以下 5 项修复；其余意见记录处理如下：
+
+- **A5-1（I-2 误标覆盖，批准）**：agent.py 打标块改为 `conversation.metadata.setdefault("business_id", request_business_id)`，保留会话首次归属；注释更新说明。既有未打标历史会话仍可被补标。
+- **A5-2（I-3 空串不对称，批准）**：conversation_routes.py 过滤条件改 `if business_id:`，与写侧 `if request_business_id:` 对齐（空串视为不过滤）。
+- **A5-3（I-1 分页语义错乱，批准）**：过滤下推到 `ConversationStore.list_conversations`——抽象基类（core/storage/base.py）签名加 `business_id: Optional[str] = None`；三个实现（Memory/SQLite/FS）统一顺序：按 user 过滤 → 按 updated_at 降序 → business_id 过滤 → 切片分页（SQLite 实现：business_id 非 None 时不带 LIMIT/OFFSET 拉取该用户全量行再 Python 过滤后切片，数据量小，规格 4.4 已接受；注释注明后续可加 json_extract 索引优化）。路由删除内存过滤、改为透传 `business_id`。两个测试 FakeStore（test_chat_history.py、test_conversation_routes.py）签名同步加 `business_id=None` 并实现先过滤后切片。`examples/extensibility_example.py` 不修改——新参数有默认值，向后兼容。
+- **A5-4（I-4 FS store 不持久化 metadata，批准）**：file_system_conversation_store.py `_save_metadata` 增加 `"metadata": conversation.metadata`；`get_conversation` 与 `list_conversations` 重建 Conversation 时回填 `metadata=raw.get("metadata", {})`（旧数据无该 key 时兜底空 dict），并注意局部变量不与文件内容变量重名。
+- **A5-5（M-1 测试缺口，批准）**：补 4 类行为测试：
+  1. test_chat_history.py：`test_existing_conversation_keeps_original_business_tag`（biz_a 建会话后携 biz_b 同 conversation_id 再发消息，仍为 biz_a）；`test_conversation_without_business_not_tagged`（不带 business_id 时不产生标记）。
+  2. test_conversation_routes.py：`?business_id=`（空串）返回全部；分页+过滤顺序用例（b1 两条 c1/c4 且含其它业务会话，`?business_id=b1&limit=1&offset=1` 返回 ["c4"]——若先分页后过滤该断言失败）。
+  3. 新建 `tests/test_conversation_store_filters.py`：真实 store 行为锁定——MemoryConversationStore + SQLiteConversationStore(tmp db) + FileSystemConversationStore(tmp dir) 三实现统一验证"business_id 过滤后分页"；FS 额外验证 metadata 落盘回读。
+- **不修复（记录理由）**：M-2 FakeStore 不做 user 过滤是既有测试风格，本次保持；M-3 手工折行随 A5-3 重写路由代码自然消除；M-4 无害。
+
+**执行方式**：TDD——先追加/新建上述测试并运行确认失败（RED），再最小实现，GREEN 后提交：
+
+```powershell
+git add src/vanna/core/agent/agent.py src/vanna/core/storage/base.py src/vanna/integrations/local/storage.py src/vanna/integrations/local/sqlite_conversation_store.py src/vanna/integrations/local/file_system_conversation_store.py src/vanna/servers/fastapi/conversation_routes.py tests/test_chat_history.py tests/test_conversation_routes.py tests/test_conversation_store_filters.py
+git commit -m "fix(chat): keep first business tag, align empty filter, and filter conversations before pagination"
+```
+
 ---
 
 ## 前端（frontends/web）
@@ -938,6 +1021,442 @@ export interface ConversationMeta {
 git add frontends/web/src/lib/api.ts
 git commit -m "feat(web): expose conversation metadata and business filter in api client"
 ```
+
+### Addendum A6: Task 7/8 合并审查结论（经主 agent 批准）
+
+Task 7（`e53cb3f`）与 Task 8（`52e9dcd9`）经合并审查 **Approved**：与计划逐字一致、提交边界干净、后端协议证据充分（chat_sse 每帧 `\n\n` 结尾无残留 buffer 风险；`ChatStreamChunk.rich` 为单 dict 与前端类型对齐；conversations 列表先过滤后分页与前端语义吻合）。三个 Minor 记录如下，其中前两项移交 Task 10 处理：
+
+- **移交 Task 10**：SSE 流中后端异常帧形状为 `{"type":"error","data":...,"conversation_id":...,"request_id":...}`（无 rich 字段），useChatSession 消费 chunk 时须先判 `type === 'error'` 再按错误处理，不得直接按 `ChatStreamChunk` 形状取值。
+- **移交 Task 10**：streamChat 非 2xx 抛 `Error("HTTP {status}: ...")`，useChatSession 对 401/403 按其状态码前缀判断未认证，勿依赖文案。
+- **不修复**：sse.ts/types.ts 文件末尾无换行符（纯风格，无 CI 门禁）。
+
+---
+
+### Addendum A7: Task 9/10 质量审查结论（经主 agent 批准）
+
+Task 9（`cd851e2b`）与 Task 10（`23bd4118`）经代码质量审查 **Changes Requested → 主 agent 逐条亲自核实后裁决如下**：
+
+**批准修复**
+
+1. **I-2 businessId 切换后会话状态残留（Important，属实）**——`<Chat/>` 在 `:businessId` 参数变化时被 React Router 复用（frontends/web/src/router.tsx L56 同一 element 无 key），hook 的 messages/conversationId/sending 不重置：用户切换业务后仍见旧业务消息，续发还会携带旧业务会话 id。**修复落点 Task 12**：`Chat/index.tsx` 改用内部 `key={businessId}` 包装（见 A7-12 授权）。否决 hook 内重置方案（旧流 finally 会用旧闭包 `refreshConversations` 覆盖新业务列表，存在竞态；key 重挂载语义干净，starter 亦重拉新业务欢迎卡片）。
+2. **M-4 retry 取错源消息（Minor，属实）**——`retry(failedMessageId)` 现取全局最后一条 user 消息，多轮交错时点早期失败消息的重试会重发错误内容。应定位 failedMessageId 之前最近的 user 消息。修复 useChatSession.ts（见 A7 修复提交）。
+3. **M-5 starter catch 未按状态码映射 401/403（Minor，属实）**——抽模块级 `httpStatusOf(error)` 公用函数，startStream 与 starter 的 catch 均按 `HTTP {status}` 前缀判断（不依赖文案）。修复 useChatSession.ts（见 A7 修复提交）。
+4. **M-7 认证错误英文文案 + 误导性重试（Minor，属实）**——`errorDetail === 'authentication required'` 为稳定标记：Task 11 MessageBubble 对该标记隐藏重试按钮并显示 i18n key `chat.authenticationRequired`（见 A7-11 授权）；Task 13 三语言 JSON 追加该 key（见 A7-13 授权）。
+
+**驳回不修（理由）**
+
+- **I-1 error 帧绑定 conversation_id**：对未绑定会话的请求，error 帧 `conversation_id` 恒为空串——`handle_stream`（src/vanna/servers/base/chat_handler.py L36）将新 id 存于局部变量、不回写 `ChatRequest.conversation_id`（routes.py L74 直接引用请求字段，请求字段为 None 时输出 `""`）；且 `send_message`（src/vanna/core/agent/agent.py L285-364）内层 except 已把绝大多数异常转成带 conversation_id 的 error 组件流（正常 chunk 已被前端绑定）。error 分支增加绑定是死代码；完整闭环需改后端 error 帧回写 conversation_id，不在本需求范围。
+- **M-3 ChartView purge/newPlot 竞态**：仅快速切换会话时图表偶发未渲染，无崩溃路径，接受现状。
+- **M-6 starter 空气泡**：后端 starter 请求恒产出 rich 卡片，空响应仅在异常路径（error 帧下已置 error 状态），无实际触发场景。
+- **M-8 dedupeRich fallback 键碰撞**：后端组件均带 uuid id，实际不碰撞。
+- **M-9 IGNORED_TYPES 仅拦截 3 种**：与 Task 9 计划设计一致，其余类型 JSON 降级为既定降级策略，notification 渲染器留作后续增强。
+- **M-10 ActionButtons variant 未映射 primary/danger**：纯视觉差异，无功能影响。
+- **M-11 每 chunk 全量 map O(n²)**：单会话消息量级下可接受，留作后续优化。
+
+另：spec 合规审查 Approved（Task 10 中 4 行 `// A6:` 注释为主 agent 派发指令明确要求，非 implementer 私加）。
+
+### A7 修复提交（useChatSession.ts，随本修正案派发）
+
+**修复 1（M-4 retry 源消息定位）**——将 retry 回调替换为：
+
+```ts
+  const retry = useCallback(
+    (failedMessageId: string) => {
+      // Find the user message immediately preceding the failed assistant
+      // message rather than the last user message in the conversation.
+      const failedIndex = messages.findIndex((m) => m.id === failedMessageId);
+      if (failedIndex < 0) return;
+      const sourceMessage = [...messages]
+        .slice(0, failedIndex)
+        .reverse()
+        .find((m) => m.role === 'user');
+      if (!sourceMessage) return;
+      setMessages((prev) => prev.filter((m) => m.id !== failedMessageId));
+      void startStream(sourceMessage.content, false);
+    },
+    [messages, startStream]
+  );
+```
+
+**修复 2（M-5 httpStatusOf 共用）**——在 `mapStoredRich` 函数之后新增模块级函数：
+
+```ts
+/**
+ * Extract the HTTP status code from fetch/stream errors shaped
+ * "HTTP 401: Unauthorized"; returns 0 when no status prefix is present.
+ */
+function httpStatusOf(error: unknown): number {
+  const message = error instanceof Error ? error.message : '';
+  const match = /^HTTP (\d{3})\b/.exec(message);
+  return match ? Number(match[1]) : 0;
+}
+```
+
+- startStream catch 的 else 分支改为：
+
+```ts
+        } else {
+          // A6: detect unauthenticated responses by the HTTP status code
+          // prefix (e.g. "HTTP 401: Unauthorized"), never by error text.
+          const status = httpStatusOf(e);
+          const authError = status === 401 || status === 403;
+          patchAssistant((m) => ({
+            ...m,
+            status: 'error',
+            errorDetail: authError ? 'authentication required' : e?.message ?? 'request failed',
+          }));
+        }
+```
+
+- starter 的 catch 分支改为：
+
+```ts
+      .catch((e: any) => {
+        if (e?.name === 'AbortError') {
+          patchStarter((m) => ({ ...m, status: 'done' }));
+        } else {
+          const status = httpStatusOf(e);
+          patchStarter((m) => ({
+            ...m,
+            status: 'error',
+            errorDetail:
+              status === 401 || status === 403
+                ? 'authentication required'
+                : e?.message,
+          }));
+        }
+      })
+```
+
+### A7-12 授权修改（Task 12 派发时应用）
+
+`Chat/index.tsx` 计划代码中的 `function Chat() {...}` 整体替换为 `ChatContent`（props 收 businessId，删去 `useParams` 行，其余函数体逐字保持）+ 外部 key 包装：
+
+```tsx
+function ChatContent({ businessId }: { businessId: string | undefined }) {
+  const { user } = useAuth();
+  const chat = useChatSession(businessId);
+  const [collapsed, setCollapsed] = useState(false);
+
+  // ……（原计划 Chat 函数体内其余 JSX 逐字不变）
+}
+
+function Chat() {
+  const { businessId } = useParams();
+  return <ChatContent key={businessId} businessId={businessId} />;
+}
+
+export default Chat;
+```
+
+> 注（派发时一并应用）：`ChatContent` 的 props 类型为 `string | undefined`，与 `useParams` 的返回值类型（react-router v7 `Params<string>`）及 `useChatSession` 的参数类型一致，避免 TS2322。
+
+### A7-11 授权修改（Task 11 派发时应用）
+
+MessageBubble 计划代码中 assistant 分支的 error Alert 部分改为（其余逐字不变）：
+
+```tsx
+{message.status === 'error' && (
+  <Alert
+    type="error"
+    showIcon
+    message={
+      message.errorDetail === 'authentication required'
+        ? t('common', 'chat.authenticationRequired', '登录已过期，请重新登录')
+        : message.content || message.errorDetail || t('common', 'chat.generationFailed', '生成失败')
+    }
+    action={
+      onRetry &&
+      message.errorDetail !== 'authentication required' && (
+        <Button size="small" icon={<ReloadOutlined />} onClick={() => onRetry(message.id)}>
+          {t('common', 'chat.retry', '重试')}
+        </Button>
+      )
+    }
+  />
+)}
+```
+
+### A7-13 授权修改（Task 13 派发时应用）
+
+三语言 JSON 各追加一个扁平 key：
+- zh-CN：`"chat.authenticationRequired": "登录已过期，请重新登录"`
+- zh-TW：`"chat.authenticationRequired": "登入已過期，請重新登入"`
+- en-US：`"chat.authenticationRequired": "Session expired, please sign in again"`
+
+### A8 修复提交（随本修正案派发，Task 11/A7 质量审查裁决）
+
+Task 11/A7 代码质量审查（核查 `0dced89a` + `2f65d984`）返回 2 Important + 9 Minor。主 agent 逐条亲自核实后裁决：**批准修复 2 Important + 4 Minor（I-1、I-2、M-1、M-2、M-4、M-7）**，**驳回 5 Minor（M-3、M-5、M-6、M-8、M-9）**。
+
+**批准修复（精确代码，implementer 逐字应用）：**
+
+1. **I-1 MessageList 流式强制滚底**（`MessageList.tsx` 中第二条 useEffect 整体替换）：
+
+```tsx
+  // New chunks scroll to bottom only when the user is already near the
+  // bottom, so streaming never yanks users who scrolled up to read.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
+      scrollToBottom(false);
+    }
+  }, [messages]);
+```
+
+2. **I-2 starter 失败重试无效**（`useChatSession.ts` retry 中 `if (!sourceMessage) return;` 替换）：
+
+```ts
+      if (!sourceMessage) {
+        // A8: starter card failure has no preceding user message; clearing
+        // the list makes the starter effect re-run and refetch it.
+        setMessages([]);
+        return;
+      }
+```
+
+3. **M-1 会话排序比较器**（`ConversationSidebar.tsx` 中 sorted 行替换）：
+
+```tsx
+    const sorted = [...conversations].sort(
+      (a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at)
+    );
+```
+
+4. **M-2 List rowKey**（`ConversationSidebar.tsx` 中 List 开标签加 rowKey）：
+
+```tsx
+          <List
+            size="small"
+            rowKey={(c) => c.id}
+            dataSource={filtered}
+```
+
+5. **M-4 Composer 消费 inputHint.value**（`Composer.tsx` 整体按以下内容重写，即：接口加 `value?: string`，内部 state 改名 `draft`，加 A8 注释的 useEffect 同步，submit 改用 draft）：
+
+```tsx
+import { useEffect, useState } from 'react';
+import { Button, Input } from 'antd';
+import { SendOutlined } from '@ant-design/icons';
+import { t } from '../../../i18n';
+
+export interface ComposerProps {
+  sending: boolean;
+  placeholder?: string;
+  value?: string;
+  onSend: (text: string) => void;
+  onStop: () => void;
+}
+
+/** Message input: Enter to send, Shift+Enter for a newline, stop while streaming. */
+export default function Composer({ sending, placeholder, value, onSend, onStop }: ComposerProps) {
+  const [draft, setDraft] = useState('');
+
+  // A8: sync backend-pushed input text (ChatInputUpdateComponent.value).
+  useEffect(() => {
+    if (value !== undefined) setDraft(value);
+  }, [value]);
+
+  const submit = () => {
+    const text = draft.trim();
+    if (!text || sending) return;
+    setDraft('');
+    onSend(text);
+  };
+
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', padding: '12px 24px', borderTop: '1px solid #f0f0f0' }}>
+      <Input.TextArea
+        value={draft}
+        autoSize={{ minRows: 1, maxRows: 6 }}
+        placeholder={placeholder ?? t('common', 'chat.inputPlaceholder', '输入问题，Enter 发送，Shift+Enter 换行')}
+        style={{ flex: 1, resize: 'none' }}
+        onChange={(e) => setDraft(e.target.value)}
+        onPressEnter={(e) => {
+          if (!e.shiftKey) {
+            e.preventDefault();
+            submit();
+          }
+        }}
+        disabled={sending}
+      />
+      {sending ? (
+        <Button danger onClick={onStop}>
+          {t('common', 'chat.stop', '停止')}
+        </Button>
+      ) : (
+        <Button type="primary" icon={<SendOutlined />} disabled={!draft.trim()} onClick={submit}>
+          {t('common', 'chat.send', '发送')}
+        </Button>
+      )}
+    </div>
+  );
+}
+```
+
+6. **M-7 认证标记共享常量**：
+   - `types.ts` 在 `dedupeRich` 之前追加：
+
+```ts
+/** Error detail marker for 401/403 authentication failures. */
+export const AUTH_ERROR_DETAIL = 'authentication required';
+```
+
+   - `useChatSession.ts` 顶部 import 改为 `import { AUTH_ERROR_DETAIL, ChatMessage, ChatStreamChunk, RichComponent } from './types';`，并将两处 `'authentication required'` 字面量（startStream catch else 与 starter catch）改为 `AUTH_ERROR_DETAIL`。
+   - `MessageBubble.tsx` 顶部 import 改为 `import { AUTH_ERROR_DETAIL, ChatMessage, dedupeRich } from '../types';`，并将两处与 `'authentication required'` 的比较改为 `AUTH_ERROR_DETAIL`。
+
+Commit message：`fix(web): near-bottom autoscroll, starter retry fallback and shared auth error constant in chat UI`（单 commit，只含上述 6 文件）。
+
+### A8-12 授权修改（Task 12 派发时应用）
+
+Task 12 计划代码中 Composer 调用追加 value 传入：
+
+```tsx
+          <Composer
+            sending={chat.sending}
+            placeholder={chat.inputHint?.placeholder}
+            value={chat.inputHint?.value}
+            onSend={chat.sendMessage}
+            onStop={chat.stop}
+          />
+```
+
+其余逐字不变。
+
+**驳回不修（已核实理由）：**
+
+- **M-3** i18n key 未注册：Task 13 计划已覆盖组件用到的全部 `chat.*` key（L2327-2352），`authenticationRequired` 由 A7-13 授权兜住，无需提前修复。
+- **M-5** onSendAction 无 hook 直连：Task 12 计划 L2289 已有 `onSendAction={(action: string) => chat.sendMessage(action)}` 页面胶水。
+- **M-6** 流内 error frame 认证漏判：后端契约下 401/403 仅出现在 fetch 首响应（SSE 建立前的认证中间件），流内 error frame 无认证语义、原文展示属预期；若后端未来变更再单开任务。
+- **M-8** retry 时序错位：仅"失败后继续发新消息再回头点旧重试"触达；历史回放消息均为 done 不渲染重试按钮；修复需 startStream 支持插入定位，风险大于收益。
+- **M-9** `catch (e: any)`：审查员建议的 `instanceof Error` 方案会破坏浏览器 AbortError（DOMException 非 Error 实例）判定，导致停止按钮失效；且两处为既存代码非本次 diff，维持现状。
+
+### A9 修复提交（随本修正案派发，Task 12/13 质量审查裁决）
+
+Task 12/13 合并代码质量审查（核查 `2e7d8a7d` + `c90b694f` + `0a50bcbd` 合体形态）返回 1 Important + 6 Minor。主 agent 逐条亲自核实后裁决：**批准修复 I-1、M-1、M-2、M-3、M-6**，**驳回 M-4、M-5（理由见下）**。
+
+**批准修复（精确代码，implementer 逐字应用；覆盖 3 个文件）：**
+
+1. **I-1 + M-6 MessageList 滚动策略**（`MessageList.tsx` 中 export default 函数体内从第一条 useEffect 到第二条 useEffect 的整段按以下内容替换，注意新增 `stickRef` 与 `prevLoadingRef`）——原 A8 的"I-1 距离检查"实现由 stickRef 状态替代（语义等价且覆盖单个大 chunk 场景）：
+
+```tsx
+export default function MessageList({ messages, loading, onSendAction, onRetry }: MessageListProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [showScrollDown, setShowScrollDown] = useState(false);
+  // A9: whether the user is following the bottom (updated on scroll).
+  const stickRef = useRef(true);
+  // A9: previous loading state, to detect "history finished loading".
+  const prevLoadingRef = useRef<boolean | undefined>(undefined);
+
+  const scrollToBottom = (smooth: boolean) => {
+    const el = containerRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+  };
+
+  // Track the scroll position: show the scroll-down button only while the
+  // user is away from the bottom, and remember whether they follow it.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setShowScrollDown(dist > 80);
+      stickRef.current = dist < 80;
+    };
+    onScroll();
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // New chunks follow the bottom only while the user is already there, so
+  // streaming never yanks users who scrolled up to read.
+  useEffect(() => {
+    if (stickRef.current) scrollToBottom(false);
+  }, [messages]);
+
+  // After a conversation finishes loading, always jump to the newest message.
+  useEffect(() => {
+    if (prevLoadingRef.current && !loading) {
+      scrollToBottom(false);
+    }
+    prevLoadingRef.current = loading;
+  }, [loading]);
+
+  return (
+    <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+```
+
+（该函数其余部分 JSX 逐字不变。）
+
+2. **M-1 Composer 草稿清空**（`Composer.tsx` 中 A8 加的 useEffect 整体替换）：
+
+```tsx
+  // A9: sync backend-pushed input text (ChatInputUpdateComponent.value) and
+  // clear the draft when the hint resets (new chat / conversation switch).
+  useEffect(() => {
+    setDraft(value ?? '');
+  }, [value]);
+```
+
+3. **M-2 starter effect 函数式更新 + cleanup**（`useChatSession.ts` starter effect 内两处）：
+   - `setMessages([...])` 行替换为函数式：
+
+```ts
+    setMessages((prev) =>
+      prev.length === 0
+        ? [{ id: starterId, role: 'assistant', content: '', rich: [], status: 'streaming' }]
+        : prev
+    );
+```
+
+   - starter effect 末尾（`.finally(...)` 链结束之后、依赖数组之前的 `});` 之前）追加 cleanup 行，将 `  }, [conversationId, businessId, messages.length, sending]);` 之前的结构改为在链式调用后多一行：
+
+```ts
+    return () => controller.abort();
+  }, [conversationId, businessId, messages.length, sending]);
+```
+
+4. **M-3 openConversation 最后点击优先**（`useChatSession.ts`）：
+   - 在其他 ref 声明旁新增：`const openSeqRef = useRef(0);`
+   - `openConversation` 整体替换为：
+
+```ts
+  const openConversation = useCallback(
+    async (id: string) => {
+      stop();
+      const seq = ++openSeqRef.current;
+      setLoadingConversation(true);
+      try {
+        const conv = await api.conversation(id);
+        if (seq !== openSeqRef.current) return;
+        setConversationId(conv.id);
+        setMessages(
+          conv.messages.map((m) => ({
+            id: makeId('msg'),
+            role: (m.role === 'user' ? 'user' : 'assistant') as ChatMessage['role'],
+            content: m.content,
+            rich: mapStoredRich(m.rich),
+            status: 'done',
+          }))
+        );
+        setInputHint(null);
+      } catch {
+        if (seq !== openSeqRef.current) return;
+        setMessages([]);
+        setConversationId(null);
+      } finally {
+        if (seq === openSeqRef.current) setLoadingConversation(false);
+      }
+    },
+    [stop]
+  );
+```
+
+Commit message：`fix(web): scroll to latest on load, clear draft on switch and guard rapid conversation opens`（单 commit，只含 MessageList.tsx、Composer.tsx、useChatSession.ts 3 文件）。
+
+**驳回不修（已核实理由）：**
+
+- **M-4** MessageBubble 未 memo：memo 需同时稳定 `retry`（依赖 [messages] 每 chunk 重建）与 `onSendAction` 回调才有效，属纯优化无正确性问题；当前会话规模下每 chunk 全量重渲染成本可控，不引入半效 memo。
+- **M-5** 删除/打开会话失败静默：属网络异常边界，静默回退不破坏状态一致性（refresh 后列表/草稿恢复原状）；统一错误提示体系超出本任务范围。
 
 ---
 
