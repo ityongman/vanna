@@ -1,21 +1,28 @@
+import { Suspense, lazy } from 'react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router';
 import { AuthProvider, AdminGuard } from './lib/auth';
 import AuthGuard from './layouts/AuthGuard';
 import AppLayout from './layouts/AppLayout';
 import BusinessOutlet from './components/BusinessOutlet';
-import Login from './pages/Login';
-import Chat from './pages/Chat';
-import Draw from './pages/Draw';
-import Manage from './pages/Manage';
-import Train from './pages/Train';
-import DdlImport from './pages/DdlImport';
-import Schema from './pages/Schema';
-import NotFound from './pages/NotFound';
+import GlobalLoading from './components/GlobalLoading';
+
+// 页面级懒加载：antd 的 Table/Form/Upload/Steps 等重组件仅由少数页面使用，
+// 按路由拆分可避免首屏加载全部页面代码。
+const Login = lazy(() => import('./pages/Login'));
+const Chat = lazy(() => import('./pages/Chat'));
+const Draw = lazy(() => import('./pages/Draw'));
+const Manage = lazy(() => import('./pages/Manage'));
+const Train = lazy(() => import('./pages/Train'));
+const DdlImport = lazy(() => import('./pages/DdlImport'));
+const Schema = lazy(() => import('./pages/Schema'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 function RootLayout() {
   return (
     <AuthProvider>
-      <Outlet />
+      <Suspense fallback={<GlobalLoading />}>
+        <Outlet />
+      </Suspense>
     </AuthProvider>
   );
 }
